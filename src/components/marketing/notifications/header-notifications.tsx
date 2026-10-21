@@ -8,7 +8,7 @@ import { useNotices } from "@/providers/notification-provider";
 import { cx } from "@/utils/cx";
 
 const iconGhost =
-    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-white";
+    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white";
 
 export const HeaderNotifications = () => {
     const { t, locale } = useI18n();

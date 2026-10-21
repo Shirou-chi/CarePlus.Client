@@ -16,7 +16,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
-import { getBookingCatalog, getBookingSlots, bookAppointment, type BookedAppointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/utils/booking";
+import { getBookingCatalog, getBookingSlots, bookAppointment, isBookingClosed, type BookedAppointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/utils/booking";
 import { isDoctorId } from "@/utils/doctors";
 import { cx } from "@/utils/cx";
 
@@ -61,7 +61,7 @@ export const BookingPage = () => {
     }, [profile, t.authFailed]);
 
     useEffect(() => {
-        if (!profile || step < 2) {
+        if (!profile || step < 1) {
             return;
         }
 
@@ -91,8 +91,8 @@ export const BookingPage = () => {
     const steps = useMemo(
         () => [
             { title: t.bookStepFamily, description: t.bookStepFamilyHint },
-            { title: t.bookStepDoctor, description: t.bookStepDoctorHint },
             { title: t.bookStepWhen, description: t.bookStepWhenHint },
+            { title: t.bookStepDoctor, description: t.bookStepDoctorHint },
             { title: t.bookStepType, description: t.bookStepTypeHint },
             { title: t.bookStepSummary, description: t.bookStepSummaryHint },
         ],
@@ -120,9 +120,9 @@ export const BookingPage = () => {
         step === 0
             ? Boolean(familyId)
             : step === 1
-              ? Boolean(doctorId)
+              ? Boolean(slot)
               : step === 2
-                ? Boolean(slot)
+                ? Boolean(doctorId)
                 : step === 3
                   ? Boolean(visitType)
                   : Boolean(family && slot && visitType);
@@ -131,7 +131,7 @@ export const BookingPage = () => {
         message.toLowerCase().includes("slot") || message.toLowerCase().includes("booked") || message.toLowerCase().includes("free");
 
     const goNext = async () => {
-        if (step !== 2) {
+        if (step !== 1) {
             setError(null);
             setStep((current) => current + 1);
             return;
@@ -153,7 +153,7 @@ export const BookingPage = () => {
                 return;
             }
             setError(null);
-            setStep(3);
+            setStep(2);
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : t.authFailed);
         } finally {
@@ -179,8 +179,12 @@ export const BookingPage = () => {
             setBooked(result);
         } catch (cause) {
             const message = cause instanceof Error ? cause.message : t.authFailed;
+            if (message === "booking-closed") {
+                setError(t.visitsBookingBlocked);
+                return;
+            }
             if (isSlotConflict(message)) {
-                setStep(2);
+                setStep(1);
                 setSlot(null);
             }
             setError(isSlotConflict(message) ? t.bookSlotTaken : message);
@@ -204,6 +208,11 @@ export const BookingPage = () => {
             <main className="mx-auto w-full max-w-container px-4 py-6 pb-28 md:px-8 md:py-10 md:pb-10">
                 <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.bookTitle}</h1>
                 <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.bookBody}</p>
+                {isBookingClosed() ? (
+                    <p role="status" className="mt-4 rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">
+                        {t.visitsBookingBlocked}
+                    </p>
+                ) : null}
 
                 <div className="mt-6 rounded-2xl bg-primary px-3 py-4 ring-1 ring-secondary sm:px-4 md:mt-8 md:px-6 md:py-5">
                     <ProgressSteps steps={steps} current={step} onSelect={setStep} />
@@ -240,7 +249,7 @@ export const BookingPage = () => {
                             </div>
                         ) : null}
 
-                        {step === 1 ? (
+                        {step === 2 ? (
                             <div className="flex flex-col gap-4">
                                 <h2 className="text-lg font-semibold text-primary">{t.bookDoctorTitle}</h2>
                                 <p className="text-sm text-tertiary">{t.bookDoctorHint}</p>
@@ -264,7 +273,7 @@ export const BookingPage = () => {
                             </div>
                         ) : null}
 
-                        {step === 2 ? (
+                        {step === 1 ? (
                             <div className="flex flex-col gap-5 sm:gap-6">
                                 <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
                                     <div className="min-w-0">
@@ -303,9 +312,9 @@ export const BookingPage = () => {
                                             }}
                                             className={cx(
                                                 "min-h-11 rounded-xl px-2 py-2.5 text-sm font-semibold ring-1 transition sm:px-3 sm:py-3",
-                                                item.booked && "cursor-not-allowed bg-secondary text-tertiary ring-transparent",
-                                                !item.booked && slot?.startAt === item.startAt && "bg-primary text-brand-secondary ring-2 ring-brand-solid",
-                                                !item.booked && slot?.startAt !== item.startAt && "bg-primary text-primary ring-secondary hover:ring-brand",
+                                                item.booked && "cursor-not-allowed bg-secondary text-tertiary ring-transparent dark:bg-white/10 dark:ring-white/30",
+                                                !item.booked && slot?.startAt === item.startAt && "bg-primary text-brand-secondary ring-2 ring-brand-solid dark:bg-white/15 dark:ring-brand-300",
+                                                !item.booked && slot?.startAt !== item.startAt && "bg-primary text-primary ring-secondary hover:ring-brand dark:bg-white/12 dark:ring-white/40",
                                             )}
                                         >
                                             {item.label}
@@ -337,23 +346,23 @@ export const BookingPage = () => {
                                 <h2 className="text-lg font-semibold text-primary">{t.bookSummaryTitle}</h2>
                                 <dl className="divide-y divide-secondary">
                                     <SummaryRow label={t.bookWhoTitle} value={family?.name ?? "—"} />
-                                    <SummaryRow label={t.bookStepDoctor} value={doctor?.name ?? t.bookAnyDoctor} />
                                     <SummaryRow label={t.bookStepWhen} value={slot ? formatWhen(slot.startAt) : "—"} />
+                                    <SummaryRow label={t.bookStepDoctor} value={doctor?.name ?? t.bookAnyDoctor} />
                                     <SummaryRow label={t.bookStepType} value={visitType ? typeLabel(visitType) : "—"} />
                                     <SummaryRow label={t.bookNotes} value={notes.trim() || t.bookNoNotes} />
                                 </dl>
                             </div>
                         ) : null}
 
-                        {step !== 2 ? <FormStatus error={error} /> : null}
+                        {step !== 1 ? <FormStatus error={error} /> : null}
                     </section>
 
                     <aside className="hidden min-w-0 rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary sm:p-5 lg:sticky lg:top-28 lg:block lg:p-5">
                         <h2 className="text-md font-semibold text-primary">{t.bookSidebarTitle}</h2>
                         <dl className="mt-4 flex flex-col gap-3 text-sm">
                             <SummaryRow label={t.bookStepFamily} value={family?.name ?? "—"} compact />
-                            <SummaryRow label={t.bookStepDoctor} value={doctor?.name ?? t.bookAnyDoctor} compact />
                             <SummaryRow label={t.bookStepWhen} value={slot ? formatWhen(slot.startAt) : t.bookNotPicked} compact />
+                            <SummaryRow label={t.bookStepDoctor} value={doctor?.name ?? t.bookAnyDoctor} compact />
                             <SummaryRow label={t.bookStepType} value={visitType ? typeLabel(visitType) : t.bookNotPicked} compact />
                         </dl>
                         <div className="mt-6 hidden flex-col gap-3 lg:flex">
@@ -367,7 +376,7 @@ export const BookingPage = () => {
                                     {t.bookContinue}
                                 </Button>
                             ) : (
-                                <Button color="primary" size="lg" isDisabled={!canContinue || saving} onClick={() => void confirm()}>
+                                <Button color="primary" size="lg" isDisabled={!canContinue || saving || isBookingClosed()} onClick={() => void confirm()}>
                                     {saving ? t.bookSaving : t.bookConfirm}
                                 </Button>
                             )}
@@ -391,7 +400,7 @@ export const BookingPage = () => {
                                 {t.bookContinue}
                             </Button>
                         ) : (
-                            <Button color="primary" size="md" className="flex-1" isDisabled={!canContinue || saving} onClick={() => void confirm()}>
+                            <Button color="primary" size="md" className="flex-1" isDisabled={!canContinue || saving || isBookingClosed()} onClick={() => void confirm()}>
                                 {saving ? t.bookSaving : t.bookConfirm}
                             </Button>
                         )}
@@ -410,8 +419,8 @@ export const BookingPage = () => {
                                 <p className="mt-2 text-sm text-tertiary">{t.bookDoneBody}</p>
                                 <dl className="mt-4 flex flex-col gap-2 text-sm">
                                     <SummaryRow label={t.bookStepFamily} value={booked.forName} compact />
-                                    <SummaryRow label={t.bookStepDoctor} value={booked.doctorName} compact />
                                     <SummaryRow label={t.bookStepWhen} value={formatWhen(booked.startAt)} compact />
+                                    <SummaryRow label={t.bookStepDoctor} value={booked.doctorId === "any" ? t.bookAnyDoctor : booked.doctorName} compact />
                                     <SummaryRow label={t.bookStepType} value={typeLabel(visitType) || booked.type} compact />
                                 </dl>
                                 <div className="mt-6 flex flex-col gap-3">
@@ -437,7 +446,7 @@ const DoctorChoice = ({ selected, title, subtitle, onSelect }: { selected: boole
         onClick={onSelect}
         className={cx(
             "w-full rounded-xl px-4 py-3 text-left ring-1 transition",
-            selected ? "bg-brand-primary ring-2 ring-brand-solid" : "bg-primary ring-secondary hover:ring-brand",
+            selected ? "bg-brand-primary ring-2 ring-brand-solid dark:bg-white/12 dark:ring-brand-300" : "bg-primary ring-secondary hover:ring-brand",
         )}
     >
         <span className="block text-sm font-semibold text-primary">{title}</span>
@@ -461,7 +470,10 @@ const ShiftCard = ({
     <button
         type="button"
         onClick={onSelect}
-        className={cx("rounded-xl px-4 py-3 text-left ring-1 transition", active ? "ring-2 ring-brand-solid" : "ring-secondary hover:ring-brand")}
+        className={cx(
+            "rounded-xl px-4 py-3 text-left ring-1 transition dark:bg-white/10",
+            active ? "ring-2 ring-brand-solid dark:ring-brand-300" : "ring-secondary hover:ring-brand dark:ring-white/40",
+        )}
     >
         <span className="block text-sm font-semibold text-primary">{title}</span>
         <span className="mt-1 block text-sm text-tertiary">{range}</span>
