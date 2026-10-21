@@ -12,6 +12,7 @@ import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { NotificationItem, noticeKindLabel, noticeMessage, noticeMeta } from "@/components/marketing/notifications/notification-item";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
@@ -66,6 +67,7 @@ export const NotificationsPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
                 <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.notifPageTitle}</h1>
                 <p className="mt-2 max-w-2xl text-md text-tertiary">{t.notifPageBody}</p>

@@ -4,6 +4,7 @@ import { Button } from "@/components/base/buttons/button";
 import { RatingStars } from "@/components/foundations/rating-stars";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { dayLabel, genderLabel, getDoctorById, isDoctorId, shiftLabel } from "@/utils/doctors";
@@ -27,6 +28,7 @@ export const DoctorDetailPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-10 md:px-8 md:py-16">
                 <Link
                     to="/doctors"

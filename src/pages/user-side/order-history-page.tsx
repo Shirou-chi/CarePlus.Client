@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Copy01, Download01, SearchLg, Truck01 } from "@untitledui/icons";
-import { Link, Navigate } from "react-router";
+import { Navigate } from "react-router";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -10,6 +10,7 @@ import { SelectItem } from "@/components/base/select/select-item";
 import { FormStatus } from "@/components/application/form-status";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { MedicineShot } from "@/components/marketing/medicine/medicine-shot";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
@@ -89,16 +90,9 @@ export const OrderHistoryPage = () => {
     return (
         <div className="careplus-landing min-h-dvh pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
-                <nav aria-label="Breadcrumb" className="text-sm text-tertiary">
-                    <ol className="flex flex-wrap items-center gap-2">
-                        <li><Link to="/home" className="hover:text-primary">{t.medHome}</Link></li>
-                        <li aria-hidden="true">/</li>
-                        <li className="font-medium text-primary">{t.ordersTitle}</li>
-                    </ol>
-                </nav>
-
-                <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+                <div className="flex flex-wrap items-end justify-between gap-4">
                     <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.ordersTitle}</h1>
                     <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                         <Input placeholder={t.search} icon={SearchLg} value={query} onChange={setQuery} className="w-full sm:w-64" />

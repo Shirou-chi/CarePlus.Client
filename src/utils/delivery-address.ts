@@ -1,5 +1,27 @@
 import type { Profile } from "@/utils/auth";
+import type { Copy } from "@/providers/locale-provider";
 import type { ProfileSettings } from "@/utils/profile-settings";
+
+export const DELIVERY_LABEL_IDS = ["home", "office", "other"] as const;
+export type DeliveryLabelId = (typeof DELIVERY_LABEL_IDS)[number];
+
+export const isDeliveryLabelId = (value: string): value is DeliveryLabelId =>
+    (DELIVERY_LABEL_IDS as readonly string[]).includes(value);
+
+export const deliveryLabelText = (label: string, t: Copy) => {
+    if (label === "home") return t.settingsLabelHome;
+    if (label === "office") return t.settingsLabelOffice;
+    if (label === "other") return t.settingsLabelOther;
+    return label;
+};
+
+export const splitDeliveryLine = (line: string) => {
+    const comma = line.indexOf(",");
+    if (comma > 0 && comma <= 30 && /\b\d{5}\b/.test(line.slice(comma + 1))) {
+        return { unit: line.slice(0, comma).trim(), street: line.slice(comma + 1).trim() };
+    }
+    return { unit: "", street: line };
+};
 
 export type MalaysiaRegion = "west" | "east";
 

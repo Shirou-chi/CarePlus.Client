@@ -3,6 +3,7 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { FaqAccordion } from "@/components/marketing/faq/faq-accordion";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useI18n } from "@/providers/locale-provider";
 
 const CLINIC = {
@@ -40,6 +41,7 @@ export const ContactPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-10 md:px-8 md:py-16">
                 <div className="max-w-3xl">
                     <p className="text-sm font-semibold text-brand-secondary">{t.clinicName}</p>

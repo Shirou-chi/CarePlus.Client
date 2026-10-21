@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useI18n } from "@/providers/locale-provider";
 
 export function NotFound() {
@@ -12,6 +13,7 @@ export function NotFound() {
     return (
         <div className="careplus-landing min-h-dvh pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <section className="mx-auto flex w-full max-w-container flex-col gap-10 px-4 py-10 md:min-h-[calc(100dvh-5.5rem)] md:flex-row md:items-center md:gap-16 md:px-8 md:py-16">
                 <div className="flex w-full max-w-xl flex-col gap-6 md:gap-8">
                     <div className="flex flex-col gap-3">

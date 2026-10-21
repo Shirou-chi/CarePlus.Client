@@ -117,6 +117,9 @@ interface CreditCardProps {
     type?: CreditCardType;
     className?: string;
     width?: number;
+    /** Turn the card over while the CVV field is in use. Omit to keep a static front. */
+    flipped?: boolean;
+    cvv?: string;
 }
 
 const calculateScale = (desiredWidth: number, originalWidth: number, originalHeight: number) => {
@@ -142,6 +145,8 @@ export const CreditCard = ({
     type = "brand-dark",
     className,
     width,
+    flipped,
+    cvv = "",
 }: CreditCardProps) => {
     const originalWidth = 316;
     const originalHeight = 190;
@@ -157,20 +162,16 @@ export const CreditCard = ({
         return calculateScale(width, originalWidth, originalHeight);
     }, [width]);
 
-    return (
-        <div
-            style={{
-                width: `${scaledWidth}px`,
-                height: `${scaledHeight}px`,
-            }}
-            className={cx("relative flex", className)}
-        >
+    const shownCvv = cvv.replace(/\D/g, "").slice(0, 4);
+    const planeStyle = {
+        transform: `scale(${scale})`,
+        width: `${originalWidth}px`,
+        height: `${originalHeight}px`,
+    };
+
+    const front = (
             <div
-                style={{
-                    transform: `scale(${scale})`,
-                    width: `${originalWidth}px`,
-                    height: `${originalHeight}px`,
-                }}
+                style={planeStyle}
                 className={cx("absolute top-0 left-0 flex origin-top-left flex-col justify-between overflow-hidden rounded-2xl p-4", styles[type].root)}
             >
                 {/* Horizontal strip */}
@@ -227,6 +228,57 @@ export const CreditCard = ({
 
                     <div className={cx("flex h-8 w-11.5 shrink-0 items-center justify-center rounded", styles[type].cardTypeRoot)}>
                         {CARD_WITH_COLOR_LOGO.includes(type as (typeof CARD_WITH_COLOR_LOGO)[number]) ? <MastercardIcon /> : <MastercardIconWhite />}
+                    </div>
+                </div>
+            </div>
+    );
+
+    const stageStyle = {
+        width: `${scaledWidth}px`,
+        height: `${scaledHeight}px`,
+    };
+
+    if (flipped === undefined) {
+        return (
+            <div style={stageStyle} className={cx("relative flex", className)}>
+                {front}
+            </div>
+        );
+    }
+
+    return (
+        <div style={{ ...stageStyle, perspective: "900px" }} className={cx("relative", className)}>
+            <div
+                style={{ transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)" }}
+                className={cx(
+                    "relative size-full transition-transform duration-500 [transform-style:preserve-3d] motion-reduce:transition-none",
+                    flipped ? "[transform:rotateY(180deg)]" : "[transform:rotateY(0deg)]",
+                )}
+            >
+                <div className="absolute inset-0 [transform:translateZ(0.1px)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
+                    {front}
+                </div>
+                <div className="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden] [-webkit-backface-visibility:hidden]">
+                    <div
+                        style={planeStyle}
+                        className={cx("absolute top-0 left-0 origin-top-left overflow-hidden rounded-2xl", styles[type].root)}
+                        aria-hidden="true"
+                    >
+                        <div className="mt-6 h-10 bg-neutral-950" />
+                        <div className="mt-5 flex items-center gap-3 px-4">
+                            <div className="h-9 flex-1 rounded-sm bg-white/80" />
+                            <div className="flex h-9 min-w-14 items-center justify-center rounded-sm bg-white px-2">
+                                <span
+                                    className={cx(
+                                        "text-sm font-semibold tracking-[0.18em] tabular-nums",
+                                        shownCvv ? "text-neutral-900" : "text-neutral-400",
+                                    )}
+                                >
+                                    {shownCvv || "•••"}
+                                </span>
+                            </div>
+                        </div>
+                        <p className={cx("mt-1.5 pr-4 text-right text-[10px] leading-none font-semibold tracking-[0.14em]", styles[type].footerText)}>CVV</p>
                     </div>
                 </div>
             </div>

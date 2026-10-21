@@ -13,6 +13,7 @@ import { Select } from "@/components/base/select/select";
 import { TextArea } from "@/components/base/textarea/textarea";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { getBookingCatalog, getBookingSlots, bookAppointment, type BookedAppointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/utils/booking";
@@ -199,6 +200,7 @@ export const BookingPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] pb-24 md:pt-22 lg:pb-0">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-6 pb-28 md:px-8 md:py-10 md:pb-10">
                 <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.bookTitle}</h1>
                 <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.bookBody}</p>

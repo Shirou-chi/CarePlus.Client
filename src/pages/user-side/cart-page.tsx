@@ -12,6 +12,7 @@ import { Select } from "@/components/base/select/select";
 import { SelectItem } from "@/components/base/select/select-item";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { MedicineShot } from "@/components/marketing/medicine/medicine-shot";
 import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
@@ -20,6 +21,7 @@ import {
     availableDeliveryAddresses,
     defaultDeliveryOption,
     deliveryFeeForRegion,
+    deliveryLabelText,
     type DeliveryOption,
 } from "@/utils/delivery-address";
 import {
@@ -169,20 +171,9 @@ export const CartPage = () => {
     return (
         <div className="careplus-landing min-h-dvh pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
-                <nav aria-label="Breadcrumb" className="text-sm text-tertiary">
-                    <ol className="flex flex-wrap items-center gap-2">
-                        <li>
-                            <Link to="/home" className="hover:text-primary">
-                                {t.medHome}
-                            </Link>
-                        </li>
-                        <li aria-hidden="true">/</li>
-                        <li className="font-medium text-primary">{t.cart}</li>
-                    </ol>
-                </nav>
-
-                <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+                <div className="flex flex-wrap items-end justify-between gap-3">
                     <h1 className="text-display-xs font-semibold uppercase tracking-wide text-primary [font-family:var(--font-display)] md:text-display-sm">
                         {t.medCartPageTitle}
                     </h1>
@@ -284,7 +275,7 @@ export const CartPage = () => {
                                             className="mt-3 w-full"
                                             items={deliveryOptions.map((option) => ({
                                                 id: option.id,
-                                                label: deliveryOptionLabel(option),
+                                                label: deliveryOptionLabel(option, t),
                                                 description: `${option.line} · ${regionLabel(option.region, t)}`,
                                             }))}
                                         >
@@ -397,7 +388,7 @@ export const CartPage = () => {
 const regionLabel = (region: DeliveryOption["region"], t: Copy) =>
     region === "east" ? t.medCartEastMalaysia : t.medCartWestMalaysia;
 
-const deliveryOptionLabel = (option: DeliveryOption) => option.label;
+const deliveryOptionLabel = (option: DeliveryOption, t: Copy) => deliveryLabelText(option.label, t);
 
 const CartLineCard = ({
     t,
