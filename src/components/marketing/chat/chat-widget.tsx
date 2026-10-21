@@ -92,7 +92,7 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
                         >
                             <MessageChatCircle className="size-4" />
                         </span>
-                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-brand-solid px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-sm">
+                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-brand-solid px-2 py-0.5 text-[10px] font-semibold tracking-wide whitespace-nowrap text-white uppercase shadow-sm">
                             {t.chatFabBadge}
                         </span>
                     </>

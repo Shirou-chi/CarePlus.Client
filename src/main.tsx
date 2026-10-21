@@ -1,26 +1,28 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
-import { AccountPage } from "@/pages/user-side/account-page";
+import { AccountPage } from "@/pages/user-side/account/account-page";
 import { AboutPage } from "@/pages/user-side/about-page";
-import { BookingPage } from "@/pages/user-side/booking-page";
-import { ForgotPasswordPage } from "@/pages/user-side/forgot-password-page";
-import { HealthRecordsPage } from "@/pages/user-side/health-records-page";
+import { BookingPage } from "@/pages/user-side/visits/booking-page";
+import { UpcomingVisitsPage } from "@/pages/user-side/visits/upcoming-visits-page";
+import { VisitHistoryPage } from "@/pages/user-side/visits/visit-history-page";
+import { ForgotPasswordPage } from "@/pages/user-side/auth/forgot-password-page";
+import { HealthRecordsPage } from "@/pages/user-side/records/health-records-page";
 import { HomePage } from "@/pages/user-side/home-page";
 import { LandingPage } from "@/pages/user-side/landing-page";
-import { LoginPage } from "@/pages/user-side/login-page";
-import { ClinicRecordsPage } from "@/pages/user-side/clinic-records-page";
+import { LoginPage } from "@/pages/user-side/auth/login-page";
+import { ClinicRecordsPage } from "@/pages/user-side/records/clinic-records-page";
 import { NotFound } from "@/pages/user-side/not-found";
-import { OrderHistoryPage } from "@/pages/user-side/order-history-page";
-import { PrescribedMedicineBrowsePage } from "@/pages/user-side/prescribed-medicine-browse-page";
-import { PrescribedMedicinePage } from "@/pages/user-side/prescribed-medicine-page";
-import { CartPage } from "@/pages/user-side/cart-page";
+import { OrderHistoryPage } from "@/pages/user-side/medicine/order-history-page";
+import { PrescribedMedicineBrowsePage } from "@/pages/user-side/medicine/prescribed-medicine-browse-page";
+import { PrescribedMedicinePage } from "@/pages/user-side/medicine/prescribed-medicine-page";
+import { CartPage } from "@/pages/user-side/medicine/cart-page";
 import { ContactPage } from "@/pages/user-side/contact-page";
-import { DoctorDetailPage } from "@/pages/user-side/doctor-detail-page";
-import { DoctorsPage } from "@/pages/user-side/doctors-page";
-import { ChatPage } from "@/pages/user-side/chat-page";
-import { NotificationsPage } from "@/pages/user-side/notifications-page";
-import { RegisterPage } from "@/pages/user-side/register-page";
+import { DoctorDetailPage } from "@/pages/user-side/doctors/doctor-detail-page";
+import { DoctorsPage } from "@/pages/user-side/doctors/doctors-page";
+import { ChatPage } from "@/pages/user-side/chat/chat-page";
+import { NotificationsPage } from "@/pages/user-side/notifications/notifications-page";
+import { RegisterPage } from "@/pages/user-side/auth/register-page";
 import { AuthProvider } from "@/providers/auth-provider";
 import { CartProvider } from "@/providers/cart-provider";
 import { ChatProvider } from "@/providers/chat-provider";
@@ -48,6 +50,8 @@ const AppRoutes = () => {
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/account" element={<AccountPage />} />
                     <Route path="/book" element={<BookingPage />} />
+                    <Route path="/visits" element={<UpcomingVisitsPage />} />
+                    <Route path="/history" element={<VisitHistoryPage />} />
                     <Route path="/records" element={<HealthRecordsPage />} />
                     <Route path="/medicine" element={<PrescribedMedicineBrowsePage />} />
                     <Route path="/medicine/:id" element={<PrescribedMedicinePage />} />

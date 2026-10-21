@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MarkerPin01, NavigationPointer01 } from "@untitledui/icons";
+import { MarkerPin01, Minus, NavigationPointer01, Plus } from "@untitledui/icons";
 import { Input } from "@/components/base/input/input";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { labelForPoint, pinFromAddress, searchPlaces, type MalaysiaPlace } from "@/utils/malaysia-places";
@@ -7,6 +7,10 @@ import { reverseAddress, searchAddressHits, type AddressHit } from "@/utils/reve
 import { cx } from "@/utils/cx";
 
 const TILE = 256;
+const MIN_ZOOM = 4;
+const MAX_ZOOM = 18;
+
+const clampZoom = (zoom: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(zoom)));
 
 const toWorld = (lat: number, lng: number, zoom: number) => {
     const size = TILE * 2 ** zoom;
@@ -64,6 +68,7 @@ export const AddressLocator = ({
     const mapRef = useRef<HTMLDivElement>(null);
     const fieldRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<{ x: number; y: number; lat: number; lng: number; moved: boolean } | null>(null);
+    const wheelRef = useRef(0);
     const lookupRef = useRef(0);
     const searchRef = useRef(0);
     const [pin, setPin] = useState<Pin>(() => pinFromAddress(value));
@@ -82,7 +87,19 @@ export const AddressLocator = ({
         update();
         const observer = new ResizeObserver(update);
         observer.observe(node);
-        return () => observer.disconnect();
+        const onWheel = (event: WheelEvent) => {
+            event.preventDefault();
+            wheelRef.current += event.deltaY;
+            if (Math.abs(wheelRef.current) < 50) return;
+            const step = wheelRef.current > 0 ? -1 : 1;
+            wheelRef.current = 0;
+            setPin((current) => ({ ...current, zoom: clampZoom(current.zoom + step) }));
+        };
+        node.addEventListener("wheel", onWheel, { passive: false });
+        return () => {
+            observer.disconnect();
+            node.removeEventListener("wheel", onWheel);
+        };
     }, []);
 
     useEffect(() => {
@@ -272,6 +289,26 @@ export const AddressLocator = ({
                     <img key={tile.key} src={tile.src} alt="" width={TILE} height={TILE} className="absolute max-w-none" style={{ left: tile.left, top: tile.top }} draggable={false} />
                 ))}
                 <MarkerPin01 className="pointer-events-none absolute top-1/2 left-1/2 size-8 -translate-x-1/2 -translate-y-full text-fg-error-primary drop-shadow-md" aria-hidden="true" />
+                <div className="absolute top-3 right-3 flex flex-col overflow-hidden rounded-lg bg-primary shadow-md ring-1 ring-secondary">
+                    <button
+                        type="button"
+                        aria-label={t.settingsZoomIn}
+                        disabled={pin.zoom >= MAX_ZOOM}
+                        onClick={() => setPin((current) => ({ ...current, zoom: clampZoom(current.zoom + 1) }))}
+                        className="flex size-9 items-center justify-center text-fg-secondary hover:bg-primary_hover disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <Plus className="size-5" aria-hidden="true" />
+                    </button>
+                    <button
+                        type="button"
+                        aria-label={t.settingsZoomOut}
+                        disabled={pin.zoom <= MIN_ZOOM}
+                        onClick={() => setPin((current) => ({ ...current, zoom: clampZoom(current.zoom - 1) }))}
+                        className="flex size-9 items-center justify-center border-t border-secondary text-fg-secondary hover:bg-primary_hover disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <Minus className="size-5" aria-hidden="true" />
+                    </button>
+                </div>
                 <a
                     href="https://www.openstreetmap.org/copyright"
                     target="_blank"

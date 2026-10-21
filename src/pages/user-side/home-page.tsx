@@ -13,6 +13,7 @@ export const HomePage = () => {
     const { profile } = useAuth();
     const moduleHref = profile ? "/account" : "/login";
     const bookHref = profile ? "/book" : "/login";
+    const visitsHref = profile ? "/visits" : "/login";
     const recordsHref = profile ? "/records" : "/login";
     const clinicRecordsHref = profile ? "/clinic-records" : "/login";
     const medicineHref = profile ? "/medicine" : "/login";
@@ -32,7 +33,7 @@ export const HomePage = () => {
                 />
                 <ServiceNav
                     items={[
-                        { label: t.homeNavAppointment, href: bookHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
+                        { label: t.homeNavAppointment, href: visitsHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
                         { label: t.homeNavBooking, href: bookHref, Icon: CalendarPlus01, tone: "bg-[#dbeafe] text-[#1d4ed8]" },
                         { label: t.homeNavMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
                         { label: t.homeNavFamily, href: moduleHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },

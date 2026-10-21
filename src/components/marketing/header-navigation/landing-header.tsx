@@ -44,12 +44,14 @@ type ServiceGroup = {
 };
 
 const iconGhost =
-    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-white";
+    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white";
 
 const useServiceGroups = (): ServiceGroup[] => {
     const { t } = useI18n();
     const { profile } = useAuth();
     const bookHref = profile ? "/book" : "/login";
+    const visitsHref = profile ? "/visits" : "/login";
+    const historyHref = profile ? "/history" : "/login";
     return [
         {
             id: "visits",
@@ -58,8 +60,8 @@ const useServiceGroups = (): ServiceGroup[] => {
             Icon: CalendarCheck01,
             links: [
                 { title: t.bookVisit, subtitle: t.bookVisitHint, href: bookHref },
-                { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: "#features" },
-                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: "#features" },
+                { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: visitsHref },
+                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: historyHref },
             ],
         },
         {
@@ -258,13 +260,13 @@ const ServicesMega = () => {
                 className="flex items-center gap-2 rounded-full bg-secondary px-3.5 py-2 text-sm font-semibold text-secondary ring-1 ring-secondary ring-inset outline-focus-ring hover:bg-[#456f75] hover:text-white hover:ring-transparent focus-visible:outline-2"
                 aria-haspopup="true"
             >
-                <Grid01 className="size-4 text-fg-quaternary" />
+                <Grid01 className="size-4 text-fg-quaternary dark:text-brand-300" />
                 {t.services}
-                <ChevronDown className="size-4 text-fg-quaternary transition group-hover:rotate-180" />
+                <ChevronDown className="size-4 text-fg-quaternary transition group-hover:rotate-180 dark:text-brand-300" />
             </button>
 
             <div className="invisible absolute top-full right-0 z-50 pt-3 opacity-0 transition duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-                <div className="flex min-w-[40rem] overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-secondary_alt">
+                <div className="careplus-panel flex min-w-[40rem] overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-secondary_alt">
                     <ul className="w-56 shrink-0 border-r border-secondary bg-secondary_alt py-2">
                         {serviceGroups.map((group) => {
                             const Icon = group.Icon;
@@ -280,7 +282,7 @@ const ServicesMega = () => {
                                             isActive ? "bg-primary text-primary" : "text-secondary hover:bg-primary hover:text-primary",
                                         )}
                                     >
-                                        <Icon className="size-4 shrink-0 text-fg-brand-primary" />
+                                        <Icon className="size-4 shrink-0 text-fg-brand-primary dark:text-brand-300" />
                                         <span className="min-w-0 flex-1">
                                             <span className="block text-sm font-semibold">{group.title}</span>
                                         </span>
@@ -324,14 +326,14 @@ const MobileNav = () => {
             >
                 <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path
-                        className="hidden text-secondary group-aria-expanded:block"
+                        className="hidden text-secondary group-aria-expanded:block dark:text-brand-300"
                         d="M18 6L6 18M6 6L18 18"
                         stroke="currentColor"
                         strokeWidth="2"
                         strokeLinecap="round"
                     />
                     <path
-                        className="text-secondary group-aria-expanded:hidden"
+                        className="text-secondary group-aria-expanded:hidden dark:text-brand-300"
                         d="M3 12H21M3 6H21M3 18H21"
                         stroke="currentColor"
                         strokeWidth="2"
@@ -341,7 +343,7 @@ const MobileNav = () => {
             </AriaButton>
             <AriaPopover className="w-[min(100vw-1.5rem,24rem)] shadow-lg lg:hidden" offset={8} placement="bottom end">
                 <AriaDialog className="outline-hidden">
-                    <nav className="max-h-[80dvh] overflow-y-auto rounded-2xl bg-primary p-3 shadow-lg ring-1 ring-secondary_alt">
+                    <nav className="careplus-panel max-h-[80dvh] overflow-y-auto rounded-2xl bg-primary p-3 shadow-lg ring-1 ring-secondary_alt">
                         <p className="px-2 pb-2 text-sm font-semibold text-tertiary">{t.services}</p>
                         {serviceGroups.map((group) => (
                             <details key={group.id} className="border-b border-secondary">
