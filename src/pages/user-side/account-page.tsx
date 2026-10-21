@@ -12,6 +12,7 @@ import {
 } from "@untitledui/icons";
 import { Heading } from "react-aria-components";
 import { Navigate } from "react-router";
+import { AddressLocator } from "@/components/application/address-map/address-map";
 import { FormStatus } from "@/components/application/form-status";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Table, TableCard } from "@/components/application/table/table";
@@ -30,6 +31,7 @@ import { Toggle } from "@/components/base/toggle/toggle";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { CreditCard } from "@/components/credit-card/credit-card";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
@@ -51,18 +53,21 @@ import {
 } from "@/utils/profile-settings";
 import {
     detectMalaysiaRegion,
+    deliveryLabelText,
+    isDeliveryLabelId,
     isProfileSyncedAddress,
     PROFILE_ADDRESS_ID,
+    splitDeliveryLine,
     syncProfileAddressToDelivery,
     type DeliveryAddress,
 } from "@/utils/delivery-address";
 import {
     formatPhoneForDisplay,
-    validateAddress,
     validateCardExpiry,
     validateCardHolder,
     validateCardNumber,
     validateCvv,
+    validateDeliveryAddress,
     validateDeliveryLabel,
     validatePassword,
     validateProfileField,
@@ -78,7 +83,11 @@ type SectionId = (typeof SECTIONS)[number];
 
 type EditField = "fullName" | "gender" | "address" | "phone" | "email";
 
-type DialogState = { type: "edit"; field: EditField } | { type: "notif-disable" };
+type DialogState =
+    | { type: "edit"; field: EditField }
+    | { type: "notif-disable" }
+    | { type: "remove-card"; id: string; label: string }
+    | { type: "remove-address"; id: string; label: string };
 
 const genderLabel = (value: string | null, t: Copy) => {
     if (value === "male") return t.settingsGenderMale;
@@ -278,18 +287,22 @@ export const AccountPage = () => {
             paymentCards: cards,
             defaultCardId: settings.defaultCardId === id ? (cards[0]?.id ?? null) : settings.defaultCardId,
         });
+        if (editingCardId === id) {
+            setEditingCardId(null);
+        }
+        setDialog(null);
     };
 
     const setDefaultCard = (id: string) => {
         persistSettings({ ...settings, defaultCardId: id });
     };
 
-    const saveDeliveryAddress = (addressId: string | "new", payload: { label: string; line: string }): string | null => {
+    const saveDeliveryAddress = (addressId: string | "new", payload: { label: string; unit: string; line: string }): string | null => {
         if (addressId === PROFILE_ADDRESS_ID) {
             return null;
         }
         const label = validateDeliveryLabel(payload.label, t);
-        const line = validateAddress(payload.line, t);
+        const line = validateDeliveryAddress(payload.unit, payload.line, t);
         if (!label.ok) return label.message;
         if (!line.ok) return line.message;
 
@@ -331,6 +344,10 @@ export const AccountPage = () => {
             deliveryAddresses: addresses,
             defaultDeliveryAddressId: settings.defaultDeliveryAddressId === id ? (addresses[0]?.id ?? null) : settings.defaultDeliveryAddressId,
         });
+        if (editingAddressId === id) {
+            setEditingAddressId(null);
+        }
+        setDialog(null);
     };
 
     const setDefaultDeliveryAddress = (id: string) => {
@@ -338,17 +355,18 @@ export const AccountPage = () => {
     };
 
     return (
-        <div className="careplus-landing min-h-dvh pt-[4.5rem] md:pt-22">
+        <div className="careplus-landing careplus-account min-h-dvh pt-[4.5rem] md:pt-22">
             <LandingHeader />
-            <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
+            <PageBreadcrumb />
+            <main className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
                 <div>
                     <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.settingsPageTitle}</h1>
                     <p className="mt-2 max-w-3xl text-md text-tertiary">{t.settingsPageBody}</p>
                 </div>
 
-                <div className="mt-8 grid items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
-                    <aside className="sticky top-[4.5rem] z-20 -mx-4 border-b border-secondary bg-primary/95 px-4 py-2 backdrop-blur-md md:top-22 lg:top-28 lg:mx-0 lg:max-h-[calc(100dvh-8rem)] lg:border-b-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-                        <nav aria-label={t.settingsPageTitle} className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-y-auto lg:pb-0">
+                <div className="mt-8 grid min-w-0 items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+                    <aside className="sticky top-[4.5rem] z-20 -mx-4 min-w-0 border-b border-secondary bg-brand-primary px-4 py-2 md:top-22 md:bg-primary/95 md:backdrop-blur-md lg:top-28 lg:mx-0 lg:max-h-[calc(100dvh-8rem)] lg:border-b-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+                        <nav aria-label={t.settingsPageTitle} className="grid min-w-0 grid-cols-4 gap-1 md:flex md:gap-2 lg:flex-col lg:gap-1">
                             <SidebarLink
                                 label={t.settingsNavProfile}
                                 icon={User01}
@@ -478,7 +496,13 @@ export const AccountPage = () => {
                                             onCancel={() => setEditingAddressId(null)}
                                             onSave={(payload) => saveDeliveryAddress(address.id, payload)}
                                             onSetDefault={() => setDefaultDeliveryAddress(address.id)}
-                                            onRemove={() => removeDeliveryAddress(address.id)}
+                                            onRemove={() =>
+                                                setDialog({
+                                                    type: "remove-address",
+                                                    id: address.id,
+                                                    label: `${deliveryLabelText(address.label, t)}, ${address.line}`,
+                                                })
+                                            }
                                         />
                                     ))}
 
@@ -581,7 +605,7 @@ export const AccountPage = () => {
                                         onCancel={() => setEditingCardId(null)}
                                         onSave={(payload) => savePaymentCard(card.id, payload)}
                                         onSetDefault={() => setDefaultCard(card.id)}
-                                        onRemove={() => removeCard(card.id)}
+                                        onRemove={() => setDialog({ type: "remove-card", id: card.id, label: `${card.brand} ···· ${card.last4}` })}
                                     />
                                 ))}
 
@@ -672,6 +696,48 @@ export const AccountPage = () => {
                 />
             ) : null}
 
+            {dialog?.type === "remove-address" ? (
+                <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
+                    <Modal className="w-full max-w-md">
+                        <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                            <Heading slot="title" className="text-lg font-semibold text-primary">
+                                {t.settingsRemoveAddressTitle}
+                            </Heading>
+                            <p className="mt-2 text-sm text-tertiary">{t.settingsRemoveAddressBody.replace("{address}", dialog.label)}</p>
+                            <div className="mt-6 flex justify-end gap-3">
+                                <Button color="secondary" onClick={() => setDialog(null)}>
+                                    {t.notifCancel}
+                                </Button>
+                                <Button color="primary-destructive" onClick={() => removeDeliveryAddress(dialog.id)}>
+                                    {t.settingsRemoveDeliveryAddress}
+                                </Button>
+                            </div>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            ) : null}
+
+            {dialog?.type === "remove-card" ? (
+                <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
+                    <Modal className="w-full max-w-md">
+                        <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                            <Heading slot="title" className="text-lg font-semibold text-primary">
+                                {t.settingsRemoveCardTitle}
+                            </Heading>
+                            <p className="mt-2 text-sm text-tertiary">{t.settingsRemoveCardBody.replace("{card}", dialog.label)}</p>
+                            <div className="mt-6 flex justify-end gap-3">
+                                <Button color="secondary" onClick={() => setDialog(null)}>
+                                    {t.notifCancel}
+                                </Button>
+                                <Button color="primary-destructive" onClick={() => removeCard(dialog.id)}>
+                                    {t.settingsRemoveCard}
+                                </Button>
+                            </div>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            ) : null}
+
             {dialog?.type === "notif-disable" ? (
                 <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
                     <Modal className="w-full max-w-md">
@@ -712,12 +778,12 @@ const SidebarLink = ({
         onClick={onClick}
         aria-current={active ? "true" : undefined}
         className={cx(
-            "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition duration-100",
+            "flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs font-medium transition duration-100 md:w-auto md:shrink-0 md:flex-row md:justify-start md:gap-2 md:px-3 md:text-left md:text-sm",
             active ? "bg-secondary text-primary" : "text-tertiary hover:bg-primary_hover hover:text-secondary",
         )}
     >
         <Icon aria-hidden className="size-4 shrink-0" />
-        <span className="whitespace-nowrap">{label}</span>
+        <span className="max-w-full leading-tight md:whitespace-nowrap">{label}</span>
     </button>
 );
 
@@ -761,7 +827,7 @@ const DetailRow = ({
 const FormDialog = ({ title, error, onClose, children }: { title: string; error?: string | null; onClose: () => void; children: ReactNode }) => (
     <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
         <Modal className="w-full max-w-xl">
-            <Dialog className="flex w-full flex-col items-stretch rounded-2xl bg-primary p-6 shadow-xl outline-hidden ring-1 ring-secondary">
+            <Dialog className="flex max-h-[85vh] w-full flex-col items-stretch overflow-y-auto rounded-2xl bg-primary p-6 shadow-xl outline-hidden ring-1 ring-secondary">
                 <Heading slot="title" className="text-lg font-semibold text-primary">
                     {title}
                 </Heading>
@@ -805,6 +871,8 @@ const EditFieldDialog = ({
 
     const [value, setValue] = useState(defaults[field]);
     const [fieldError, setFieldError] = useState<string | null>(null);
+    const [sentCode, setSentCode] = useState<{ email: string; code: string } | null>(null);
+    const [emailCode, setEmailCode] = useState("");
 
     const limits: Partial<Record<EditField, number>> = {
         fullName: 80,
@@ -821,10 +889,20 @@ const EditFieldDialog = ({
             }
             return;
         }
-        const validated = validateProfileField(field, field === "phone" ? value : value, t);
+        const validated = validateProfileField(field, value, t);
         if (!validated.ok) {
             setFieldError(validated.message);
             return;
+        }
+        if (field === "email" && validated.value !== profile.email.trim().toLowerCase()) {
+            if (!sentCode || sentCode.email !== validated.value) {
+                setFieldError(t.settingsEmailCodeRequired);
+                return;
+            }
+            if (emailCode.trim() !== sentCode.code) {
+                setFieldError(t.settingsEmailCodeMismatch);
+                return;
+            }
         }
         const message = onSave(validated.value);
         if (typeof message === "string") {
@@ -846,6 +924,75 @@ const EditFieldDialog = ({
                 <InputGroup size="md" label={t.phone} value={value} onChange={setValue} isRequired className="w-full" leadingAddon={<InputPrefix>+60</InputPrefix>}>
                     <InputBase placeholder={t.phonePlaceholder} inputMode="numeric" maxLength={11} />
                 </InputGroup>
+            ) : field === "address" ? (
+                <AddressLocator
+                    t={t}
+                    label={labels.address}
+                    value={value}
+                    maxLength={limits.address}
+                    onChange={(next) => {
+                        setValue(next);
+                        setFieldError(null);
+                    }}
+                />
+            ) : field === "email" ? (
+                <>
+                    <Input
+                        label={labels.email}
+                        size="md"
+                        className="w-full"
+                        value={value}
+                        onChange={(next) => {
+                            setValue(next);
+                            setFieldError(null);
+                        }}
+                        isInvalid={!!fieldError}
+                        isRequired
+                        maxLength={limits.email}
+                        type="email"
+                    />
+                    <div className="flex justify-end">
+                        <Button
+                            type="button"
+                            color="secondary"
+                            size="sm"
+                            onClick={() => {
+                                const validated = validateProfileField("email", value, t);
+                                if (!validated.ok) {
+                                    setFieldError(validated.message);
+                                    return;
+                                }
+                                if (validated.value === profile.email.trim().toLowerCase()) {
+                                    setFieldError(t.settingsEmailSame);
+                                    setSentCode(null);
+                                    return;
+                                }
+                                const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
+                                setSentCode({ email: validated.value, code });
+                                setEmailCode("");
+                                setFieldError(null);
+                            }}
+                        >
+                            {t.settingsSendCode}
+                        </Button>
+                    </div>
+                    {sentCode ? (
+                        <>
+                            <FormStatus success={t.settingsCodeSent.replace("{email}", sentCode.email).replace("{code}", sentCode.code)} />
+                            <Input
+                                label={t.settingsEmailCode}
+                                size="md"
+                                className="w-full"
+                                value={emailCode}
+                                onChange={(next) => setEmailCode(next.replace(/\D/g, "").slice(0, 6))}
+                                isRequired
+                                maxLength={6}
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                            />
+                        </>
+                    ) : null}
+                </>
             ) : (
                 <Input
                     label={labels[field]}
@@ -859,7 +1006,6 @@ const EditFieldDialog = ({
                     isInvalid={!!fieldError}
                     isRequired
                     maxLength={limits[field]}
-                    type={field === "email" ? "email" : "text"}
                 />
             )}
             <div className="flex justify-end gap-3 pt-2">
@@ -953,7 +1099,26 @@ const PaymentCardRow = ({
     const [expiry, setExpiry] = useState(card?.expiry ?? "");
     const [holderName, setHolderName] = useState(card?.holderName ?? "");
     const [cvv, setCvv] = useState("");
+    const [cvvFocused, setCvvFocused] = useState(false);
     const [fieldError, setFieldError] = useState<string | null>(null);
+    const cvvFieldRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const node = cvvFieldRef.current;
+        if (!node || !isEditing) return;
+        const showBack = () => setCvvFocused(true);
+        const showFront = (event: FocusEvent) => {
+            const next = event.relatedTarget;
+            if (next instanceof Node && node.contains(next)) return;
+            setCvvFocused(false);
+        };
+        node.addEventListener("focusin", showBack);
+        node.addEventListener("focusout", showFront);
+        return () => {
+            node.removeEventListener("focusin", showBack);
+            node.removeEventListener("focusout", showFront);
+        };
+    }, [isEditing]);
 
     const digits = number.replace(/\D/g, "");
     const previewBrand = digits ? cardBrandFromDigits(digits) : (card?.brand ?? "CarePlus");
@@ -971,6 +1136,8 @@ const PaymentCardRow = ({
                     cardNumber={isEditing ? previewNumber : card ? `•••• •••• •••• ${card.last4}` : "•••• •••• •••• ••••"}
                     cardHolder={isEditing ? previewHolder : (card?.holderName ?? "YOUR NAME")}
                     cardExpiration={isEditing ? previewExpiry : (card?.expiry ?? "MM/YY")}
+                    flipped={isEditing ? cvvFocused : undefined}
+                    cvv={cvv}
                 />
 
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -1045,7 +1212,9 @@ const PaymentCardRow = ({
                             <FormStatus error={fieldError} className="sm:col-span-2" />
                             <PaymentInput label={t.settingsCardNumber} size="md" value={number} onChange={setNumber} isRequired className="w-full sm:col-span-2" />
                             <Input label={t.settingsCardExpiry} placeholder="MM/YY" size="md" value={expiry} onChange={(value) => setExpiry(formatCardExpiryInput(value))} isRequired maxLength={5} className="w-full" />
-                            <Input label={t.settingsCardCvv} placeholder="123" size="md" value={cvv} onChange={setCvv} isRequired maxLength={4} inputMode="numeric" type="password" autoComplete="off" className="w-full" />
+                            <div ref={cvvFieldRef} className="w-full">
+                                <Input label={t.settingsCardCvv} placeholder="123" size="md" value={cvv} onChange={setCvv} isRequired maxLength={4} inputMode="numeric" type="password" autoComplete="off" className="w-full" />
+                            </div>
                             <Input label={t.settingsCardHolder} size="md" value={holderName} onChange={setHolderName} isRequired maxLength={CARD_HOLDER_MAX} className="w-full sm:col-span-2" />
                             <div className="flex flex-wrap gap-2 sm:col-span-2">
                                 <Button type="submit" color="primary" size="sm">
@@ -1084,15 +1253,22 @@ const DeliveryAddressRow = ({
     isNew?: boolean;
     onEdit?: () => void;
     onCancel: () => void;
-    onSave: (payload: { label: string; line: string }) => string | null;
+    onSave: (payload: { label: string; unit: string; line: string }) => string | null;
     onSetDefault?: () => void;
     onRemove?: () => void;
 }) => {
-    const [label, setLabel] = useState(address?.label ?? "");
-    const [line, setLine] = useState(address?.line ?? "");
+    const split = splitDeliveryLine(address?.line ?? "");
+    const [label, setLabel] = useState(address && isDeliveryLabelId(address.label) ? address.label : "home");
+    const [unit, setUnit] = useState(split.unit);
+    const [line, setLine] = useState(split.street);
     const [fieldError, setFieldError] = useState<string | null>(null);
+    const labelItems = [
+        { id: "home", label: t.settingsLabelHome },
+        { id: "office", label: t.settingsLabelOffice },
+        { id: "other", label: t.settingsLabelOther },
+    ];
 
-    const region = detectMalaysiaRegion(line || address?.line || "");
+    const region = detectMalaysiaRegion(unit.trim() ? `${unit.trim()}, ${line}` : line || address?.line || "");
     const regionLabel = region === "east" ? t.medCartEastMalaysia : t.medCartWestMalaysia;
 
     return (
@@ -1101,7 +1277,7 @@ const DeliveryAddressRow = ({
                 <>
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                            <p className="font-medium text-primary">{address.label}</p>
+                            <p className="font-medium text-primary">{deliveryLabelText(address.label, t)}</p>
                             <p className="mt-1 text-sm text-tertiary">{address.line}</p>
                             <p className="mt-1 text-xs text-tertiary">
                                 {address.region === "east" ? t.medCartEastMalaysia : t.medCartWestMalaysia}
@@ -1139,31 +1315,50 @@ const DeliveryAddressRow = ({
                     className="flex w-full max-w-2xl flex-col gap-4"
                     onSubmit={(event) => {
                         event.preventDefault();
-                        const message = onSave({ label, line });
+                        const message = onSave({ label, unit, line });
                         if (message) {
                             setFieldError(message);
                         }
                     }}
                 >
                     <FormStatus error={fieldError} />
-                    <Input
+                    <Select
                         label={t.settingsDeliveryLabel}
                         placeholder={t.settingsDeliveryLabelPlaceholder}
                         size="md"
-                        value={label}
-                        onChange={setLabel}
+                        selectedKey={label}
+                        onSelectionChange={(key) => {
+                            const next = String(key);
+                            if (isDeliveryLabelId(next)) setLabel(next);
+                        }}
                         isRequired
-                        maxLength={40}
+                        className="w-full"
+                        items={labelItems}
+                    >
+                        {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
+                    </Select>
+                    <Input
+                        label={t.settingsDeliveryUnit}
+                        placeholder={t.settingsDeliveryUnitPlaceholder}
+                        size="md"
+                        value={unit}
+                        onChange={(next) => {
+                            setUnit(next);
+                            setFieldError(null);
+                        }}
+                        isRequired
+                        maxLength={30}
                         className="w-full"
                     />
-                    <Input
+                    <AddressLocator
+                        t={t}
                         label={t.settingsAddress}
-                        size="md"
                         value={line}
-                        onChange={setLine}
-                        isRequired
-                        maxLength={200}
-                        className="w-full"
+                        maxLength={168}
+                        onChange={(next) => {
+                            setLine(next);
+                            setFieldError(null);
+                        }}
                     />
                     <p className="text-sm text-tertiary">
                         {t.settingsDeliveryRegion}: {regionLabel}

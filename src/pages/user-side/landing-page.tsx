@@ -9,6 +9,7 @@ import { InputGroup } from "@/components/base/input/input-group";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
 
@@ -24,6 +25,7 @@ export const LandingPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden scroll-smooth pt-[4.5rem] text-primary md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
 
             <main>
                 <Hero startWithEmail={startWithEmail} />

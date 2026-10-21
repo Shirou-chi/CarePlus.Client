@@ -1,4 +1,5 @@
 import type { Copy } from "@/providers/locale-provider";
+import { isDeliveryLabelId } from "@/utils/delivery-address";
 import { isValidLocalPhone, parsePhoneLocal, PHONE_REGION } from "@/utils/phone";
 
 export type FieldResult = { ok: true; value: string } | { ok: false; message: string };
@@ -105,11 +106,26 @@ export const validateCvv = (value: string, t: Copy): FieldResult => {
 };
 
 export const validateDeliveryLabel = (value: string, t: Copy): FieldResult => {
-    const trimmed = value.trim();
-    if (trimmed.length < 2 || trimmed.length > 40) {
+    if (!isDeliveryLabelId(value)) {
         return { ok: false, message: t.settingsInvalidDeliveryLabel };
     }
-    return { ok: true, value: trimmed };
+    return { ok: true, value };
+};
+
+export const validateDeliveryAddress = (unit: string, street: string, t: Copy): FieldResult => {
+    const unitTrimmed = unit.trim();
+    if (unitTrimmed.length < 1 || unitTrimmed.length > 30) {
+        return { ok: false, message: t.settingsInvalidDeliveryUnit };
+    }
+    const streetTrimmed = street.trim();
+    if (streetTrimmed.length < 5 || !/\b\d{5}\b/.test(streetTrimmed)) {
+        return { ok: false, message: t.settingsDeliveryPostcodeRequired };
+    }
+    const line = `${unitTrimmed}, ${streetTrimmed}`;
+    if (line.length > 200) {
+        return { ok: false, message: t.settingsInvalidAddress };
+    }
+    return { ok: true, value: line };
 };
 
 export const validateProfileField = (field: "fullName" | "email" | "phone" | "nationality" | "address", value: string, t: Copy): FieldResult => {

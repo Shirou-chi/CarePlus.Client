@@ -6,6 +6,7 @@ import { Button } from "@/components/base/buttons/button";
 import { InputNumber } from "@/components/base/input/input-number";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { MedicineShot } from "@/components/marketing/medicine/medicine-shot";
 import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
@@ -119,25 +120,15 @@ export const PrescribedMedicinePage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
-                <nav className="flex items-center gap-2 text-sm text-tertiary">
-                    <Link
-                        to="/medicine"
-                        className="inline-flex size-8 items-center justify-center rounded-full ring-1 ring-secondary hover:bg-primary_hover"
-                        aria-label={t.medListBack}
-                    >
-                        <ArrowLeft className="size-4" />
-                    </Link>
-                    <Link to="/home" className="hover:text-secondary">
-                        {t.medHome}
-                    </Link>
-                    <span>/</span>
-                    <Link to="/medicine" className="hover:text-secondary">
-                        {t.medTitle}
-                    </Link>
-                    <span>/</span>
-                    <span className="text-secondary">{medicine.name}</span>
-                </nav>
+                <Link
+                    to="/medicine"
+                    className="inline-flex size-8 items-center justify-center rounded-full ring-1 ring-secondary hover:bg-primary_hover"
+                    aria-label={t.medListBack}
+                >
+                    <ArrowLeft className="size-4" />
+                </Link>
 
                 <div className="mt-8 grid items-start gap-8 lg:grid-cols-12">
                     <section className="lg:col-span-4">

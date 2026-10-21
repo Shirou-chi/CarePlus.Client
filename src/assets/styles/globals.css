@@ -161,6 +161,18 @@ html:has(.careplus-landing),
     color-scheme: light;
 }
 
+/* The corner glow is 28rem wide, so on a phone it paints a blue block behind the title. */
+@media (max-width: 1023px) {
+    html:not(.dark-mode):has(.careplus-account),
+    html:not(.dark-mode):has(.careplus-account) body {
+        background: #eef8fb;
+    }
+
+    html:not(.dark-mode) .careplus-account {
+        background: #eef8fb;
+    }
+}
+
 html.dark-mode:has(.careplus-landing),
 html.dark-mode:has(.careplus-landing) body {
     background-color: #0b2036;

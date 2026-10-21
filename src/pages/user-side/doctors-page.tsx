@@ -1,5 +1,6 @@
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { DoctorCard } from "@/components/marketing/doctors/doctor-card";
 import { useI18n } from "@/providers/locale-provider";
 import { getDoctorCatalog } from "@/utils/doctors";
@@ -11,6 +12,7 @@ export const DoctorsPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-10 md:px-8 md:py-16">
                 <div className="max-w-3xl">
                     <p className="text-sm font-semibold text-brand-secondary">{t.clinicName}</p>

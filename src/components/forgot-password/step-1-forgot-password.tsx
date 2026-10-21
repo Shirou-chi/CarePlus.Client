@@ -18,7 +18,7 @@ export const Step1ForgotPassword = ({ error, success, isLoading, onSubmit }: Ste
     const { t } = useI18n();
 
     return (
-        <section className="careplus-landing careplus-auth min-h-dvh px-4 py-12 md:px-8 md:pt-20">
+        <section className="px-4 py-12 md:px-8">
             <div className="mx-auto flex w-full max-w-90 flex-col gap-8">
                 <div className="flex justify-center">
                     <CarePlusLogo />
