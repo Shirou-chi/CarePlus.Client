@@ -1,0 +1,304 @@
+@import "tailwindcss";
+@import "./theme.css";
+@import "./typography.css";
+
+@plugin "@tailwindcss/typography";
+@plugin "tailwindcss-react-aria-components";
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark-mode, .dark-mode *));
+@custom-variant label (& [data-label]);
+@custom-variant focus-input-within (&:has(input:focus));
+
+@utility scrollbar-hide {
+    /* For Webkit-based browsers (Chrome, Safari and Opera) */
+    &::-webkit-scrollbar {
+        display: none;
+        -webkit-appearance: none;
+    }
+
+    /* For IE, Edge and Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+@utility transition-inherit-all {
+    transition-property: inherit;
+    transition-duration: inherit;
+    transition-timing-function: inherit;
+}
+
+html,
+body {
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-variant-ligatures: contextual;
+    font-variant-ligatures: contextual;
+    -webkit-font-kerning: normal;
+    font-kerning: normal;
+}
+
+/* Hide the default expand arrow on Safari.  */
+details summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Hide default arrows from number inputs. */
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+/* Firefox */
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Hide the default clear button (X) from search inputs. */
+input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+}
+
+/* Hide the default outline on chart elements. */
+.recharts-surface,
+.recharts-surface g,
+.recharts-surface path {
+    outline: none;
+}
+
+html:has(.careplus-landing) {
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html:has(.careplus-landing) {
+        scroll-behavior: auto;
+    }
+}
+
+::view-transition-old(root) {
+    animation: careplus-page-out 180ms ease-out both;
+}
+
+::view-transition-new(root) {
+    animation: careplus-page-in 220ms ease-out both;
+}
+
+@keyframes careplus-page-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes careplus-page-in {
+    from {
+        opacity: 0;
+    }
+}
+
+.careplus-page {
+    animation: careplus-page-in 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none;
+    }
+
+    .careplus-page {
+        animation: none;
+    }
+}
+
+html:has(.careplus-landing),
+.careplus-landing {
+    --careplus-ink:
+        linear-gradient(90deg, rgba(3, 15, 28, 0.94) 0%, rgba(5, 28, 46, 0.7) 52%, rgba(10, 51, 66, 0.28) 100%),
+        linear-gradient(135deg, #214c59, #071d35 58%, #040f1c);
+    --careplus-panel: #0b2036;
+    --color-brand-50: rgb(238 248 251);
+    --color-brand-100: rgb(213 244 248);
+    --color-brand-200: rgb(168 234 240);
+    --color-brand-300: rgb(118 226 235);
+    --color-brand-400: rgb(61 200 212);
+    --color-brand-500: rgb(26 168 181);
+    --color-brand-600: rgb(18 43 75);
+    --color-brand-700: rgb(11 31 56);
+    --color-brand-800: rgb(11 31 56);
+    --color-brand-900: rgb(11 31 56);
+    --color-brand-950: rgb(7 28 56);
+    --color-bg-brand-primary: var(--color-brand-50);
+    --color-bg-brand-secondary: var(--color-brand-100);
+    --color-bg-brand-solid: rgb(11 31 56);
+    --color-bg-brand-solid_hover: rgb(18 43 75);
+    --color-bg-brand-section: var(--color-brand-800);
+    --color-fg-brand-primary: rgb(18 43 75);
+    --color-fg-brand-secondary: rgb(69 111 117);
+    --color-featured-icon-light-fg-brand: rgb(18 43 75);
+    --color-text-brand-primary: var(--color-brand-900);
+    --color-text-brand-secondary: rgb(18 43 75);
+    --background-color-brand-solid: transparent;
+    --background-color-brand-solid_hover: transparent;
+    --background-color-brand-secondary: var(--color-brand-100);
+    --background-color-brand-primary: var(--color-brand-50);
+    --border-color-brand-solid: rgb(18 43 75);
+    --ring-color-brand-solid: rgb(18 43 75);
+    --outline-color-brand-solid: rgb(18 43 75);
+    --color-utility-brand-50: var(--color-brand-50);
+    --color-utility-brand-100: var(--color-brand-100);
+    --color-utility-brand-200: var(--color-brand-200);
+    --color-utility-brand-700: var(--color-brand-700);
+}
+
+.careplus-landing {
+    background:
+        radial-gradient(circle at 88% 4%, rgba(118, 226, 235, 0.3), transparent 28rem),
+        radial-gradient(circle at 5% 68%, rgba(245, 177, 158, 0.13), transparent 24rem),
+        linear-gradient(135deg, #eef8fb, #dff4f7);
+    color-scheme: light;
+}
+
+html.dark-mode:has(.careplus-landing),
+html.dark-mode:has(.careplus-landing) body {
+    background-color: #0b2036;
+    background-image: var(--careplus-ink);
+    background-attachment: fixed;
+}
+
+html.dark-mode .careplus-landing {
+    background-color: #0b2036;
+    background-image: var(--careplus-ink);
+    background-attachment: fixed;
+    color-scheme: dark;
+    --color-bg-primary: rgb(11 32 54 / 0.72);
+    --color-bg-primary_hover: rgb(33 76 89 / 0.42);
+    --color-bg-secondary: rgb(7 29 53 / 0.72);
+    --color-bg-secondary_alt: rgb(11 32 54 / 0.5);
+    --color-bg-primary_alt: rgb(11 32 54 / 0.62);
+    --color-bg-tertiary: rgb(7 29 53 / 0.85);
+    --background-color-primary: var(--color-bg-primary);
+    --background-color-primary_hover: var(--color-bg-primary_hover);
+    --background-color-secondary: var(--color-bg-secondary);
+    --background-color-secondary_alt: var(--color-bg-secondary_alt);
+    --background-color-primary_alt: var(--color-bg-primary_alt);
+    --background-color-tertiary: var(--color-bg-tertiary);
+    --color-border-secondary: rgb(255 255 255 / 0.14);
+    --color-border-primary: rgb(255 255 255 / 0.18);
+    --border-color-secondary: var(--color-border-secondary);
+    --border-color-primary: var(--color-border-primary);
+    --ring-color-secondary: var(--color-border-secondary);
+    --ring-color-primary: var(--color-border-primary);
+}
+
+html.dark-mode .careplus-landing .careplus-panel {
+    background-color: var(--careplus-panel);
+    background-image: none;
+}
+
+html:has(.careplus-auth),
+.careplus-auth {
+    --background-color-brand-solid: rgb(11 31 56);
+    --background-color-brand-solid_hover: rgb(18 43 75);
+}
+
+.careplus-landing h1,
+.careplus-landing h2,
+.careplus-landing h3 {
+    font-family: var(--font-display);
+}
+
+.careplus-ink {
+    background-color: #040f1c;
+    background-image: var(--careplus-ink);
+}
+
+html:has(.careplus-landing) :is(a, button, span).bg-brand-solid,
+html:has(.careplus-landing) :is(a, button, span).careplus-ink,
+html:has(.careplus-landing) button[type="submit"] {
+    background-color: #040f1c;
+    background-image: var(--careplus-ink);
+    color: #fff;
+}
+
+html.dark-mode:has(.careplus-landing) :is(a, button).careplus-ink,
+html.dark-mode:has(.careplus-landing) button[type="submit"] {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28);
+}
+
+html:has(.careplus-landing) :is(a, button, span).bg-brand-solid:hover,
+html:has(.careplus-landing) :is(a, button).careplus-ink:hover,
+html:has(.careplus-landing) button[type="submit"]:hover,
+html:has(.careplus-landing) .group:hover > .careplus-ink {
+    filter: brightness(1.18);
+}
+
+.careplus-landing .careplus-lang button {
+    background-color: rgb(255 255 255 / 0.72);
+    color: #0b1f38;
+}
+
+.careplus-landing .careplus-lang button:hover {
+    background-color: #456f75;
+    color: #fff;
+}
+
+.careplus-landing .careplus-lang button[data-selected] {
+    background-color: #122b4b;
+    color: #fff;
+}
+
+html.dark-mode .careplus-landing .careplus-lang button {
+    background-color: rgb(255 255 255 / 0.1);
+    color: rgb(255 255 255 / 0.88);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28);
+}
+
+html.dark-mode .careplus-landing .careplus-lang button:hover {
+    background-color: #456f75;
+    color: #fff;
+    box-shadow: none;
+}
+
+html.dark-mode .careplus-landing .careplus-lang button[data-selected] {
+    background-color: #5a8b92;
+    color: #fff;
+    box-shadow: none;
+}
+
+.careplus-landing ::selection {
+    background: rgb(118 226 235 / 0.45);
+    color: rgb(11 31 56);
+}
+
+@keyframes careplus-float {
+    0%,
+    100% {
+        transform: translateY(0) rotate(-1.5deg);
+    }
+    50% {
+        transform: translateY(-12px) rotate(-1.5deg);
+    }
+}
+
+.careplus-hero-scene {
+    animation: careplus-float 8s ease-in-out infinite;
+}
+
+@keyframes careplus-cart-pop {
+    0% {
+        transform: scale(1);
+    }
+    40% {
+        transform: scale(1.22);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.careplus-cart-bump {
+    animation: careplus-cart-pop 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="CarePlus patient portal" />
+        <meta name="theme-color" content="#0e7a86" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+        <title>CarePlus</title>
+    </head>
+
+    <body class="size-full bg-primary antialiased">
+        <div id="root"></div>
+        <script type="module" src="/src/main.tsx"></script>
+        <script>
+            // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+            if (localStorage.getItem("ui-theme") === "dark") {
+                document.documentElement.classList.add("dark-mode");
+            } else {
+                document.documentElement.classList.remove("dark-mode");
+            }
+        </script>
+    </body>
+</html>
