@@ -7,10 +7,11 @@ export const noticeKindLabel = (kind: NoticeKind, t: Copy) => {
     if (kind === "visit") return t.notifKindVisit;
     if (kind === "medicine") return t.notifKindMedicine;
     if (kind === "records") return t.notifKindRecords;
+    if (kind === "announcement") return t.notifKindAnnouncement;
     return t.notifKindAccount;
 };
 
-export const noticeMessage = (item: ClinicNotice, t: Copy) => t[item.copyKey].replace("{actor}", item.actor);
+export const noticeMessage = (item: ClinicNotice, t: Copy) => item.text ?? t[item.copyKey].replace("{actor}", item.actor);
 
 export const noticeMeta = (item: ClinicNotice, t: Copy, locale: "en" | "zh", now = Date.now()) =>
     `${formatNoticeAge(item.createdAt, now, locale)} · ${noticeKindLabel(item.kind, t)}`;

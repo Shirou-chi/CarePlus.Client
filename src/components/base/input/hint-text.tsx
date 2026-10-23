@@ -24,7 +24,7 @@ export const HintText = ({ isInvalid, className, size = "md", ...props }: HintTe
                 "in-data-[input-size=sm]:text-xs",
 
                 // Invalid state
-                isInvalid && "text-error-primary",
+                isInvalid && "font-medium text-error-primary",
                 "group-invalid:text-error-primary",
 
                 className,

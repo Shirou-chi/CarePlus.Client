@@ -61,7 +61,7 @@ export const ContactPage = () => {
                                             href={item.href}
                                             target={item.icon === MarkerPin01 ? "_blank" : undefined}
                                             rel={item.icon === MarkerPin01 ? "noreferrer" : undefined}
-                                            className="mt-1 block text-md text-brand-secondary hover:text-brand-primary"
+                                            className="mt-1 block text-md text-brand-secondary hover:text-brand-secondary_hover"
                                         >
                                             {item.value}
                                         </a>
@@ -92,7 +92,7 @@ export const ContactPage = () => {
                                 href={CLINIC.googleMapsUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="font-medium text-brand-secondary hover:text-brand-primary"
+                                className="font-medium text-brand-secondary hover:text-brand-secondary_hover"
                             >
                                 {t.contactOpenInMaps}
                             </a>

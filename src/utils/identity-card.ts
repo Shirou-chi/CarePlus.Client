@@ -2,6 +2,14 @@ export function normalizeIdentityCard(value: string) {
     return value.replace(/\D/g, "");
 }
 
+export function identityCardIssue(value: string): "empty" | "length" | "date" | null {
+    const digits = normalizeIdentityCard(value);
+    if (!digits) return "empty";
+    if (digits.length !== 12) return "length";
+    if (!isValidIdentityCard(value)) return "date";
+    return null;
+}
+
 export function isValidIdentityCard(value: string) {
     const digits = normalizeIdentityCard(value);
     if (digits.length !== 12) {

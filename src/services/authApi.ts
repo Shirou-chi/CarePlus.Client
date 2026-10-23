@@ -1,4 +1,5 @@
 import {
+  messageFromBody,
   request,
   TOKEN_KEY,
 } from './api'
@@ -9,12 +10,14 @@ export type PatientRegisterRequest = {
   name: string
   email: string
   password: string
-  gender: string
+  phone?: string | null
+  identityCardNumber: string
 }
 
-export type UserRegisterResponse = {
+export type PatientRegisterResponse = {
   userId: number
   name: string
+  patientId: string
 }
 
 export type CurrentUserResponse = {
@@ -28,11 +31,22 @@ export type CurrentUserResponse = {
   role: string
   patientId?: string
   staffId?: string
+  identityCardNumber?: string | null
+  gender?: string | null
+  address?: string | null
+  profilePicture?: string | null
+}
+
+export type LoginActivityResponse = {
+  id: number
+  device: string
+  ipAddress: string
+  createdAt: string
 }
 
 async function unwrap<T>(result: ApiResponse<T>, failureMessage: string): Promise<T> {
   if (!result.isSuccess || !result.data) {
-    throw new Error(result.respMessage || failureMessage)
+    throw new Error(messageFromBody(result, failureMessage))
   }
 
   return result.data
@@ -59,13 +73,25 @@ export const authApi = {
 
   async patientRegister(
     requestBody: PatientRegisterRequest,
-  ): Promise<UserRegisterResponse> {
-    const result = await request<ApiResponse<UserRegisterResponse>>('/api/Patient/Register', {
+  ): Promise<PatientRegisterResponse> {
+    const result = await request<ApiResponse<PatientRegisterResponse>>('/api/Patient/Register', {
       method: 'POST',
       body: JSON.stringify(requestBody),
     })
 
     return unwrap(result, 'Patient registration failed.')
+  },
+
+  async getLoginActivity(): Promise<LoginActivityResponse[]> {
+    const result = await request<ApiResponse<LoginActivityResponse[]>>('/api/User/Activity', {
+      method: 'GET',
+    }, true)
+
+    if (!result.isSuccess || !result.data) {
+      return []
+    }
+
+    return result.data
   },
 
   async getCurrentUser(): Promise<CurrentUserResponse> {

@@ -85,7 +85,7 @@ export const CalendarCell = ({ date, isHighlighted, showOutOfRangeDates = false,
                             isSelected && !isDisabled && isRangeCalendar ? "font-medium" : "",
                             markedAsSelected && "bg-brand-solid font-medium text-white hover:bg-brand-solid_hover hover:text-white",
                             // Hover state for non-selected cells.
-                            !isSelected && !isDisabled ? "hover:bg-primary_hover hover:font-medium!" : "",
+                            !isSelected && !isDisabled ? "hover:bg-quaternary hover:font-medium!" : "",
                             !isSelected && isTodayDate ? "bg-active font-medium hover:bg-secondary_hover" : "",
                         )}
                     >

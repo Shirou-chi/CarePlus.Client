@@ -10,10 +10,10 @@ import { useI18n } from "@/providers/locale-provider";
 
 const clinicPhotos = [
     { src: "/home/clinic-reception.png", altKey: "clinicReception" as const },
-    { src: "/home/clinic-consult.png", altKey: "clinicConsult" as const },
-    { src: "/home/clinic-pharmacy.png", altKey: "clinicPharmacy" as const },
-    { src: "/home/clinic-treatment.png", altKey: "clinicTreatment" as const },
-    { src: "/home/clinic-lounge.png", altKey: "clinicLounge" as const },
+    { src: "/home/clinic-waiting-room.png", altKey: "clinicWaiting" as const },
+    { src: "/home/clinic-examination-room.png", altKey: "clinicExam" as const },
+    { src: "/home/clinic-corridor.png", altKey: "clinicCorridor" as const },
+    { src: "/home/clinic-entrance.png", altKey: "clinicEntrance" as const },
 ];
 
 export const AboutPage = () => {
@@ -97,7 +97,7 @@ export const AboutPage = () => {
                 <section className="mx-auto w-full max-w-container px-4 py-14 md:px-8 md:py-20">
                     <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
                         <div className="overflow-hidden rounded-3xl ring-1 ring-primary/15">
-                            <img src="/home/clinic-consult.png" alt={t.clinicConsult} className="aspect-[4/3] size-full object-cover" />
+                            <img src="/home/clinic-examination-room.png" alt={t.clinicExam} className="aspect-[4/3] size-full object-cover" />
                         </div>
                         <div>
                             <p className="text-sm font-semibold text-brand-secondary">{t.aboutMissionTitle}</p>

@@ -3,6 +3,7 @@ import { dummyLogin, matchDummyLogin } from "./auth.ts";
 const checks = [
     matchDummyLogin("patient@careplus.my", "careplus123"),
     matchDummyLogin("  PATIENT@careplus.my ", "careplus123"),
+    matchDummyLogin("kaiminn", "careplus123"),
     !matchDummyLogin("patient@careplus.my", "wrong"),
     !matchDummyLogin("other@careplus.my", "careplus123"),
 ];

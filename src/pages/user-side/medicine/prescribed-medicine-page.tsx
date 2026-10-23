@@ -10,13 +10,12 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { MedicineShot } from "@/components/marketing/medicine/medicine-shot";
 import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
+import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
 import {
     formatRm,
     getClinicPharmacy,
-    getMedicineCatalog,
-    isMedicineId,
     MAX_MEDICINE_UNITS,
     shotViews,
     wholeQty,
@@ -35,7 +34,7 @@ export const PrescribedMedicinePage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const { add, flyToCart, remainingFor } = useCart();
-    const medicines = getMedicineCatalog(locale);
+    const { medicines, ready } = useMedicineCatalog();
     const clinic = getClinicPharmacy(locale);
     const [view, setView] = useState<ShotView>("bottle");
     const [qty, setQty] = useState(1);
@@ -45,7 +44,7 @@ export const PrescribedMedicinePage = () => {
     const heroRef = useRef<HTMLDivElement>(null);
     const qtyInputRef = useRef<HTMLInputElement>(null);
 
-    const medicine = isMedicineId(id) ? medicines.find((item) => item.id === id) : undefined;
+    const medicine = medicines.find((item) => item.id === id);
     const remaining = medicine ? remainingFor(medicine.id) : 0;
     const canAdd = Boolean(medicine) && remaining > 0 && !adding;
 
@@ -59,7 +58,7 @@ export const PrescribedMedicinePage = () => {
         setQty((value) => wholeQty(value, remaining));
     }, [remaining]);
 
-    if (!isReady) {
+    if (!isReady || !ready) {
         return <div className="careplus-landing min-h-dvh" />;
     }
 
@@ -203,8 +202,9 @@ export const PrescribedMedicinePage = () => {
                                 }}
                                 isDisabled={remaining === 0}
                                 orientation="horizontal"
-                                hint={remaining === 0 ? t.medQtyMax : t.medQtyHint.replace("{max}", String(MAX_MEDICINE_UNITS))}
+                                hint={remaining === 0 ? undefined : t.medQtyHint.replace("{max}", String(MAX_MEDICINE_UNITS))}
                             />
+                            {remaining === 0 ? <p className="mt-1.5 text-sm font-medium text-fg-error-primary">{t.medQtyMax}</p> : null}
                         </div>
 
                         <FormStatus error={error} success={success} />

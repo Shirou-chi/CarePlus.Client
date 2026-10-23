@@ -4,11 +4,13 @@ import { Button } from "@/components/base/buttons/button";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 
 export function NotFound() {
     const router = useNavigate();
     const { t } = useI18n();
+    const { profile } = useAuth();
 
     return (
         <div className="careplus-landing min-h-dvh pt-[4.5rem] md:pt-22">
@@ -27,13 +29,13 @@ export function NotFound() {
                         <Button color="secondary" size="lg" iconLeading={ArrowLeft} onClick={() => router(-1)}>
                             {t.notFoundBack}
                         </Button>
-                        <Button size="lg" href="/home">
+                        <Button size="lg" href={profile ? "/home" : "/"}>
                             {t.notFoundHome}
                         </Button>
                     </div>
                     <p className="text-sm text-quaternary">
                         {t.contactTitle}{" "}
-                        <Link to="/contact" className="font-medium text-brand-secondary hover:text-brand-primary">
+                        <Link to="/contact" className="font-medium text-brand-secondary hover:text-brand-secondary_hover">
                             {t.aboutVisitContact}
                         </Link>
                     </p>
@@ -41,7 +43,7 @@ export function NotFound() {
 
                 <div className="relative min-h-64 flex-1 overflow-hidden rounded-3xl bg-secondary shadow-xs ring-1 ring-secondary md:min-h-[28rem]">
                     <img
-                        src="/home/clinic-consult.png"
+                        src="/home/clinic-reception.png"
                         alt=""
                         className="absolute inset-0 size-full object-cover"
                     />

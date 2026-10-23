@@ -1,4 +1,4 @@
-export type NoticeKind = "visit" | "medicine" | "records" | "account";
+export type NoticeKind = "visit" | "medicine" | "records" | "account" | "announcement";
 
 export type NoticeCopyKey =
     | "notifVisitConfirmed"
@@ -7,7 +7,17 @@ export type NoticeCopyKey =
     | "notifVisitReminder"
     | "notifMedCheckout"
     | "notifAccountSaved"
-    | "notifRecordsResult";
+    | "notifRecordsResult"
+    | "notifAnnouncementItem"
+    | "notifAnnouncementNav";
+
+export const ANNOUNCEMENTS_HREF = "/announcements";
+export const ANNOUNCEMENTS_SEEDED_ID = "announcements-seeded";
+
+export const clinicAnnouncementNav = {
+    href: ANNOUNCEMENTS_HREF,
+    copyKey: "notifAnnouncementNav" as const,
+};
 
 export type ClinicNotice = {
     id: string;
@@ -18,6 +28,41 @@ export type ClinicNotice = {
     href: string;
     createdAt: string;
     unread: boolean;
+    text?: string;
+};
+
+type AnnouncementPost = {
+    id: string;
+    postedOn: string;
+    title: string;
+};
+
+const announcementNoticeId = (id: string) => `announcement:${id}`;
+
+export const mergeAnnouncementNotices = (stored: ClinicNotice[], posts: AnnouncementPost[]): ClinicNotice[] => {
+    const seeded = stored.some((item) => item.id === ANNOUNCEMENTS_SEEDED_ID);
+    const previous = new Map(stored.map((item) => [item.id, item]));
+    const announcements = posts.flatMap((post) => {
+        const id = announcementNoticeId(post.id);
+        const saved = previous.get(id);
+        if (seeded && !saved) {
+            return [];
+        }
+        return [
+            {
+                id,
+                copyKey: "notifAnnouncementItem" as const,
+                actor: "CarePlus Clinic",
+                initials: "CC",
+                kind: "announcement" as const,
+                href: `${ANNOUNCEMENTS_HREF}#${post.id}`,
+                createdAt: new Date(`${post.postedOn}T08:00:00+08:00`).toISOString(),
+                unread: saved?.unread ?? true,
+                text: post.title,
+            },
+        ];
+    });
+    return [...announcements, ...stored.filter((item) => item.kind !== "announcement" && item.id !== ANNOUNCEMENTS_SEEDED_ID)];
 };
 
 export const NOTICE_COPY_KEYS: NoticeCopyKey[] = [
@@ -28,6 +73,8 @@ export const NOTICE_COPY_KEYS: NoticeCopyKey[] = [
     "notifMedCheckout",
     "notifAccountSaved",
     "notifRecordsResult",
+    "notifAnnouncementItem",
+    "notifAnnouncementNav",
 ];
 
 const COPY_SET = new Set<string>(NOTICE_COPY_KEYS);
@@ -117,7 +164,7 @@ const isNotice = (value: unknown): value is ClinicNotice => {
         COPY_SET.has(item.copyKey) &&
         typeof item.actor === "string" &&
         typeof item.initials === "string" &&
-        (item.kind === "visit" || item.kind === "medicine" || item.kind === "records" || item.kind === "account") &&
+        (item.kind === "visit" || item.kind === "medicine" || item.kind === "records" || item.kind === "account" || item.kind === "announcement") &&
         typeof item.href === "string" &&
         typeof item.createdAt === "string" &&
         Number.isFinite(Date.parse(item.createdAt)) &&
@@ -155,11 +202,33 @@ export const unreadNotices = (items: ClinicNotice[]) => items.filter((item) => i
 export const markNoticeRead = (items: ClinicNotice[], id: string): ClinicNotice[] =>
     items.map((item) => (item.id === id ? { ...item, unread: false } : item));
 
+export const markNoticesRead = (items: ClinicNotice[], ids: Iterable<string>): ClinicNotice[] => {
+    const set = ids instanceof Set ? ids : new Set(ids);
+    return items.map((item) => (set.has(item.id) ? { ...item, unread: false } : item));
+};
+
 export const markAllNoticesRead = (items: ClinicNotice[]): ClinicNotice[] => items.map((item) => ({ ...item, unread: false }));
 
 export const deleteNotices = (items: ClinicNotice[], ids: Iterable<string>): ClinicNotice[] => {
     const drop = new Set(ids);
     return items.filter((item) => !drop.has(item.id));
+};
+
+export type NoticeOrder = "latest" | "oldest" | "date";
+
+export const noticeCalendarDay = (createdAt: string) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(createdAt));
+
+export const sortNotices = (items: ClinicNotice[], order: NoticeOrder = "latest", start = "", end = "") => {
+    const pool =
+        order === "date"
+            ? items.filter((item) => {
+                  const day = noticeCalendarDay(item.createdAt);
+                  return (!start || day >= start) && (!end || day <= end);
+              })
+            : items;
+    const sorted = [...pool].sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt));
+    return order === "oldest" ? sorted : sorted.reverse();
 };
 
 export const formatNoticeAge = (createdAt: string, now: number, locale: "en" | "zh") => {
