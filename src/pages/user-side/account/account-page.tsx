@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-    Camera01,
     Check,
     CreditCard01,
     Edit01,
@@ -28,36 +27,43 @@ import { RadioButton, RadioGroup } from "@/components/base/radio-buttons/radio-b
 import { Select } from "@/components/base/select/select";
 import { SelectItem } from "@/components/base/select/select-item";
 import { Toggle } from "@/components/base/toggle/toggle";
-import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { CreditCard } from "@/components/credit-card/credit-card";
 import { useAuth } from "@/providers/auth-provider";
+import { TOKEN_KEY } from "@/services/api";
+import { authApi } from "@/services/authApi";
+import { profileApi, profilePictureUrl, type DeliveryAddressResponse } from "@/services/profileApi";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
-import type { Profile } from "@/utils/auth";
+import { DUMMY_PASSWORD, type Profile } from "@/utils/auth";
 import {
     cardBrandFromDigits,
-    demoAccountActivity,
     dobFromIdentityCard,
+    genderFromIdentityCard,
+    formatActivityWhen,
     formatDob,
+    isLocalAddress,
     isDuplicatePaymentCard,
     previewCardNumber,
     profileInitials,
+    applyPaymentCards,
     readProfileSettings,
     writeProfileSettings,
+    type AccountActivity,
     type NotificationLevel,
     type PaymentCard,
     type ProfileSettings,
 } from "@/utils/profile-settings";
 import {
+    applyDeliveryAddresses,
     detectMalaysiaRegion,
     deliveryLabelText,
+    formatDeliveryLine,
     isDeliveryLabelId,
     isProfileSyncedAddress,
     PROFILE_ADDRESS_ID,
-    splitDeliveryLine,
     syncProfileAddressToDelivery,
     type DeliveryAddress,
 } from "@/utils/delivery-address";
@@ -74,18 +80,22 @@ import {
     CARD_HOLDER_MAX,
     formatCardExpiryInput,
 } from "@/utils/profile-validation";
-import { parsePhoneLocal } from "@/utils/phone";
+import { isValidLocalPhone, parsePhoneLocal } from "@/utils/phone";
+import { PasswordStrengthBar } from "@/components/base/input/password-strength";
 import { cx } from "@/utils/cx";
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const SECTIONS = ["profile", "preference", "payment", "security"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
-type EditField = "fullName" | "gender" | "address" | "phone" | "email";
+type EditField = "fullName" | "address" | "phone" | "email";
 
 type DialogState =
     | { type: "edit"; field: EditField }
     | { type: "notif-disable" }
+    | { type: "two-factor-off" }
+    | { type: "view-photo" }
+    | { type: "save-photo"; url: string; file: File }
     | { type: "remove-card"; id: string; label: string }
     | { type: "remove-address"; id: string; label: string };
 
@@ -109,20 +119,101 @@ export const AccountPage = () => {
     const [dialog, setDialog] = useState<DialogState | null>(null);
     const [profileNotice, setProfileNotice] = useState<{ success?: string; error?: string } | null>(null);
     const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+    const [activity, setActivity] = useState<AccountActivity[]>([]);
     const sectionRefs = useRef<Record<SectionId, HTMLElement | null>>({ profile: null, preference: null, payment: null, security: null });
     const photoInputRef = useRef<HTMLInputElement>(null);
     const scrollingRef = useRef(false);
 
+    const settingsOwner = useRef<string | null>(null);
+
     useEffect(() => {
-        if (profile) {
-            const loaded = readProfileSettings(profile.id);
-            const synced = syncProfileAddressToDelivery(loaded, profile.address, t.settingsProfileAddressLabel);
-            setSettings(synced);
-            if (JSON.stringify(synced.deliveryAddresses) !== JSON.stringify(loaded.deliveryAddresses)) {
-                writeProfileSettings(profile.id, synced);
-            }
+        if (!profile) {
+            return;
         }
+        setSettings((current) => {
+            const base = settingsOwner.current === profile.id ? current : readProfileSettings(profile.id);
+            settingsOwner.current = profile.id;
+            const synced = syncProfileAddressToDelivery(base, profile.address, t.settingsProfileAddressLabel);
+            writeProfileSettings(profile.id, synced);
+            return synced;
+        });
     }, [profile?.id, profile?.address, t.settingsProfileAddressLabel]);
+
+    useEffect(() => {
+        if (!profile || profile.id.startsWith("fam-")) {
+            setActivity([]);
+            return;
+        }
+
+        let cancelled = false;
+        authApi
+            .getCurrentUser()
+            .then((user) => {
+                if (!cancelled) {
+                    updateProfile({
+                        email: user.email,
+                        fullName: user.name,
+                        identityCard: user.identityCardNumber || null,
+                        phone: user.phone || null,
+                        gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
+                        address: user.address ?? null,
+                        avatarUrl: profilePictureUrl(user.profilePicture),
+                    });
+                }
+            })
+            .catch(() => undefined);
+        profileApi
+            .listDeliveryAddresses()
+            .then((addresses) => {
+                if (cancelled) {
+                    return;
+                }
+                setSettings((current) => {
+                    const next = applyDeliveryAddresses(current, addresses, profile.address, t.settingsProfileAddressLabel);
+                    writeProfileSettings(profile.id, next);
+                    return next;
+                });
+            })
+            .catch(() => undefined);
+        profileApi
+            .listPaymentCards()
+            .then((cards) => {
+                if (cancelled) {
+                    return;
+                }
+                setSettings((current) => {
+                    const next = applyPaymentCards(current, cards);
+                    writeProfileSettings(profile.id, next);
+                    return next;
+                });
+            })
+            .catch(() => undefined);
+        authApi
+            .getLoginActivity()
+            .then((rows) => {
+                if (cancelled) {
+                    return;
+                }
+                setActivity(
+                    rows.map((row, index) => ({
+                        id: String(row.id),
+                        device: row.device,
+                        location: isLocalAddress(row.ipAddress) ? t.activityThisComputer : row.ipAddress,
+                        when: formatActivityWhen(row.createdAt, locale),
+                        current: index === 0,
+                    })),
+                );
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setActivity([]);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [profile?.id, profile?.address, locale, t.activityThisComputer, t.settingsProfileAddressLabel]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -160,7 +251,6 @@ export const AccountPage = () => {
     }
 
     const dob = dobFromIdentityCard(profile.identityCard) ?? profile.dateOfBirth;
-    const activity = demoAccountActivity(locale);
     const phoneDisplay = formatPhoneForDisplay(profile.phone);
 
     const persistSettings = (next: ProfileSettings) => {
@@ -177,20 +267,62 @@ export const AccountPage = () => {
         }, 600);
     };
 
-    const saveProfileField = (field: EditField, value: string) => {
-        if (field === "gender") {
-            updateProfile({ gender: value });
-            setDialog(null);
-            setProfileNotice({ success: t.settingsSaved });
-            return;
-        }
+    const profileError = (error: unknown) => {
+        const message = error instanceof Error ? error.message : "";
+        if (message === "Email already exists") return t.emailTaken;
+        if (message === "Invalid phone number.") return t.settingsInvalidPhone;
+        if (message.startsWith("Use a JPG")) return t.settingsInvalidPhoto;
+        return t.authFailed;
+    };
+
+    const rememberDelivery = (rows: DeliveryAddressResponse[]) => {
+        setSettings((current) => {
+            const next = applyDeliveryAddresses(current, rows, profile.address, t.settingsProfileAddressLabel);
+            writeProfileSettings(profile.id, next);
+            return next;
+        });
+    };
+
+    const saveProfileField = async (field: EditField, value: string) => {
+        const localOnly = profile.id.startsWith("fam-");
         const validated = validateProfileField(field, value, t);
         if (!validated.ok) {
             return validated.message;
         }
-        updateProfile({ [field]: validated.value } as Partial<Profile>);
-        if (field === "address") {
-            persistSettings(syncProfileAddressToDelivery(settings, validated.value, t.settingsProfileAddressLabel));
+        if (!localOnly) {
+            try {
+                const patch =
+                    field === "fullName"
+                        ? { name: validated.value }
+                        : field === "email"
+                          ? { email: validated.value }
+                          : field === "phone"
+                            ? { phone: validated.value }
+                            : { address: validated.value };
+                const user = await profileApi.updateProfile(patch);
+                updateProfile({
+                    fullName: user.name,
+                    email: user.email,
+                    phone: user.phone || null,
+                    address: user.address ?? null,
+                    gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
+                    identityCard: user.identityCardNumber || null,
+                });
+                if (field === "address") {
+                    setSettings((current) => {
+                        const next = syncProfileAddressToDelivery(current, user.address ?? null, t.settingsProfileAddressLabel);
+                        writeProfileSettings(profile.id, next);
+                        return next;
+                    });
+                }
+            } catch (error) {
+                return profileError(error);
+            }
+        } else {
+            updateProfile({ [field]: validated.value } as Partial<Profile>);
+            if (field === "address") {
+                persistSettings(syncProfileAddressToDelivery(settings, validated.value, t.settingsProfileAddressLabel));
+            }
         }
         setDialog(null);
         setProfileNotice({ success: t.settingsSaved });
@@ -207,10 +339,17 @@ export const AccountPage = () => {
         }
         const reader = new FileReader();
         reader.onload = () => {
-            updateProfile({ avatarUrl: String(reader.result) });
-            setProfileNotice({ success: t.settingsSaved });
+            setDialog({ type: "save-photo", url: String(reader.result), file });
         };
         reader.readAsDataURL(file);
+    };
+
+    const saveNotificationLevel = (level: NotificationLevel) => {
+        persistSettings({ ...settings, notificationLevel: level });
+        if (profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY)) {
+            return;
+        }
+        void profileApi.saveAppSetting({ notification: level }).catch(() => undefined);
     };
 
     const setNotificationLevel = (level: NotificationLevel) => {
@@ -218,26 +357,40 @@ export const AccountPage = () => {
             setDialog({ type: "notif-disable" });
             return;
         }
-        persistSettings({ ...settings, notificationLevel: level });
+        saveNotificationLevel(level);
     };
 
     const confirmDisableNotifications = () => {
-        persistSettings({ ...settings, notificationLevel: "none" });
+        saveNotificationLevel("none");
         setDialog(null);
     };
 
-    const savePaymentCard = (
+    const savePaymentCard = async (
         cardId: string | "new",
         payload: { number: string; expiry: string; holderName: string; cvv: string },
-    ): string | null => {
+    ): Promise<string | null> => {
         const number = validateCardNumber(payload.number, t);
         const expiry = validateCardExpiry(payload.expiry, t);
         const holder = validateCardHolder(payload.holderName, t);
-        const cvv = validateCvv(payload.cvv, t);
+        const cvv = validateCvv(payload.cvv, t, number.ok ? number.value : "");
         if (!number.ok) return number.message;
         if (!expiry.ok) return expiry.message;
         if (!holder.ok) return holder.message;
         if (!cvv.ok) return cvv.message;
+
+        if (!profile.id.startsWith("fam-")) {
+            try {
+                const body = { number: number.value, expiry: expiry.value, holderName: holder.value, cvv: cvv.value };
+                const rows = cardId === "new" ? await profileApi.addPaymentCard(body) : await profileApi.updatePaymentCard(Number(cardId), body);
+                persistSettings(applyPaymentCards(settings, rows));
+                setEditingCardId(null);
+                setPaymentNotice(t.settingsSaved);
+                return null;
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "";
+                return message.toLowerCase().includes("already") ? t.settingsDuplicateCard : message || t.settingsDuplicateCard;
+            }
+        }
 
         const fingerprint = number.value;
         if (isDuplicatePaymentCard(settings.paymentCards, fingerprint, cardId === "new" ? undefined : cardId)) {
@@ -281,6 +434,20 @@ export const AccountPage = () => {
     };
 
     const removeCard = (id: string) => {
+        if (!profile.id.startsWith("fam-") && !Number.isNaN(Number(id))) {
+            void profileApi
+                .deletePaymentCard(Number(id))
+                .then((rows) => {
+                    persistSettings(applyPaymentCards(settings, rows));
+                    if (editingCardId === id) {
+                        setEditingCardId(null);
+                    }
+                    setDialog(null);
+                })
+                .catch(() => undefined);
+            return;
+        }
+
         const cards = settings.paymentCards.filter((card) => card.id !== id);
         persistSettings({
             ...settings,
@@ -294,63 +461,115 @@ export const AccountPage = () => {
     };
 
     const setDefaultCard = (id: string) => {
+        if (!profile.id.startsWith("fam-") && !Number.isNaN(Number(id))) {
+            void profileApi
+                .setDefaultPaymentCard(Number(id))
+                .then((rows) => persistSettings(applyPaymentCards(settings, rows)))
+                .catch(() => undefined);
+            return;
+        }
         persistSettings({ ...settings, defaultCardId: id });
     };
 
-    const saveDeliveryAddress = (addressId: string | "new", payload: { label: string; unit: string; line: string }): string | null => {
+    const saveDeliveryAddress = async (addressId: string | "new", payload: { label: string; unit: string; line: string }): Promise<string | null> => {
         if (addressId === PROFILE_ADDRESS_ID) {
             return null;
         }
         const label = validateDeliveryLabel(payload.label, t);
-        const line = validateDeliveryAddress(payload.unit, payload.line, t);
+        const parts = validateDeliveryAddress(payload.unit, payload.line, t);
         if (!label.ok) return label.message;
-        if (!line.ok) return line.message;
+        if (!parts.ok) return parts.message;
 
-        const region = detectMalaysiaRegion(line.value);
-
-        if (addressId === "new") {
-            const address: DeliveryAddress = {
-                id: crypto.randomUUID(),
-                label: label.value,
-                line: line.value,
-                region,
-            };
-            const addresses = [...settings.deliveryAddresses, address];
-            persistSettings({
-                ...settings,
-                deliveryAddresses: addresses,
-                defaultDeliveryAddressId: settings.defaultDeliveryAddressId ?? address.id,
-            });
-        } else {
-            const addresses = settings.deliveryAddresses.map((address) =>
-                address.id === addressId
-                    ? { ...address, label: label.value, line: line.value, region }
-                    : address,
-            );
-            persistSettings({ ...settings, deliveryAddresses: addresses });
+        if (profile.id.startsWith("fam-")) {
+            const region = detectMalaysiaRegion(parts.address);
+            if (addressId === "new") {
+                const address: DeliveryAddress = {
+                    id: crypto.randomUUID(),
+                    label: label.value,
+                    unit: parts.unit,
+                    address: parts.address,
+                    region,
+                };
+                const addresses = [...settings.deliveryAddresses, address];
+                persistSettings({
+                    ...settings,
+                    deliveryAddresses: addresses,
+                    defaultDeliveryAddressId: settings.defaultDeliveryAddressId ?? address.id,
+                });
+            } else {
+                const addresses = settings.deliveryAddresses.map((address) =>
+                    address.id === addressId ? { ...address, label: label.value, unit: parts.unit, address: parts.address, region } : address,
+                );
+                persistSettings({ ...settings, deliveryAddresses: addresses });
+            }
+            setEditingAddressId(null);
+            setProfileNotice({ success: t.settingsSaved });
+            return null;
         }
-        setEditingAddressId(null);
-        setProfileNotice({ success: t.settingsSaved });
-        return null;
+
+        try {
+            const rows =
+                addressId === "new"
+                    ? await profileApi.addDeliveryAddress({
+                          label: label.value,
+                          unit: parts.unit,
+                          address: parts.address,
+                          isDefault: settings.defaultDeliveryAddressId == null,
+                      })
+                    : await profileApi.updateDeliveryAddress(Number(addressId), { label: label.value, unit: parts.unit, address: parts.address });
+            rememberDelivery(rows);
+            setEditingAddressId(null);
+            setProfileNotice({ success: t.settingsSaved });
+            return null;
+        } catch (error) {
+            return profileError(error);
+        }
     };
 
-    const removeDeliveryAddress = (id: string) => {
+    const removeDeliveryAddress = async (id: string) => {
         if (isProfileSyncedAddress(id)) {
             return;
         }
-        const addresses = settings.deliveryAddresses.filter((address) => address.id !== id);
-        persistSettings({
-            ...settings,
-            deliveryAddresses: addresses,
-            defaultDeliveryAddressId: settings.defaultDeliveryAddressId === id ? (addresses[0]?.id ?? null) : settings.defaultDeliveryAddressId,
-        });
+        if (!profile.id.startsWith("fam-")) {
+            try {
+                rememberDelivery(await profileApi.deleteDeliveryAddress(Number(id)));
+            } catch (error) {
+                setProfileNotice({ error: profileError(error) });
+                return;
+            }
+        } else {
+            const addresses = settings.deliveryAddresses.filter((address) => address.id !== id);
+            persistSettings({
+                ...settings,
+                deliveryAddresses: addresses,
+                defaultDeliveryAddressId: settings.defaultDeliveryAddressId === id ? (addresses[0]?.id ?? null) : settings.defaultDeliveryAddressId,
+            });
+        }
         if (editingAddressId === id) {
             setEditingAddressId(null);
         }
         setDialog(null);
     };
 
-    const setDefaultDeliveryAddress = (id: string) => {
+    const setDefaultDeliveryAddress = async (id: string) => {
+        if (!profile.id.startsWith("fam-") && !isProfileSyncedAddress(id)) {
+            try {
+                rememberDelivery(await profileApi.setDefaultDeliveryAddress(Number(id)));
+            } catch (error) {
+                setProfileNotice({ error: profileError(error) });
+                return;
+            }
+            return;
+        }
+        if (!profile.id.startsWith("fam-") && isProfileSyncedAddress(id)) {
+            try {
+                rememberDelivery(await profileApi.setDefaultDeliveryAddress(null));
+            } catch (error) {
+                setProfileNotice({ error: profileError(error) });
+                return;
+            }
+            return;
+        }
         persistSettings({ ...settings, defaultDeliveryAddressId: id });
     };
 
@@ -400,37 +619,45 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.profile = node;
                             }}
-                            className="scroll-mt-28"
+                            className="scroll-mt-44 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavProfile} />
                             <FormStatus success={profileNotice?.success} error={profileNotice?.error} className="mt-4" />
                             <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-start">
-                                <div className="flex flex-col items-start gap-2">
-                                    <Tooltip title={t.settingsChangePhoto} trigger="focus">
-                                        <TooltipTrigger
-                                            aria-label={t.settingsChangePhoto}
-                                            className="group relative rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
-                                            onPress={() => photoInputRef.current?.click()}
-                                        >
-                                            <AvatarProfilePhoto
-                                                size="lg"
-                                                src={profile.avatarUrl ?? undefined}
-                                                alt={profile.fullName}
-                                                initials={profileInitials(profile.fullName)}
-                                                verified
-                                            />
-                                            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
-                                                <Camera01 aria-hidden className="size-8 text-white" />
-                                            </span>
-                                        </TooltipTrigger>
-                                    </Tooltip>
-                                    <p className="text-xs text-tertiary md:hidden">{t.settingsChangePhotoHint}</p>
+                                <div className="flex flex-col items-start gap-3">
+                                    <button
+                                        type="button"
+                                        aria-label={profile.avatarUrl ? t.settingsViewPhoto : t.settingsChangePhoto}
+                                        className="cursor-pointer rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                                        onClick={() => {
+                                            if (profile.avatarUrl) {
+                                                setDialog({ type: "view-photo" });
+                                                return;
+                                            }
+                                            photoInputRef.current?.click();
+                                        }}
+                                    >
+                                        <AvatarProfilePhoto
+                                            size="lg"
+                                            src={profile.avatarUrl ?? undefined}
+                                            alt={profile.fullName}
+                                            initials={profileInitials(profile.fullName)}
+                                            verified
+                                        />
+                                    </button>
+                                    <Button color="secondary" size="sm" onClick={() => photoInputRef.current?.click()}>
+                                        {t.settingsChangePhoto}
+                                    </Button>
+                                    <p className="text-xs text-tertiary">{profile.avatarUrl ? t.settingsViewPhotoHint : t.settingsChangePhotoHint}</p>
                                     <input
                                         ref={photoInputRef}
                                         type="file"
                                         accept="image/*"
                                         className="sr-only"
-                                        onChange={(event) => onPhotoSelected(event.target.files?.[0])}
+                                        onChange={(event) => {
+                                            onPhotoSelected(event.target.files?.[0]);
+                                            event.target.value = "";
+                                        }}
                                     />
                                 </div>
                                 <div className="min-w-0 flex-1">
@@ -450,8 +677,8 @@ export const AccountPage = () => {
                                     />
                                     <DetailRow
                                         label={t.settingsGender}
-                                        value={genderLabel(profile.gender, t)}
-                                        onEdit={() => setDialog({ type: "edit", field: "gender" })}
+                                        value={genderLabel(genderFromIdentityCard(profile.identityCard), t)}
+                                        hint={t.settingsGenderHint}
                                     />
                                     <DetailRow
                                         label={t.settingsNationality}
@@ -500,7 +727,7 @@ export const AccountPage = () => {
                                                 setDialog({
                                                     type: "remove-address",
                                                     id: address.id,
-                                                    label: `${deliveryLabelText(address.label, t)}, ${address.line}`,
+                                                    label: `${deliveryLabelText(address.label, t)}, ${formatDeliveryLine(address)}`,
                                                 })
                                             }
                                         />
@@ -528,7 +755,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.preference = node;
                             }}
-                            className="scroll-mt-28"
+                            className="scroll-mt-44 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPreference} />
                             <div className="mt-6 flex flex-col gap-8">
@@ -585,7 +812,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.payment = node;
                             }}
-                            className="scroll-mt-28"
+                            className="scroll-mt-44 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPayment} description={t.settingsPaymentBody} />
                             <FormStatus success={paymentNotice} className="mt-4" />
@@ -636,7 +863,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.security = node;
                             }}
-                            className="scroll-mt-28"
+                            className="scroll-mt-44 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavSecurity} />
                             <div className="mt-6 flex flex-col gap-8">
@@ -645,7 +872,13 @@ export const AccountPage = () => {
                                 <PreferenceBlock title={t.settingsTwoFactor}>
                                     <Toggle
                                         isSelected={settings.twoFactorEnabled}
-                                        onChange={(enabled) => persistSettings({ ...settings, twoFactorEnabled: enabled })}
+                                        onChange={(enabled) => {
+                                            if (!enabled) {
+                                                setDialog({ type: "two-factor-off" });
+                                                return;
+                                            }
+                                            persistSettings({ ...settings, twoFactorEnabled: true });
+                                        }}
                                         label={t.settingsTwoFactor}
                                         hint={t.settingsTwoFactorHint}
                                         size="md"
@@ -653,6 +886,7 @@ export const AccountPage = () => {
                                 </PreferenceBlock>
 
                                 <PreferenceBlock title={t.settingsAccountActivity}>
+                                    {activity.length === 0 ? <p className="text-sm text-tertiary">{t.activityEmpty}</p> : (
                                     <TableCard.Root className="overflow-hidden">
                                         <Table aria-label={t.settingsAccountActivity}>
                                             <Table.Header>
@@ -678,6 +912,7 @@ export const AccountPage = () => {
                                             </Table.Body>
                                         </Table>
                                     </TableCard.Root>
+                                    )}
                                 </PreferenceBlock>
                             </div>
                         </section>
@@ -738,6 +973,101 @@ export const AccountPage = () => {
                 </ModalOverlay>
             ) : null}
 
+            {dialog?.type === "view-photo" && profile.avatarUrl ? (
+                <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
+                    <Modal className="w-full max-w-3xl">
+                        <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-4 shadow-xl ring-1 ring-secondary outline-hidden sm:p-6">
+                            <Heading slot="title" className="text-lg font-semibold text-primary">
+                                {profile.fullName}
+                            </Heading>
+                            <img src={profile.avatarUrl} alt={profile.fullName} className="mt-4 max-h-[70vh] w-full rounded-xl bg-secondary object-contain" />
+                            <div className="mt-6 flex justify-end gap-3">
+                                <Button color="secondary" onClick={() => setDialog(null)}>
+                                    {t.notifCancel}
+                                </Button>
+                                <Button
+                                    color="primary"
+                                    onClick={() => {
+                                        setDialog(null);
+                                        photoInputRef.current?.click();
+                                    }}
+                                >
+                                    {t.settingsChangePhoto}
+                                </Button>
+                            </div>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            ) : null}
+
+            {dialog?.type === "save-photo" ? (
+                <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
+                    <Modal className="w-full max-w-md">
+                        <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                            <Heading slot="title" className="text-lg font-semibold text-primary">
+                                {t.settingsPhotoAsk}
+                            </Heading>
+                            <div className="mt-6 flex justify-end gap-3">
+                                <Button color="secondary" onClick={() => setDialog(null)}>
+                                    {t.notifCancel}
+                                </Button>
+                                <Button
+                                    color="primary"
+                                    onClick={() => {
+                                        void (async () => {
+                                            if (profile.id.startsWith("fam-")) {
+                                                updateProfile({ avatarUrl: dialog.url });
+                                                setProfileNotice({ success: t.settingsSaved });
+                                                setDialog(null);
+                                                return;
+                                            }
+                                            try {
+                                                const user = await profileApi.uploadPhoto(dialog.file);
+                                                updateProfile({ avatarUrl: profilePictureUrl(user.profilePicture) });
+                                                setProfileNotice({ success: t.settingsSaved });
+                                                setDialog(null);
+                                            } catch (error) {
+                                                setProfileNotice({ error: profileError(error) });
+                                                setDialog(null);
+                                            }
+                                        })();
+                                    }}
+                                >
+                                    {t.settingsSaveConfirm}
+                                </Button>
+                            </div>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            ) : null}
+
+            {dialog?.type === "two-factor-off" ? (
+                <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
+                    <Modal className="w-full max-w-md">
+                        <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                            <Heading slot="title" className="text-lg font-semibold text-primary">
+                                {t.settingsTwoFactorOffTitle}
+                            </Heading>
+                            <p className="mt-2 text-sm text-tertiary">{t.settingsTwoFactorOffBody}</p>
+                            <div className="mt-6 flex justify-end gap-3">
+                                <Button color="secondary" onClick={() => setDialog(null)}>
+                                    {t.notifCancel}
+                                </Button>
+                                <Button
+                                    color="primary-destructive"
+                                    onClick={() => {
+                                        persistSettings({ ...settings, twoFactorEnabled: false });
+                                        setDialog(null);
+                                    }}
+                                >
+                                    {t.settingsTwoFactorOffConfirm}
+                                </Button>
+                            </div>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            ) : null}
+
             {dialog?.type === "notif-disable" ? (
                 <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
                     <Modal className="w-full max-w-md">
@@ -778,8 +1108,8 @@ const SidebarLink = ({
         onClick={onClick}
         aria-current={active ? "true" : undefined}
         className={cx(
-            "flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs font-medium transition duration-100 md:w-auto md:shrink-0 md:flex-row md:justify-start md:gap-2 md:px-3 md:text-left md:text-sm",
-            active ? "bg-secondary text-primary" : "text-tertiary hover:bg-primary_hover hover:text-secondary",
+            "flex min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs font-medium transition duration-100 md:w-auto md:shrink-0 md:flex-row md:justify-start md:gap-2 md:px-3 md:text-left md:text-sm",
+            active ? "bg-[#456f75] text-white" : "text-tertiary hover:bg-[#456f75] hover:text-white",
         )}
     >
         <Icon aria-hidden className="size-4 shrink-0" />
@@ -824,6 +1154,20 @@ const DetailRow = ({
     </div>
 );
 
+const SaveAsk = ({ t, body, onCancel, onConfirm }: { t: Copy; body?: string; onCancel: () => void; onConfirm: () => void }) => (
+    <div className="flex flex-col gap-3 sm:col-span-2">
+        <p className="text-sm text-secondary">{body ?? t.settingsSaveAsk}</p>
+        <div className="flex flex-wrap gap-2">
+            <Button type="button" color="secondary" size="sm" onClick={onCancel}>
+                {t.notifCancel}
+            </Button>
+            <Button type="button" color="primary" size="sm" onClick={onConfirm}>
+                {t.settingsSaveConfirm}
+            </Button>
+        </div>
+    </div>
+);
+
 const FormDialog = ({ title, error, onClose, children }: { title: string; error?: string | null; onClose: () => void; children: ReactNode }) => (
     <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
         <Modal className="w-full max-w-xl">
@@ -851,11 +1195,10 @@ const EditFieldDialog = ({
     field: EditField;
     profile: Profile;
     onClose: () => void;
-    onSave: (value: string) => string | null | void;
+    onSave: (value: string) => Promise<string | null | void> | string | null | void;
 }) => {
     const labels: Record<EditField, string> = {
         fullName: t.fullName,
-        gender: t.settingsGender,
         address: t.settingsAddress,
         phone: t.phone,
         email: t.email,
@@ -863,16 +1206,21 @@ const EditFieldDialog = ({
 
     const defaults: Record<EditField, string> = {
         fullName: profile.fullName,
-        gender: profile.gender ?? "male",
         address: profile.address ?? "",
         phone: parsePhoneLocal(profile.phone),
         email: profile.email,
     };
 
     const [value, setValue] = useState(defaults[field]);
+    const [asking, setAsking] = useState(false);
+    const [pending, setPending] = useState<string | null>(null);
     const [fieldError, setFieldError] = useState<string | null>(null);
     const [sentCode, setSentCode] = useState<{ email: string; code: string } | null>(null);
     const [emailCode, setEmailCode] = useState("");
+    const phoneDigits = value.replace(/\D/g, "").replace(/^0+/, "");
+    const liveCheck = field === "phone" ? null : validateProfileField(field, value, t);
+    const liveIssue = field !== "phone" && value.trim().length > 0 && liveCheck && !liveCheck.ok ? liveCheck.message : null;
+    const phoneIssue = field === "phone" && phoneDigits.length > 0 && !isValidLocalPhone(phoneDigits);
 
     const limits: Partial<Record<EditField, number>> = {
         fullName: 80,
@@ -882,13 +1230,6 @@ const EditFieldDialog = ({
     };
 
     const submit = () => {
-        if (field === "gender") {
-            const message = onSave(value);
-            if (typeof message === "string") {
-                setFieldError(message);
-            }
-            return;
-        }
         const validated = validateProfileField(field, value, t);
         if (!validated.ok) {
             setFieldError(validated.message);
@@ -904,24 +1245,36 @@ const EditFieldDialog = ({
                 return;
             }
         }
-        const message = onSave(validated.value);
+        setPending(validated.value);
+        setAsking(true);
+    };
+
+    const confirmSave = async () => {
+        if (pending === null) return;
+        const message = await onSave(pending);
         if (typeof message === "string") {
             setFieldError(message);
+            setAsking(false);
         }
     };
 
     return (
         <FormDialog title={labels[field]} error={fieldError} onClose={onClose}>
-            {field === "gender" ? (
-                <Select selectedKey={value} onSelectionChange={(key) => setValue(String(key))} size="md" className="w-full" items={[
-                    { id: "male", label: t.settingsGenderMale },
-                    { id: "female", label: t.settingsGenderFemale },
-                    { id: "other", label: t.settingsGenderOther },
-                ]}>
-                    {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
-                </Select>
-            ) : field === "phone" ? (
-                <InputGroup size="md" label={t.phone} value={value} onChange={setValue} isRequired className="w-full" leadingAddon={<InputPrefix>+60</InputPrefix>}>
+            {field === "phone" ? (
+                <InputGroup
+                    size="md"
+                    label={t.phone}
+                    value={value}
+                    onChange={(next) => {
+                        setValue(next);
+                        setFieldError(null);
+                    }}
+                    isInvalid={phoneIssue || Boolean(fieldError)}
+                    hint={phoneIssue ? t.settingsInvalidPhone : fieldError && !phoneDigits ? t.settingsPhoneRequired : undefined}
+                    isRequired
+                    className="w-full"
+                    leadingAddon={<InputPrefix>+60</InputPrefix>}
+                >
                     <InputBase placeholder={t.phonePlaceholder} inputMode="numeric" maxLength={11} />
                 </InputGroup>
             ) : field === "address" ? (
@@ -930,6 +1283,7 @@ const EditFieldDialog = ({
                     label={labels.address}
                     value={value}
                     maxLength={limits.address}
+                    error={liveIssue ?? fieldError}
                     onChange={(next) => {
                         setValue(next);
                         setFieldError(null);
@@ -946,7 +1300,8 @@ const EditFieldDialog = ({
                             setValue(next);
                             setFieldError(null);
                         }}
-                        isInvalid={!!fieldError}
+                        isInvalid={Boolean(liveIssue || fieldError)}
+                        hint={liveIssue ?? fieldError ?? undefined}
                         isRequired
                         maxLength={limits.email}
                         type="email"
@@ -1003,29 +1358,48 @@ const EditFieldDialog = ({
                         setValue(next);
                         setFieldError(null);
                     }}
-                    isInvalid={!!fieldError}
+                    isInvalid={Boolean(liveIssue || fieldError)}
+                    hint={liveIssue ?? fieldError ?? undefined}
                     isRequired
                     maxLength={limits[field]}
                 />
             )}
-            <div className="flex justify-end gap-3 pt-2">
-                <Button color="secondary" onClick={onClose}>
-                    {t.notifCancel}
-                </Button>
-                <Button color="primary" isDisabled={!value.trim()} onClick={submit}>
-                    {t.settingsSave}
-                </Button>
-            </div>
+            {asking ? (
+                <SaveAsk t={t} onCancel={() => setAsking(false)} onConfirm={confirmSave} />
+            ) : (
+                <div className="flex justify-end gap-3 pt-2">
+                    <Button color="secondary" onClick={onClose}>
+                        {t.notifCancel}
+                    </Button>
+                    <Button color="primary" isDisabled={!value.trim()} onClick={submit}>
+                        {t.settingsSave}
+                    </Button>
+                </div>
+            )}
         </FormDialog>
     );
 };
 
 const ChangePasswordForm = ({ t }: { t: Copy }) => {
+    const { profile } = useAuth();
     const [current, setCurrent] = useState("");
     const [next, setNext] = useState("");
     const [confirm, setConfirm] = useState("");
+    const [saving, setSaving] = useState(false);
     const [fieldError, setFieldError] = useState<string | null>(null);
     const [fieldSuccess, setFieldSuccess] = useState<string | null>(null);
+    const nextCheck = validatePassword(next, t);
+    const confirmIssue = confirm.length > 0 && next !== confirm ? t.settingsPasswordMismatch : null;
+    const currentIssue =
+        fieldError === t.settingsCurrentPasswordRequired || fieldError === t.settingsCurrentPasswordWrong ? fieldError : null;
+
+    const finishSaved = () => {
+        setCurrent("");
+        setNext("");
+        setConfirm("");
+        setFieldError(null);
+        setFieldSuccess(t.settingsPasswordChanged);
+    };
 
     return (
         <PreferenceBlock title={t.settingsChangePassword}>
@@ -1033,9 +1407,12 @@ const ChangePasswordForm = ({ t }: { t: Copy }) => {
                 className="max-w-3xl"
                 onSubmit={(event) => {
                     event.preventDefault();
+                    if (saving) {
+                        return;
+                    }
                     if (!current.trim()) {
                         setFieldSuccess(null);
-                        setFieldError(t.authFailed);
+                        setFieldError(t.settingsCurrentPasswordRequired);
                         return;
                     }
                     const nextValid = validatePassword(next, t);
@@ -1049,20 +1426,78 @@ const ChangePasswordForm = ({ t }: { t: Copy }) => {
                         setFieldError(t.settingsPasswordMismatch);
                         return;
                     }
-                    setCurrent("");
-                    setNext("");
-                    setConfirm("");
+                    const localOnly = !profile || profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY);
+                    if (localOnly) {
+                        setFieldSuccess(null);
+                        if (current !== DUMMY_PASSWORD) {
+                            setFieldError(t.settingsCurrentPasswordWrong);
+                            return;
+                        }
+                        finishSaved();
+                        return;
+                    }
                     setFieldError(null);
-                    setFieldSuccess(t.settingsPasswordChanged);
+                    setFieldSuccess(null);
+                    setSaving(true);
+                    void profileApi
+                        .changePassword({ currentPassword: current, newPassword: next })
+                        .then(finishSaved)
+                        .catch((error: unknown) => {
+                            const message = error instanceof Error ? error.message : "";
+                            setFieldError(message === "Current password is incorrect." ? t.settingsCurrentPasswordWrong : message || t.settingsPasswordFailed);
+                        })
+                        .finally(() => setSaving(false));
                 }}
             >
                 <FormStatus error={fieldError} success={fieldSuccess} className="mb-4" />
                 <div className="grid w-full max-w-2xl gap-4">
-                    <Input type="password" label={t.settingsCurrentPassword} size="md" value={current} onChange={setCurrent} isRequired maxLength={72} className="w-full" />
-                    <Input type="password" label={t.settingsNewPassword} size="md" value={next} onChange={setNext} isRequired maxLength={72} hint={t.passwordHint} className="w-full" />
-                    <Input type="password" label={t.confirmPassword} size="md" value={confirm} onChange={setConfirm} isRequired maxLength={72} className="w-full" />
+                    <Input
+                        type="password"
+                        label={t.settingsCurrentPassword}
+                        size="md"
+                        value={current}
+                        onChange={(nextValue) => {
+                            setCurrent(nextValue);
+                            setFieldError(null);
+                        }}
+                        isRequired
+                        maxLength={72}
+                        className="w-full"
+                        isInvalid={Boolean(currentIssue)}
+                        hint={currentIssue ?? undefined}
+                    />
+                    <div className="flex flex-col gap-2">
+                        <Input
+                            type="password"
+                            label={t.settingsNewPassword}
+                            size="md"
+                            value={next}
+                            onChange={setNext}
+                            isRequired
+                            maxLength={72}
+                            hint={next && !nextCheck.ok ? nextCheck.message : t.passwordHint}
+                            isInvalid={Boolean(next) && !nextCheck.ok}
+                            className="w-full"
+                        />
+                        <PasswordStrengthBar password={next} />
+                    </div>
+                    <Input
+                        type="password"
+                        label={t.confirmPassword}
+                        size="md"
+                        value={confirm}
+                        onChange={(nextValue) => {
+                            setConfirm(nextValue);
+                            setFieldError(null);
+                        }}
+                        isRequired
+                        maxLength={72}
+                        className="w-full"
+                        isInvalid={Boolean(confirmIssue)}
+                        hint={confirmIssue ?? undefined}
+                    />
                     <div>
-                        <Button type="submit" color="primary" size="sm">
+                        <Button type="submit" color="primary" size="sm" isLoading={saving} isDisabled={saving}>
                             {t.settingsSave}
                         </Button>
                     </div>
@@ -1091,7 +1526,7 @@ const PaymentCardRow = ({
     isNew?: boolean;
     onEdit?: () => void;
     onCancel: () => void;
-    onSave: (payload: { number: string; expiry: string; holderName: string; cvv: string }) => string | null;
+    onSave: (payload: { number: string; expiry: string; holderName: string; cvv: string }) => string | null | Promise<string | null>;
     onSetDefault?: () => void;
     onRemove?: () => void;
 }) => {
@@ -1100,6 +1535,8 @@ const PaymentCardRow = ({
     const [holderName, setHolderName] = useState(card?.holderName ?? "");
     const [cvv, setCvv] = useState("");
     const [cvvFocused, setCvvFocused] = useState(false);
+    const [asking, setAsking] = useState(false);
+    const [pending, setPending] = useState<{ number: string; expiry: string; holderName: string; cvv: string } | null>(null);
     const [fieldError, setFieldError] = useState<string | null>(null);
     const cvvFieldRef = useRef<HTMLDivElement>(null);
 
@@ -1121,6 +1558,14 @@ const PaymentCardRow = ({
     }, [isEditing]);
 
     const digits = number.replace(/\D/g, "");
+    const numberCheck = validateCardNumber(number, t);
+    const expiryCheck = validateCardExpiry(expiry, t);
+    const holderCheck = validateCardHolder(holderName, t);
+    const cvvCheck = validateCvv(cvv, t, digits);
+    const numberIssue = digits.length > 0 && !numberCheck.ok ? numberCheck.message : null;
+    const expiryIssue = expiry.length > 0 && !expiryCheck.ok ? expiryCheck.message : null;
+    const holderIssue = holderName.trim().length > 0 && !holderCheck.ok ? holderCheck.message : null;
+    const cvvIssue = cvv.length > 0 && !cvvCheck.ok ? cvvCheck.message : null;
     const previewBrand = digits ? cardBrandFromDigits(digits) : (card?.brand ?? "CarePlus");
     const previewNumber = digits ? previewCardNumber(digits) : card ? `•••• •••• •••• ${card.last4}` : previewCardNumber("");
     const previewHolder = (holderName.trim() || card?.holderName || "YOUR NAME").slice(0, CARD_HOLDER_MAX);
@@ -1180,7 +1625,7 @@ const PaymentCardRow = ({
                                 const numberValid = validateCardNumber(number, t);
                                 const expiryValid = validateCardExpiry(expiry, t);
                                 const holderValid = validateCardHolder(holderName, t);
-                                const cvvValid = validateCvv(cvv, t);
+                                const cvvValid = validateCvv(cvv, t, numberValid.ok ? numberValid.value : digits);
                                 if (!numberValid.ok) {
                                     setFieldError(numberValid.message);
                                     return;
@@ -1198,32 +1643,46 @@ const PaymentCardRow = ({
                                     return;
                                 }
                                 setFieldError(null);
-                                const message = onSave({
+                                setPending({
                                     number: numberValid.value,
                                     expiry: expiryValid.value,
                                     holderName: holderValid.value,
                                     cvv: cvvValid.value,
                                 });
-                                if (message) {
-                                    setFieldError(message);
-                                }
+                                setAsking(true);
                             }}
                         >
                             <FormStatus error={fieldError} className="sm:col-span-2" />
-                            <PaymentInput label={t.settingsCardNumber} size="md" value={number} onChange={setNumber} isRequired className="w-full sm:col-span-2" />
-                            <Input label={t.settingsCardExpiry} placeholder="MM/YY" size="md" value={expiry} onChange={(value) => setExpiry(formatCardExpiryInput(value))} isRequired maxLength={5} className="w-full" />
+                            <PaymentInput label={t.settingsCardNumber} size="md" value={number} onChange={setNumber} isRequired className="w-full sm:col-span-2" isInvalid={Boolean(numberIssue)} hint={numberIssue ?? undefined} />
+                            <Input label={t.settingsCardExpiry} placeholder="MM/YY" size="md" value={expiry} onChange={(value) => setExpiry(formatCardExpiryInput(value))} isRequired maxLength={5} className="w-full" isInvalid={Boolean(expiryIssue)} hint={expiryIssue ?? undefined} />
                             <div ref={cvvFieldRef} className="w-full">
-                                <Input label={t.settingsCardCvv} placeholder="123" size="md" value={cvv} onChange={setCvv} isRequired maxLength={4} inputMode="numeric" type="password" autoComplete="off" className="w-full" />
+                                <Input label={t.settingsCardCvv} placeholder="123" size="md" value={cvv} onChange={setCvv} isRequired maxLength={4} inputMode="numeric" type="password" autoComplete="off" className="w-full" isInvalid={Boolean(cvvIssue)} hint={cvvIssue ?? undefined} />
                             </div>
-                            <Input label={t.settingsCardHolder} size="md" value={holderName} onChange={setHolderName} isRequired maxLength={CARD_HOLDER_MAX} className="w-full sm:col-span-2" />
-                            <div className="flex flex-wrap gap-2 sm:col-span-2">
-                                <Button type="submit" color="primary" size="sm">
-                                    {isNew ? t.settingsAddCard : t.settingsSave}
-                                </Button>
-                                <Button color="secondary" size="sm" onClick={onCancel}>
-                                    {t.notifCancel}
-                                </Button>
-                            </div>
+                            <Input label={t.settingsCardHolder} size="md" value={holderName} onChange={setHolderName} isRequired maxLength={CARD_HOLDER_MAX} className="w-full sm:col-span-2" isInvalid={Boolean(holderIssue)} hint={holderIssue ?? undefined} />
+                            {asking ? (
+                                <SaveAsk
+                                    t={t}
+                                    onCancel={() => setAsking(false)}
+                                    onConfirm={() => {
+                                        if (!pending) return;
+                                        void Promise.resolve(onSave(pending)).then((message) => {
+                                            if (message) {
+                                                setFieldError(message);
+                                                setAsking(false);
+                                            }
+                                        });
+                                    }}
+                                />
+                            ) : (
+                                <div className="flex flex-wrap gap-2 sm:col-span-2">
+                                    <Button type="submit" color="primary" size="sm">
+                                        {isNew ? t.settingsAddCard : t.settingsSave}
+                                    </Button>
+                                    <Button color="secondary" size="sm" onClick={onCancel}>
+                                        {t.notifCancel}
+                                    </Button>
+                                </div>
+                            )}
                         </Form>
                     ) : null}
                 </div>
@@ -1253,14 +1712,14 @@ const DeliveryAddressRow = ({
     isNew?: boolean;
     onEdit?: () => void;
     onCancel: () => void;
-    onSave: (payload: { label: string; unit: string; line: string }) => string | null;
+    onSave: (payload: { label: string; unit: string; line: string }) => Promise<string | null> | string | null;
     onSetDefault?: () => void;
     onRemove?: () => void;
 }) => {
-    const split = splitDeliveryLine(address?.line ?? "");
     const [label, setLabel] = useState(address && isDeliveryLabelId(address.label) ? address.label : "home");
-    const [unit, setUnit] = useState(split.unit);
-    const [line, setLine] = useState(split.street);
+    const [unit, setUnit] = useState(address?.unit ?? "");
+    const [line, setLine] = useState(address?.address ?? "");
+    const [asking, setAsking] = useState(false);
     const [fieldError, setFieldError] = useState<string | null>(null);
     const labelItems = [
         { id: "home", label: t.settingsLabelHome },
@@ -1268,7 +1727,19 @@ const DeliveryAddressRow = ({
         { id: "other", label: t.settingsLabelOther },
     ];
 
-    const region = detectMalaysiaRegion(unit.trim() ? `${unit.trim()}, ${line}` : line || address?.line || "");
+    const unitTrimmed = unit.trim();
+    const unitIssue = unitTrimmed.length > 30 ? t.settingsUnitLong : null;
+    const streetTrimmed = line.trim();
+    const streetIssue = !streetTrimmed
+        ? null
+        : streetTrimmed.length < 5
+          ? t.settingsDeliveryShort
+          : streetTrimmed.length > 200
+            ? t.settingsDeliveryLong
+            : !/\b\d{5}\b/.test(streetTrimmed)
+              ? t.settingsAddressPostcode
+              : null;
+    const region = detectMalaysiaRegion(line || address?.address || "");
     const regionLabel = region === "east" ? t.medCartEastMalaysia : t.medCartWestMalaysia;
 
     return (
@@ -1278,7 +1749,7 @@ const DeliveryAddressRow = ({
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                             <p className="font-medium text-primary">{deliveryLabelText(address.label, t)}</p>
-                            <p className="mt-1 text-sm text-tertiary">{address.line}</p>
+                            <p className="mt-1 text-sm text-tertiary">{formatDeliveryLine(address)}</p>
                             <p className="mt-1 text-xs text-tertiary">
                                 {address.region === "east" ? t.medCartEastMalaysia : t.medCartWestMalaysia}
                             </p>
@@ -1292,7 +1763,15 @@ const DeliveryAddressRow = ({
                             ) : null}
                         </div>
                     </div>
-                    {!isProfileSynced ? (
+                    {isProfileSynced ? (
+                        !isDefault && onSetDefault ? (
+                            <div className="mt-3">
+                                <Button color="secondary" size="sm" iconLeading={Check} onClick={onSetDefault}>
+                                    {t.settingsSetDefault}
+                                </Button>
+                            </div>
+                        ) : null
+                    ) : (
                         <div className="mt-3 flex flex-wrap gap-2">
                             <Button color="secondary" size="sm" iconLeading={Edit01} onClick={onEdit}>
                                 {t.settingsEdit}
@@ -1308,17 +1787,25 @@ const DeliveryAddressRow = ({
                                 </Button>
                             ) : null}
                         </div>
-                    ) : null}
+                    )}
                 </>
             ) : isEditing ? (
                 <Form
                     className="flex w-full max-w-2xl flex-col gap-4"
                     onSubmit={(event) => {
                         event.preventDefault();
-                        const message = onSave({ label, unit, line });
-                        if (message) {
-                            setFieldError(message);
+                        const labelValid = validateDeliveryLabel(label, t);
+                        const lineValid = validateDeliveryAddress(unit, line, t);
+                        if (!labelValid.ok) {
+                            setFieldError(labelValid.message);
+                            return;
                         }
+                        if (!lineValid.ok) {
+                            setFieldError(lineValid.message);
+                            return;
+                        }
+                        setFieldError(null);
+                        setAsking(true);
                     }}
                 >
                     <FormStatus error={fieldError} />
@@ -1349,12 +1836,15 @@ const DeliveryAddressRow = ({
                         isRequired
                         maxLength={30}
                         className="w-full"
+                        isInvalid={Boolean(unitIssue)}
+                        hint={unitIssue ?? undefined}
                     />
                     <AddressLocator
                         t={t}
                         label={t.settingsAddress}
                         value={line}
                         maxLength={168}
+                        error={streetIssue}
                         onChange={(next) => {
                             setLine(next);
                             setFieldError(null);
@@ -1363,14 +1853,30 @@ const DeliveryAddressRow = ({
                     <p className="text-sm text-tertiary">
                         {t.settingsDeliveryRegion}: {regionLabel}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                        <Button type="submit" color="primary" size="sm">
-                            {isNew ? t.settingsAddDeliveryAddress : t.settingsSave}
-                        </Button>
-                        <Button color="secondary" size="sm" onClick={onCancel}>
-                            {t.notifCancel}
-                        </Button>
-                    </div>
+                    {asking ? (
+                        <SaveAsk
+                            t={t}
+                            onCancel={() => setAsking(false)}
+                            onConfirm={() => {
+                                void (async () => {
+                                    const message = await onSave({ label, unit, line });
+                                    if (message) {
+                                        setFieldError(message);
+                                        setAsking(false);
+                                    }
+                                })();
+                            }}
+                        />
+                    ) : (
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="submit" color="primary" size="sm">
+                                {isNew ? t.settingsAddDeliveryAddress : t.settingsSave}
+                            </Button>
+                            <Button color="secondary" size="sm" onClick={onCancel}>
+                                {t.notifCancel}
+                            </Button>
+                        </div>
+                    )}
                 </Form>
             ) : null}
         </div>

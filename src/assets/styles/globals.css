@@ -140,6 +140,8 @@ html:has(.careplus-landing),
     --color-featured-icon-light-fg-brand: rgb(18 43 75);
     --color-text-brand-primary: var(--color-brand-900);
     --color-text-brand-secondary: rgb(18 43 75);
+    --color-text-brand-secondary_hover: rgb(26 168 181);
+    --text-color-brand-secondary_hover: rgb(26 168 181);
     --background-color-brand-solid: transparent;
     --background-color-brand-solid_hover: transparent;
     --background-color-brand-secondary: var(--color-brand-100);
@@ -154,11 +156,18 @@ html:has(.careplus-landing),
 }
 
 .careplus-landing {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
     background:
         radial-gradient(circle at 88% 4%, rgba(118, 226, 235, 0.3), transparent 28rem),
         radial-gradient(circle at 5% 68%, rgba(245, 177, 158, 0.13), transparent 24rem),
         linear-gradient(135deg, #eef8fb, #dff4f7);
     color-scheme: light;
+}
+
+.careplus-landing > footer {
+    margin-top: auto;
 }
 
 /* The corner glow is 28rem wide, so on a phone it paints a blue block behind the title. */
@@ -178,6 +187,10 @@ html.dark-mode:has(.careplus-landing) body {
     background-color: #0b2036;
     background-image: var(--careplus-ink);
     background-attachment: fixed;
+    --color-text-brand-secondary: rgb(118 226 235);
+    --text-color-brand-secondary: rgb(118 226 235);
+    --color-text-brand-secondary_hover: rgb(213 244 248);
+    --text-color-brand-secondary_hover: rgb(213 244 248);
 }
 
 html.dark-mode .careplus-landing {
@@ -198,7 +211,9 @@ html.dark-mode .careplus-landing {
     --background-color-primary_alt: var(--color-bg-primary_alt);
     --background-color-tertiary: var(--color-bg-tertiary);
     --color-border-secondary: rgb(255 255 255 / 0.14);
-    --color-border-primary: rgb(255 255 255 / 0.18);
+    --color-border-primary: rgb(255 255 255 / 0.45);
+    --color-text-secondary: #fff;
+    --text-color-secondary: #fff;
     --border-color-secondary: var(--color-border-secondary);
     --border-color-primary: var(--color-border-primary);
     --ring-color-secondary: var(--color-border-secondary);
@@ -207,6 +222,11 @@ html.dark-mode .careplus-landing {
     --text-color-brand-secondary: rgb(118 226 235);
     --color-text-brand-secondary_hover: rgb(213 244 248);
     --text-color-brand-secondary_hover: rgb(213 244 248);
+}
+
+html.dark-mode .careplus-landing [data-label],
+html.dark-mode .careplus-landing [data-label] span {
+    color: #fff;
 }
 
 html.dark-mode .careplus-landing .careplus-panel {

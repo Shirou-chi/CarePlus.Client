@@ -56,12 +56,14 @@ export const AddressLocator = ({
     value,
     onChange,
     maxLength = 200,
+    error = null,
 }: {
     t: Copy;
     label: string;
     value: string;
     onChange: (value: string) => void;
     maxLength?: number;
+    error?: string | null;
 }) => {
     const { locale } = useI18n();
     const language = locale === "zh" ? "zh" : "en";
@@ -214,6 +216,8 @@ export const AddressLocator = ({
                     isRequired
                     maxLength={maxLength}
                     autoComplete="off"
+                    isInvalid={Boolean(error)}
+                    hint={error ?? undefined}
                 />
                 {localMatches.length > 0 || streetHits.length > 0 ? (
                     <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-primary py-1 shadow-lg ring-1 ring-secondary" role="listbox">

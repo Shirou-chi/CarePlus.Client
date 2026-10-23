@@ -1,4 +1,5 @@
 import { type FC, useState } from "react";
+import { useNavigate } from "react-router";
 import {
     CalendarCheck01,
     ShoppingCart01,
@@ -17,17 +18,21 @@ import {
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Link as AriaLink, Popover as AriaPopover } from "react-aria-components";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { NavMenuItemLink } from "@/components/marketing/header-navigation/base-components/nav-menu-item";
 import { HeaderNotifications } from "@/components/marketing/notifications/header-notifications";
 import { useAuth } from "@/providers/auth-provider";
+import { getClinicRecords } from "@/utils/clinic-records";
+import { hasOverdueInvoice } from "@/utils/invoices";
 import { useCart } from "@/providers/cart-provider";
+import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
-import { formatRm } from "@/utils/prescribed-medicine";
+import { formatRm, medicineName } from "@/utils/prescribed-medicine";
 
 type ServiceLink = {
     title: string;
@@ -52,6 +57,12 @@ const useServiceGroups = (): ServiceGroup[] => {
     const bookHref = profile ? "/book" : "/login";
     const visitsHref = profile ? "/visits" : "/login";
     const historyHref = profile ? "/history" : "/login";
+    const invoicesHref = profile ? "/invoices" : "/login";
+    const paymentsHref = profile ? "/payments" : "/login";
+    const ordersHref = profile ? "/orders" : "/login";
+    const notesHref = profile ? "/notes" : "/login";
+    const labsHref = profile ? "/labs" : "/login";
+    const familyHref = profile ? "/family" : "/login";
     return [
         {
             id: "visits",
@@ -70,8 +81,8 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.recordsHint,
             Icon: File06,
             links: [
-                { title: t.notes, subtitle: t.notesHint, href: "#features" },
-                { title: t.labs, subtitle: t.labsHint, href: "#features" },
+                { title: t.notes, subtitle: t.notesHint, href: notesHref },
+                { title: t.labs, subtitle: t.labsHint, href: labsHref },
             ],
         },
         {
@@ -80,8 +91,9 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.billsHint,
             Icon: Receipt,
             links: [
-                { title: t.invoices, subtitle: t.invoicesHint, href: "#features" },
-                { title: t.payments, subtitle: t.paymentsHint, href: "#features" },
+                { title: t.invoices, subtitle: t.invoicesHint, href: invoicesHref },
+                { title: t.payments, subtitle: t.paymentsHint, href: paymentsHref },
+                { title: t.ordersTitle, subtitle: t.ordersHint, href: ordersHref },
             ],
         },
         {
@@ -89,27 +101,26 @@ const useServiceGroups = (): ServiceGroup[] => {
             title: t.family,
             subtitle: t.familyHint,
             Icon: Users01,
-            links: [{ title: t.familyProfiles, subtitle: t.familyProfilesHint, href: "#features" }],
-        },
-        {
-            id: "account",
-            title: t.account,
-            subtitle: t.accountHint,
-            Icon: User01,
-            links: [
-                { title: t.createAccount, subtitle: t.createAccountHint, href: "/register" },
-                { title: t.signIn, subtitle: t.logInHint, href: "/login" },
-                { title: t.resetPassword, subtitle: t.resetPasswordHint, href: "/login" },
-            ],
+            links: [{ title: t.familyProfiles, subtitle: t.familyProfilesHint, href: familyHref }],
         },
     ];
 };
 
+const useOverdueLock = () => {
+    const { profile } = useAuth();
+    return Boolean(profile && hasOverdueInvoice(getClinicRecords("en")));
+};
+
 export const LandingHeader = () => {
     const { t } = useI18n();
-    const { profile } = useAuth();
+    const { profile, logout } = useAuth();
+    const navigate = useNavigate();
+    const overdue = useOverdueLock();
     const signedInName = profile?.fullName.split(" ")[0] ?? t.signIn;
-    const accountHref = profile ? "/account" : "/login";
+    const signOut = async () => {
+        await logout();
+        navigate("/login");
+    };
 
     return (
         <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/90 backdrop-blur-md dark:border-white/10 dark:bg-[#0b2036]/92">
@@ -119,23 +130,50 @@ export const LandingHeader = () => {
                 <div className="hidden items-center lg:flex">
                     <ServicesMega />
                     <NavIcons />
-                    <div className="ml-12 flex items-center gap-3">
-                        <ThemeToggle />
-                        <LanguageSwitch />
-                    </div>
+                    {profile ? null : (
+                        <div className="ml-12 flex items-center gap-3">
+                            <ThemeToggle />
+                            <LanguageSwitch />
+                        </div>
+                    )}
                     <div className="mx-3 h-8 w-px bg-border-secondary" />
-                    <a href={accountHref} className="flex items-center gap-2.5 rounded-full py-1 pr-2 pl-1 outline-focus-ring hover:bg-[#456f75]/20 focus-visible:outline-2 dark:hover:bg-white/15">
-                        <Avatar size="md" src={profile?.avatarUrl} alt={profile?.fullName ?? signedInName} />
-                        <span className="leading-tight">
-                            <span className="block text-xs text-tertiary">{t.hello}</span>
-                            <span className="block max-w-[7rem] truncate text-sm font-semibold text-primary">{signedInName}</span>
-                        </span>
-                    </a>
+                    {profile ? (
+                        <Dropdown.Root>
+                            <AriaButton
+                                aria-label={`${t.hello} ${signedInName}`}
+                                className="group flex cursor-pointer items-center gap-2.5 rounded-full py-1 pr-3 pl-1 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-[#456f75] focus-visible:outline-2 data-[pressed]:bg-[#456f75]"
+                            >
+                                <Avatar size="md" src={profile.avatarUrl} alt="" />
+                                <span className="leading-tight">
+                                    <span className="block text-xs text-tertiary group-hover:text-white group-data-[pressed]:text-white">{t.hello}</span>
+                                    <span className="block max-w-[7rem] truncate text-sm font-semibold text-primary group-hover:text-white group-data-[pressed]:text-white">{signedInName}</span>
+                                </span>
+                            </AriaButton>
+                            <Dropdown.Popover>
+                                <Dropdown.Menu>
+                                    <Dropdown.Item icon={User01} selectionIndicator="none" onAction={() => navigate("/account")}>
+                                        {t.viewProfile}
+                                    </Dropdown.Item>
+                                    <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
+                                        {t.signOut}
+                                    </Dropdown.Item>
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown.Root>
+                    ) : (
+                        <a href="/login" className="group flex items-center gap-2.5 rounded-full py-1 pr-3 pl-1 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-[#456f75] focus-visible:outline-2">
+                            <Avatar size="md" alt={signedInName} />
+                            <span className="leading-tight">
+                                <span className="block text-xs text-tertiary group-hover:text-white">{t.hello}</span>
+                                <span className="block max-w-[7rem] truncate text-sm font-semibold text-primary group-hover:text-white">{signedInName}</span>
+                            </span>
+                        </a>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-1 lg:hidden">
-                    <HeaderNotifications />
-                    <HeaderCart />
+                    {overdue ? null : <HeaderNotifications />}
+                    {overdue ? null : <HeaderCart />}
                     <MobileNav />
                 </div>
             </div>
@@ -145,22 +183,24 @@ export const LandingHeader = () => {
 
 const NavIcons = () => {
     const { t } = useI18n();
+    const overdue = useOverdueLock();
 
     return (
         <div className="ml-3 flex items-center gap-0.5">
             <Tooltip title={t.search}>
-                <AriaLink aria-label={t.search} className={iconGhost} href="#get-started">
+                <AriaLink aria-label={t.search} className={iconGhost} href="/#get-started">
                     <SearchMd className="size-5" />
                 </AriaLink>
             </Tooltip>
-            <HeaderNotifications />
-            <HeaderCart />
+            {overdue ? null : <HeaderNotifications />}
+            {overdue ? null : <HeaderCart />}
         </div>
     );
 };
 
 const HeaderCart = () => {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
+    useMedicineCatalog();
     const { lines, count, bump, clear } = useCart();
 
     return (
@@ -187,7 +227,7 @@ const HeaderCart = () => {
                                     {lines.map((line) => (
                                         <li key={line.medicineId} className="flex items-start justify-between gap-3">
                                             <span className="min-w-0">
-                                                <span className="block text-sm font-medium text-primary">{line.name}</span>
+                                                <span className="block text-sm font-medium text-primary">{medicineName(locale, line.medicineId, line.name)}</span>
                                                 <span className="mt-0.5 block text-xs text-tertiary">
                                                     {t.medPickup} · ×{line.qty}
                                                 </span>
@@ -310,7 +350,13 @@ const ServicesMega = () => {
 
 const MobileNav = () => {
     const { t } = useI18n();
+    const { profile, logout } = useAuth();
+    const navigate = useNavigate();
     const serviceGroups = useServiceGroups();
+    const signOut = async () => {
+        await logout();
+        navigate("/login");
+    };
 
     return (
         <AriaDialogTrigger>
@@ -357,17 +403,32 @@ const MobileNav = () => {
                                 </ul>
                             </details>
                         ))}
-                        <div className="mt-3 flex items-center justify-between gap-3 px-2 py-2">
-                            <ThemeToggle />
-                            <LanguageSwitch />
-                        </div>
+                        {profile ? null : (
+                            <div className="mt-3 flex items-center justify-between gap-3 px-2 py-2">
+                                <ThemeToggle />
+                                <LanguageSwitch />
+                            </div>
+                        )}
                         <div className="mt-1 flex flex-col gap-2 px-2 pb-2">
-                            <a href="/login" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
-                                {t.logIn}
-                            </a>
-                            <a href="/register" className="careplus-ink rounded-lg px-3 py-2.5 text-center text-md font-semibold text-white">
-                                {t.signUp}
-                            </a>
+                            {profile ? (
+                                <>
+                                    <a href="/account" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
+                                        {t.viewProfile}
+                                    </a>
+                                    <button type="button" className="rounded-lg px-3 py-2.5 text-left text-md font-semibold text-secondary hover:bg-primary_hover" onClick={() => void signOut()}>
+                                        {t.signOut}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <a href="/login" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
+                                        {t.logIn}
+                                    </a>
+                                    <a href="/register" className="careplus-ink rounded-lg px-3 py-2.5 text-center text-md font-semibold text-white">
+                                        {t.signUp}
+                                    </a>
+                                </>
+                            )}
                         </div>
                     </nav>
                 </AriaDialog>

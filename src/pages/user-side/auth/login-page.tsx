@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import { LoginCardCombined } from "@/components/login/login-card-combined";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
-import { AuthError, DUMMY_EMAIL, DUMMY_PASSWORD } from "@/utils/auth";
 
 export const LoginPage = () => {
     const { login, profile, isReady } = useAuth();
     const { t } = useI18n();
     const navigate = useNavigate();
+    const location = useLocation();
+    const notice = (location.state as { notice?: string } | null)?.notice ?? null;
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -23,10 +24,8 @@ export const LoginPage = () => {
     return (
         <LoginCardCombined
             error={error}
+            success={notice}
             isLoading={isLoading}
-            defaultEmail={DUMMY_EMAIL}
-            defaultPassword={DUMMY_PASSWORD}
-            hint={t.dummyLoginHint.replace("{email}", DUMMY_EMAIL).replace("{password}", DUMMY_PASSWORD)}
             onSubmit={async ({ email, password }) => {
                 setError(null);
                 setIsLoading(true);
@@ -34,7 +33,15 @@ export const LoginPage = () => {
                     await login(email, password);
                     navigate("/home", { replace: true });
                 } catch (caught) {
-                    setError(caught instanceof AuthError ? t.dummyLoginWrong : t.authFailed);
+                    const raw = caught instanceof Error ? caught.message : "";
+                    const known: Record<string, string> = {
+                        "This username or email is not registered yet.": t.loginWrongPassword,
+                        "Incorrect password.": t.loginWrongPassword,
+                        "Incorrect username/email or password.": t.loginWrongPassword,
+                        "This account is not active.": t.loginInactive,
+                        "This account is not a patient account.": t.loginNotPatient,
+                    };
+                    setError(known[raw] ?? t.authFailed);
                 } finally {
                     setIsLoading(false);
                 }

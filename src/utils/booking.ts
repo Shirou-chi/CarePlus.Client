@@ -1,4 +1,5 @@
 import type { Profile } from "@/utils/auth";
+import { bookingFamily } from "./family.ts";
 
 export type FamilyMember = {
     id: string;
@@ -126,7 +127,7 @@ const isVisit = (line: StoredLine): line is BookedAppointment =>
     typeof line.status === "string";
 
 export const getBookingCatalog = (profile: Profile): BookingCatalog => ({
-    family: [{ id: profile.id, name: profile.fullName, relation: "You", isYou: true }],
+    family: bookingFamily(profile),
     doctors: dummyDoctors,
     types,
 });

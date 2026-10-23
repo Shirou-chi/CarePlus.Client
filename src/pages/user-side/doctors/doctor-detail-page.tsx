@@ -32,7 +32,7 @@ export const DoctorDetailPage = () => {
             <main className="mx-auto w-full max-w-container px-4 py-10 md:px-8 md:py-16">
                 <Link
                     to="/doctors"
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-secondary hover:text-brand-primary"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-secondary hover:text-brand-secondary_hover"
                 >
                     <ArrowLeft aria-hidden className="size-4" />
                     {t.doctorBack}

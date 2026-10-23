@@ -12,12 +12,12 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { MedicineCard } from "@/components/marketing/medicine/medicine-card";
 import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
+import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import {
     filterMedicines,
     formFilters,
     getClinicPharmacy,
-    getMedicineCatalog,
     type CatalogView,
     type Medicine,
     type MedicineForm,
@@ -37,7 +37,7 @@ export const PrescribedMedicineBrowsePage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const { add, flyToCart, remainingFor } = useCart();
-    const medicines = getMedicineCatalog(locale);
+    const { medicines, ready } = useMedicineCatalog();
     const clinic = getClinicPharmacy(locale);
     const [query, setQuery] = useState("");
     const [forms, setForms] = useState<MedicineForm[]>([]);
@@ -170,7 +170,7 @@ export const PrescribedMedicineBrowsePage = () => {
                     </Dropdown.Root>
                 </div>
 
-                {results.length === 0 ? (
+                {!ready ? null : results.length === 0 ? (
                     <EmptyState size="sm" className="mt-16">
                         <EmptyState.Header pattern="circle">
                             <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />

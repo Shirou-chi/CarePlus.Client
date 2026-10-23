@@ -13,7 +13,20 @@ export type Profile = {
 
 export const SESSION_KEY = "careplus-session";
 export const DUMMY_EMAIL = "patient@careplus.my";
+export const DUMMY_USERNAME = "kaiminn";
 export const DUMMY_PASSWORD = "careplus123";
+const PASSWORD_KEY = "careplus-password";
+
+export const readPassword = () => {
+    if (typeof localStorage === "undefined") {
+        return DUMMY_PASSWORD;
+    }
+    return localStorage.getItem(PASSWORD_KEY) || DUMMY_PASSWORD;
+};
+
+export const savePassword = (password: string) => {
+    localStorage.setItem(PASSWORD_KEY, password);
+};
 
 export const dummyProfile: Profile = {
     id: "patient-1",
@@ -61,8 +74,10 @@ export const writeSession = (profile: Profile | null) => {
     localStorage.removeItem(SESSION_KEY);
 };
 
-export const matchDummyLogin = (email: string, password: string) =>
-    email.trim().toLowerCase() === DUMMY_EMAIL && password === DUMMY_PASSWORD;
+export const matchDummyLogin = (email: string, password: string) => {
+    const id = email.trim().toLowerCase();
+    return (id === DUMMY_EMAIL || id === DUMMY_USERNAME) && password === readPassword();
+};
 
 export const dummyLogin = (email: string, password: string): Profile => {
     if (!matchDummyLogin(email, password)) {

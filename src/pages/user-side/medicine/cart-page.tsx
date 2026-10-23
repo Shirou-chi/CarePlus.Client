@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Minus, Plus, Trash01 } from "@untitledui/icons";
 import { Heading } from "react-aria-components";
-import { Link, Navigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { FormStatus } from "@/components/application/form-status";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -16,21 +16,28 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { MedicineShot } from "@/components/marketing/medicine/medicine-shot";
 import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
+import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import {
+    applyDeliveryAddresses,
+    formatDeliveryLine,
     availableDeliveryAddresses,
     defaultDeliveryOption,
     deliveryFeeForRegion,
     deliveryLabelText,
     type DeliveryOption,
 } from "@/utils/delivery-address";
+import { profileApi } from "@/services/profileApi";
 import {
     formatRm,
-    getMedicineCatalog,
+    getClinicPharmacy,
     MAX_MEDICINE_UNITS,
+    medicineName,
+    type Medicine,
     type MedicineId,
 } from "@/utils/prescribed-medicine";
-import { readProfileSettings } from "@/utils/profile-settings";
+import { applyPaymentCards, readProfileSettings, writeProfileSettings } from "@/utils/profile-settings";
+import { writeCheckoutDraft } from "@/utils/checkout-draft";
 
 type FulfilmentMethod = "pickup" | "delivery";
 type PaymentMethod = "cod" | "card" | "fpx";
@@ -40,21 +47,55 @@ type PendingRemove =
     | { type: "many"; count: number };
 
 export const CartPage = () => {
+    const navigate = useNavigate();
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
-    const { lines, setQty, remove, removeMany } = useCart();
+    const { lines, bought, setQty, remove, removeMany } = useCart();
     const [selected, setSelected] = useState<Set<MedicineId>>(() => new Set(lines.map((line) => line.medicineId)));
     const [fulfilment, setFulfilment] = useState<FulfilmentMethod>("pickup");
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
     const [cardId, setCardId] = useState<string | null>(null);
     const [addressId, setAddressId] = useState<string | null>(null);
-    const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     const [pendingRemove, setPendingRemove] = useState<PendingRemove | null>(null);
 
-    const settings = profile ? readProfileSettings(profile.id) : null;
+    const [deliveryTick, setDeliveryTick] = useState(0);
+    const settings = useMemo(() => (profile ? readProfileSettings(profile.id) : null), [profile, deliveryTick]);
     const deliveryOptions = profile && settings ? availableDeliveryAddresses(profile, settings) : [];
-    const catalog = getMedicineCatalog(locale);
+    const { medicines: catalog } = useMedicineCatalog();
+    const pharmacyName = getClinicPharmacy(locale).name;
+
+    useEffect(() => {
+        if (!profile || profile.id.startsWith("fam-")) {
+            return;
+        }
+        let cancelled = false;
+        profileApi
+            .listDeliveryAddresses()
+            .then((rows) => {
+                if (cancelled) {
+                    return;
+                }
+                const next = applyDeliveryAddresses(readProfileSettings(profile.id), rows, profile.address, t.settingsProfileAddressLabel);
+                writeProfileSettings(profile.id, next);
+                setDeliveryTick((tick) => tick + 1);
+            })
+            .catch(() => undefined);
+        profileApi
+            .listPaymentCards()
+            .then((rows) => {
+                if (cancelled) {
+                    return;
+                }
+                const next = applyPaymentCards(readProfileSettings(profile.id), rows);
+                writeProfileSettings(profile.id, next);
+                setDeliveryTick((tick) => tick + 1);
+            })
+            .catch(() => undefined);
+        return () => {
+            cancelled = true;
+        };
+    }, [profile, t.settingsProfileAddressLabel]);
 
     useEffect(() => {
         setSelected((prev) => {
@@ -135,29 +176,42 @@ export const CartPage = () => {
     };
 
     const checkout = () => {
-        setCheckoutNotice(null);
         setCheckoutError(null);
+        if (!profile) {
+            return;
+        }
         if (selectedLines.length === 0) {
             setCheckoutError(t.medCartCheckoutHint);
             return;
         }
-        if (fulfilment === "delivery" && deliveryOptions.length === 0) {
+        if (fulfilment === "delivery" && (!activeAddress || deliveryOptions.length === 0)) {
             setCheckoutError(t.medCartNoDeliveryAddress);
             return;
         }
-        if (fulfilment === "delivery" && !activeAddress) {
-            setCheckoutError(t.medCartNoDeliveryAddress);
-            return;
-        }
-        if (paymentMethod === "card" && (!settings || settings.paymentCards.length === 0)) {
+        const card = settings?.paymentCards.find((item) => item.id === cardId);
+        if (paymentMethod === "card" && !card) {
             setCheckoutError(t.medCartNoPaymentCard);
             return;
         }
-        if (paymentMethod === "card" && !cardId) {
-            setCheckoutError(t.medCartNoPaymentCard);
-            return;
-        }
-        setCheckoutNotice(t.medCartCheckoutReady);
+        writeCheckoutDraft({
+            profileId: profile.id,
+            fulfilment,
+            paymentLabel: paymentMethod === "card" && card ? `${card.brand} ···· ${card.last4}` : paymentMethod === "fpx" ? t.medCartPayFpx : t.medCartPayCod,
+            addressId: fulfilment === "delivery" ? activeAddress?.id : undefined,
+            address: fulfilment === "delivery" && activeAddress ? `${deliveryOptionLabel(activeAddress, t)} · ${formatDeliveryLine(activeAddress)}` : undefined,
+            deliveryFee,
+            lines: selectedLines.map((line) => {
+                const medicine = catalog.find((item) => item.id === line.medicineId);
+                return {
+                    medicineId: line.medicineId,
+                    name: medicineName(locale, line.medicineId, line.name),
+                    detail: medicine ? `${medicine.pack} · ${pharmacyName}` : pharmacyName,
+                    unitPrice: line.unitPrice,
+                    qty: line.qty,
+                };
+            }),
+        });
+        navigate("/checkout");
     };
 
     if (!isReady) {
@@ -219,11 +273,13 @@ export const CartPage = () => {
                                             key={line.medicineId}
                                             t={t}
                                             line={line}
+                                            maxQty={Math.max(0, MAX_MEDICINE_UNITS - (bought[line.medicineId] ?? 0))}
                                             medicine={medicine}
+                                            pharmacyName={pharmacyName}
                                             checked={selected.has(line.medicineId)}
                                             onCheckedChange={(checked) => toggleLine(line.medicineId, checked)}
                                             onQtyChange={(qty) => setQty(line.medicineId, qty)}
-                                            onRemove={() => setPendingRemove({ type: "one", medicineId: line.medicineId, name: line.name })}
+                                            onRemove={() => setPendingRemove({ type: "one", medicineId: line.medicineId, name: medicineName(locale, line.medicineId, line.name) })}
                                         />
                                     );
                                 })}
@@ -232,7 +288,7 @@ export const CartPage = () => {
 
                         <aside className="rounded-2xl bg-primary p-5 shadow-xs ring-1 ring-secondary lg:sticky lg:top-28">
                             <h2 className="text-lg font-semibold text-primary">{t.medCartOrderSummary}</h2>
-                            <FormStatus success={checkoutNotice} error={checkoutError} className="mt-4" />
+                            <FormStatus error={checkoutError} className="mt-4" />
 
                             <dl className="mt-4 space-y-3 text-sm">
                                 <div className="flex items-center justify-between gap-4">
@@ -276,7 +332,7 @@ export const CartPage = () => {
                                             items={deliveryOptions.map((option) => ({
                                                 id: option.id,
                                                 label: deliveryOptionLabel(option, t),
-                                                description: `${option.line} · ${regionLabel(option.region, t)}`,
+                                                description: `${formatDeliveryLine(option)} · ${regionLabel(option.region, t)}`,
                                             }))}
                                         >
                                             {(item) => (
@@ -393,7 +449,9 @@ const deliveryOptionLabel = (option: DeliveryOption, t: Copy) => deliveryLabelTe
 const CartLineCard = ({
     t,
     line,
+    maxQty,
     medicine,
+    pharmacyName,
     checked,
     onCheckedChange,
     onQtyChange,
@@ -401,7 +459,9 @@ const CartLineCard = ({
 }: {
     t: Copy;
     line: { medicineId: MedicineId; name: string; pharmacy: string; unitPrice: number; qty: number };
-    medicine?: ReturnType<typeof getMedicineCatalog>[number];
+    maxQty: number;
+    medicine?: Medicine;
+    pharmacyName: string;
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
     onQtyChange: (qty: number) => void;
@@ -409,7 +469,7 @@ const CartLineCard = ({
 }) => (
     <li className="rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary">
         <div className="flex gap-4">
-            <Checkbox aria-label={line.name} isSelected={checked} onChange={onCheckedChange} className="mt-1 shrink-0" />
+            <Checkbox aria-label={medicine?.name ?? line.name} isSelected={checked} onChange={onCheckedChange} className="mt-1 shrink-0" />
             <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
                 <Link to={`/medicine/${line.medicineId}`} className="shrink-0 outline-focus-ring">
                     <div className="size-24 overflow-hidden rounded-xl bg-[#f4f6f8] sm:size-28">
@@ -424,9 +484,9 @@ const CartLineCard = ({
                                 to={`/medicine/${line.medicineId}`}
                                 className="line-clamp-2 text-md font-semibold text-primary outline-focus-ring hover:underline"
                             >
-                                {line.name}
+                                {medicine?.name ?? line.name}
                             </Link>
-                            <p className="mt-1 text-sm text-tertiary">{line.pharmacy}</p>
+                            <p className="mt-1 text-sm text-tertiary">{pharmacyName}</p>
                             <p className="mt-2 text-md font-semibold text-primary">{formatRm(line.unitPrice * line.qty)}</p>
                         </div>
                         <Button color="tertiary-destructive" size="sm" iconLeading={Trash01} aria-label={t.medCartRemoveItem} onClick={onRemove} />
@@ -434,12 +494,12 @@ const CartLineCard = ({
 
                     <div className="mt-4 flex flex-col gap-1.5">
                         <div className="flex items-center gap-2">
-                            <QtyStepper qty={line.qty} onChange={onQtyChange} />
-                            {line.qty < MAX_MEDICINE_UNITS ? (
+                            <QtyStepper qty={line.qty} maxQty={maxQty} onChange={onQtyChange} />
+                            {line.qty < maxQty ? (
                                 <span className="text-xs text-tertiary">{t.medQtyHint.replace("{max}", String(MAX_MEDICINE_UNITS))}</span>
                             ) : null}
                         </div>
-                        {line.qty >= MAX_MEDICINE_UNITS ? (
+                        {line.qty >= maxQty ? (
                             <p className="text-xs text-tertiary">{t.medCartWalkInForMore}</p>
                         ) : null}
                     </div>
@@ -449,7 +509,7 @@ const CartLineCard = ({
     </li>
 );
 
-const QtyStepper = ({ qty, onChange }: { qty: number; onChange: (qty: number) => void }) => (
+const QtyStepper = ({ qty, maxQty, onChange }: { qty: number; maxQty: number; onChange: (qty: number) => void }) => (
     <div className="inline-flex items-center rounded-lg bg-primary shadow-xs ring-1 ring-primary ring-inset">
         <button
             type="button"
@@ -465,7 +525,7 @@ const QtyStepper = ({ qty, onChange }: { qty: number; onChange: (qty: number) =>
             type="button"
             aria-label="Increase quantity"
             className="inline-flex size-9 items-center justify-center rounded-r-lg text-fg-quaternary hover:bg-primary_hover disabled:opacity-40"
-            disabled={qty >= MAX_MEDICINE_UNITS}
+            disabled={qty >= maxQty}
             onClick={() => onChange(qty + 1)}
         >
             <Plus className="size-4" />

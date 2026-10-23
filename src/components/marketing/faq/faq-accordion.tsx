@@ -33,18 +33,42 @@ export const FaqAccordion = ({ items }: { items: FaqItem[] }) => {
                                     aria-expanded={open}
                                     onClick={() => setOpenId(open ? null : item.id)}
                                 >
-                                    {open ? (
-                                        <MinusCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-brand-secondary" />
-                                    ) : (
-                                        <PlusCircle aria-hidden className="mt-0.5 size-5 shrink-0 text-quaternary" />
-                                    )}
+                                    <span className="relative mt-0.5 size-5 shrink-0">
+                                        <PlusCircle
+                                            aria-hidden
+                                            className={cx(
+                                                "absolute inset-0 size-5 text-quaternary transition duration-300 ease-out motion-reduce:transition-none",
+                                                open ? "scale-75 opacity-0" : "scale-100 opacity-100",
+                                            )}
+                                        />
+                                        <MinusCircle
+                                            aria-hidden
+                                            className={cx(
+                                                "absolute inset-0 size-5 text-brand-secondary transition duration-300 ease-out motion-reduce:transition-none",
+                                                open ? "scale-100 opacity-100" : "scale-75 opacity-0",
+                                            )}
+                                        />
+                                    </span>
                                     <span className="min-w-0 flex-1">
                                         <span className="block text-md font-semibold text-primary">{item.question}</span>
-                                        {open ? <span className="mt-2 block text-md text-tertiary">{item.answer}</span> : null}
+                                        <span
+                                            aria-hidden={!open}
+                                            className={cx(
+                                                "grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
+                                                open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                                            )}
+                                        >
+                                            <span className="block min-h-0 overflow-hidden">
+                                                <span className="mt-2 block text-md text-tertiary">{item.answer}</span>
+                                            </span>
+                                        </span>
                                     </span>
                                     <ChevronDown
                                         aria-hidden
-                                        className={cx("mt-1 size-5 shrink-0 text-quaternary transition", open && "rotate-180")}
+                                        className={cx(
+                                            "mt-1 size-5 shrink-0 text-quaternary transition duration-300 ease-out motion-reduce:transition-none",
+                                            open && "rotate-180",
+                                        )}
                                     />
                                 </button>
                             </li>

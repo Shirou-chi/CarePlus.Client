@@ -15,12 +15,20 @@ import { LandingFooter } from "@/components/marketing/header-navigation/landing-
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
-import { useI18n } from "@/providers/locale-provider";
+import { useI18n, type Copy } from "@/providers/locale-provider";
 import { getBookingCatalog, getBookingSlots, bookAppointment, isBookingClosed, type BookedAppointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/utils/booking";
 import { isDoctorId } from "@/utils/doctors";
 import { cx } from "@/utils/cx";
 
 const ANY_DOCTOR = "any";
+
+const relationLabel = (t: Copy, relation: string) => {
+    if (relation === "parent") return t.familyRelationParent;
+    if (relation === "child") return t.familyRelationChild;
+    if (relation === "spouse") return t.familyRelationSpouse;
+    if (relation === "other") return t.familyRelationOther;
+    return relation;
+};
 
 export const BookingPage = () => {
     const { profile, isReady } = useAuth();
@@ -231,7 +239,7 @@ export const BookingPage = () => {
                                     items={(catalog?.family ?? []).map((item) => ({
                                         id: item.id,
                                         label: item.name,
-                                        supportingText: item.isYou ? t.bookPrimaryContact : item.relation,
+                                        supportingText: item.isYou ? t.bookPrimaryContact : relationLabel(t, item.relation),
                                     }))}
                                 >
                                     {(item) => <Select.Item id={item.id} label={item.label} supportingText={item.supportingText} />}
