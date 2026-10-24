@@ -6,16 +6,16 @@ import { Button } from "@/components/base/buttons/button";
 import { InputNumber } from "@/components/base/input/input-number";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { MedicineShot } from "@/components/marketing/medicine/medicine-shot";
 import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
+import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
 import {
     formatRm,
     getClinicPharmacy,
-    getMedicineCatalog,
-    isMedicineId,
     MAX_MEDICINE_UNITS,
     shotViews,
     wholeQty,
@@ -34,7 +34,7 @@ export const PrescribedMedicinePage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const { add, flyToCart, remainingFor } = useCart();
-    const medicines = getMedicineCatalog(locale);
+    const { medicines, ready } = useMedicineCatalog();
     const clinic = getClinicPharmacy(locale);
     const [view, setView] = useState<ShotView>("bottle");
     const [qty, setQty] = useState(1);
@@ -44,7 +44,7 @@ export const PrescribedMedicinePage = () => {
     const heroRef = useRef<HTMLDivElement>(null);
     const qtyInputRef = useRef<HTMLInputElement>(null);
 
-    const medicine = isMedicineId(id) ? medicines.find((item) => item.id === id) : undefined;
+    const medicine = medicines.find((item) => item.id === id);
     const remaining = medicine ? remainingFor(medicine.id) : 0;
     const canAdd = Boolean(medicine) && remaining > 0 && !adding;
 
@@ -58,7 +58,7 @@ export const PrescribedMedicinePage = () => {
         setQty((value) => wholeQty(value, remaining));
     }, [remaining]);
 
-    if (!isReady) {
+    if (!isReady || !ready) {
         return <div className="careplus-landing min-h-dvh" />;
     }
 
@@ -119,25 +119,15 @@ export const PrescribedMedicinePage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
-                <nav className="flex items-center gap-2 text-sm text-tertiary">
-                    <Link
-                        to="/medicine"
-                        className="inline-flex size-8 items-center justify-center rounded-full ring-1 ring-secondary hover:bg-primary_hover"
-                        aria-label={t.medListBack}
-                    >
-                        <ArrowLeft className="size-4" />
-                    </Link>
-                    <Link to="/home" className="hover:text-secondary">
-                        {t.medHome}
-                    </Link>
-                    <span>/</span>
-                    <Link to="/medicine" className="hover:text-secondary">
-                        {t.medTitle}
-                    </Link>
-                    <span>/</span>
-                    <span className="text-secondary">{medicine.name}</span>
-                </nav>
+                <Link
+                    to="/medicine"
+                    className="inline-flex size-8 items-center justify-center rounded-full ring-1 ring-secondary hover:bg-primary_hover"
+                    aria-label={t.medListBack}
+                >
+                    <ArrowLeft className="size-4" />
+                </Link>
 
                 <div className="mt-8 grid items-start gap-8 lg:grid-cols-12">
                     <section className="lg:col-span-4">
@@ -212,8 +202,9 @@ export const PrescribedMedicinePage = () => {
                                 }}
                                 isDisabled={remaining === 0}
                                 orientation="horizontal"
-                                hint={remaining === 0 ? t.medQtyMax : t.medQtyHint.replace("{max}", String(MAX_MEDICINE_UNITS))}
+                                hint={remaining === 0 ? undefined : t.medQtyHint.replace("{max}", String(MAX_MEDICINE_UNITS))}
                             />
+                            {remaining === 0 ? <p className="mt-1.5 text-sm font-medium text-fg-error-primary">{t.medQtyMax}</p> : null}
                         </div>
 
                         <FormStatus error={error} success={success} />

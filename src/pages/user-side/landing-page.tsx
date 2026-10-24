@@ -9,6 +9,7 @@ import { InputGroup } from "@/components/base/input/input-group";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
 
@@ -24,6 +25,7 @@ export const LandingPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden scroll-smooth pt-[4.5rem] text-primary md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
 
             <main>
                 <Hero startWithEmail={startWithEmail} />
@@ -286,18 +288,24 @@ const FinalCta = () => {
 
     return (
         <section className="px-4 py-8 md:px-8 md:py-12">
-            <div className="careplus-ink mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14">
+            <div className="mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] bg-[#040f1c] px-8 py-10 [background-image:var(--careplus-ink)] md:flex-row md:items-center md:justify-between md:px-12 md:py-14 dark:bg-white dark:shadow-lg dark:[background-image:none]">
                 <div className="max-w-xl">
-                    <h2 className="text-display-sm font-semibold text-white">{t.ctaTitle}</h2>
-                    <p className="mt-3 text-md text-white/72">{t.ctaBody}</p>
+                    <h2 className="text-display-sm font-semibold text-white dark:text-[#0b1f38]">{t.ctaTitle}</h2>
+                    <p className="mt-3 text-md text-white/72 dark:text-[#456f75]">{t.ctaBody}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <Button color="secondary" size="lg" href="/register">
+                    <a
+                        href="/register"
+                        className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-white px-4 py-2.5 text-md font-semibold text-[#0b1f38] shadow-xs outline-focus-ring transition duration-150 hover:bg-[#456f75] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-[#0b1f38] dark:text-white dark:hover:bg-[#456f75]"
+                    >
                         {t.getStarted}
-                    </Button>
-                    <Button color="tertiary" size="lg" href="/login" className="text-white hover:bg-white/10 hover:text-white">
+                    </a>
+                    <a
+                        href="/login"
+                        className="inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2.5 text-md font-semibold text-white ring-1 ring-white/80 outline-focus-ring transition duration-150 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-[#0b1f38] dark:ring-[#0b1f38]/30 dark:hover:bg-[#0b1f38]/5"
+                    >
                         {t.logIn}
-                    </Button>
+                    </a>
                 </div>
             </div>
         </section>

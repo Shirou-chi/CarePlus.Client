@@ -1,20 +1,29 @@
 import { Bell01 } from "@untitledui/icons";
-import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
+import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Link as AriaLink, Popover as AriaPopover } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
 import { NotificationItem, noticeMessage, noticeMeta } from "@/components/marketing/notifications/notification-item";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { useNotices } from "@/providers/notification-provider";
 import { cx } from "@/utils/cx";
+import { clinicAnnouncementNav } from "@/utils/notifications";
 
 const iconGhost =
-    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-white";
+    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white";
 
 export const HeaderNotifications = () => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
     const { unread, unreadCount, markRead, markAllRead } = useNotices();
     const preview = unread.slice(0, 6);
+
+    if (!profile) {
+        return (
+            <AriaLink aria-label={t.announcements} className={iconGhost} href={clinicAnnouncementNav.href}>
+                <Bell01 className="size-5" />
+            </AriaLink>
+        );
+    }
 
     return (
         <AriaDialogTrigger>
@@ -33,14 +42,10 @@ export const HeaderNotifications = () => {
                 <AriaDialog className="outline-hidden" aria-label={t.notifications}>
                     <div className="rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary_alt">
                         <p className="text-sm font-semibold text-primary">{t.notifications}</p>
-                        {!profile ? (
-                            <>
-                                <p className="mt-2 text-sm text-tertiary">{t.notifGuestHint}</p>
-                                <Button color="primary" size="sm" className="mt-4 w-full careplus-ink" href="/login">
-                                    {t.logIn}
-                                </Button>
-                            </>
-                        ) : preview.length === 0 ? (
+                        <Button color="link-color" size="sm" className="mt-1" href={clinicAnnouncementNav.href}>
+                            {t[clinicAnnouncementNav.copyKey]}
+                        </Button>
+                        {preview.length === 0 ? (
                             <>
                                 <p className="mt-2 text-sm text-tertiary">{t.notifEmptyUnreadHint}</p>
                                 <Button color="secondary" size="sm" className="mt-4 w-full" href="/notifications">
@@ -51,7 +56,7 @@ export const HeaderNotifications = () => {
                             <>
                                 <ul className="mt-2 max-h-80 overflow-y-auto">
                                     {preview.map((item) => (
-                                        <li key={item.id}>
+                                        <li key={item.id} className="border-b border-secondary last:border-b-0">
                                             <NotificationItem
                                                 actor={item.actor}
                                                 initials={item.initials}
@@ -61,6 +66,11 @@ export const HeaderNotifications = () => {
                                                 href={item.href}
                                                 onOpen={() => markRead(item.id)}
                                             />
+                                            <div className="flex justify-end px-2 pb-2">
+                                                <Button color="secondary" size="sm" onPress={() => markRead(item.id)}>
+                                                    {t.notifMarkRead}
+                                                </Button>
+                                            </div>
                                         </li>
                                     ))}
                                 </ul>

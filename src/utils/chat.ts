@@ -73,7 +73,7 @@ export const dummyReply = (text: string) => {
         return "You can book from Appointments. Pick who the visit is for, a doctor or any doctor, then a 30-minute slot. Clinic hours run through the night.";
     }
     if (/(record|phr|blood|pressure|allerg)/.test(q)) {
-        return "Health records live on this login under Records. Readings, tags, and past treatments stay on the device in this demo.";
+        return "Health records are under Records. Readings, tags, and past treatments stay on this device.";
     }
     if (/(medicine|prescription|pickup|deliver|cart|pharmacy)/.test(q)) {
         return "Prescribed medicine is on the medicine page. Add units to the cart, then choose pickup or delivery at checkout.";
@@ -81,7 +81,7 @@ export const dummyReply = (text: string) => {
     if (/(hour|open|24|night)/.test(q)) {
         return "CarePlus Clinic is a 24-hour clinic. Morning slots run 6:00–17:30, night slots 18:00–05:30, Kuala Lumpur time.";
     }
-    return "I'm a clinic helper for this demo. Ask about booking, records, or prescribed medicine, or open those pages from the header.";
+    return "Ask about booking, records, or prescribed medicine, or open those pages from the header.";
 };
 
 export const sendInThread = (thread: ChatThread, text: string, now = Date.now()): ChatThread => {

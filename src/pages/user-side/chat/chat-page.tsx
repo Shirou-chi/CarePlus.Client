@@ -6,6 +6,7 @@ import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { ChatComposer } from "@/components/marketing/chat/chat-composer";
 import { ChatHistoryPanel } from "@/components/marketing/chat/chat-history-panel";
 import { ChatThreadView } from "@/components/marketing/chat/chat-thread";
@@ -82,6 +83,7 @@ export const ChatPage = () => {
         <div className="careplus-landing flex min-h-dvh flex-col overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
             <main className="mx-auto flex h-[calc(100dvh-4.5rem)] w-full max-w-container flex-col overflow-hidden px-4 py-4 md:h-[calc(100dvh-5.5rem)] md:px-8 md:py-6">
+                <PageBreadcrumb contained={false} />
                 <div className="flex shrink-0 items-center gap-2">
                     <Button color="secondary" size="sm" iconLeading={Plus} onPress={startNew}>
                         {t.chatNew}

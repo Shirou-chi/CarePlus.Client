@@ -39,7 +39,7 @@ export const BackToTop = ({ offsetForChat = false, liftAboveStickyBar = false }:
                 type="button"
                 aria-label={t.backToTop}
                 tabIndex={visible ? undefined : -1}
-                className="careplus-ink flex size-12 items-center justify-center rounded-full text-white shadow-lg outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="flex size-12 cursor-pointer items-center justify-center rounded-full bg-white text-[#0b1f38] shadow-lg ring-1 ring-[#0b1f38]/20 outline-focus-ring transition duration-150 hover:bg-[#456f75] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2"
                 onClick={() =>
                     window.scrollTo({
                         top: 0,

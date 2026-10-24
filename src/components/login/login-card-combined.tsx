@@ -35,8 +35,9 @@ export const LoginCardCombined = ({ error, success, isLoading, defaultEmail, def
                 }}
                 className="flex flex-col gap-6"
             >
+                <FormStatus error={error} success={success} />
                 <div className="flex flex-col gap-5">
-                    <Input isRequired label={t.email} type="email" name="email" placeholder={t.emailPlaceholder} size="lg" defaultValue={defaultEmail} />
+                    <Input isRequired label={t.loginId} type="text" name="email" placeholder={t.loginIdPlaceholder} autoComplete="username" size="lg" defaultValue={defaultEmail} />
                     <Input
                         isRequired
                         label={t.password}
@@ -50,8 +51,6 @@ export const LoginCardCombined = ({ error, success, isLoading, defaultEmail, def
                 </div>
 
                 {hint ? <p className="text-sm text-tertiary">{hint}</p> : null}
-
-                <FormStatus error={error} success={success} />
 
                 <div className="flex items-center">
                     <Checkbox label={t.remember30} isSelected={rememberMe} onChange={setRememberMe} />

@@ -1,48 +1,56 @@
-import {
-    formatNoticeAge,
-    deleteNotices,
-    markAllNoticesRead,
-    markNoticeRead,
-    readNotices,
-    sanitizeNotices,
-    seedNotices,
-    unreadNotices,
-    writeNotices,
-} from "./notifications.ts";
+import { ANNOUNCEMENTS_SEEDED_ID, mergeAnnouncementNotices, sortNotices, type ClinicNotice } from "./notifications.ts";
 
-const storage = new Map<string, string>();
-Object.defineProperty(globalThis, "localStorage", {
-    value: {
-        getItem: (key: string) => storage.get(key) ?? null,
-        setItem: (key: string, value: string) => storage.set(key, value),
-        removeItem: (key: string) => storage.delete(key),
-    },
-    configurable: true,
-});
+const posts = [{ id: "flu", postedOn: "2026-10-18", title: "Flu shot" }];
+const marker = {
+    id: ANNOUNCEMENTS_SEEDED_ID,
+    copyKey: "notifAnnouncementNav",
+    actor: "CarePlus Clinic",
+    initials: "CC",
+    kind: "announcement",
+    href: "/announcements",
+    createdAt: "2026-10-18T00:00:00.000Z",
+    unread: false,
+} satisfies ClinicNotice;
 
-const now = Date.parse("2026-09-03T13:00:00+08:00");
-const seed = seedNotices(now);
-const key = "careplus-notices:patient-1";
-const first = readNotices(key, now);
-writeNotices(key, markNoticeRead(first, "n1"));
-const afterRead = readNotices(key, now);
-
-const checks = [
-    seed.length === 7,
-    unreadNotices(seed).length === 5,
-    seed[0].copyKey === "notifVisitConfirmed",
-    sanitizeNotices([{ id: "bad" }, seed[0]]).length === 1,
-    markNoticeRead(seed, "n1").find((item) => item.id === "n1")?.unread === false,
-    unreadNotices(markAllNoticesRead(seed)).length === 0,
-    afterRead.find((item) => item.id === "n1")?.unread === false,
-    deleteNotices(seed, ["n1", "n2"]).length === 5,
-    deleteNotices(seed, seed.map((item) => item.id)).length === 0,
-    formatNoticeAge(seed[0].createdAt, now, "en") === "12 min ago",
-    formatNoticeAge(seed[6].createdAt, now, "zh") === "2 天前",
-];
-
-if (checks.some((ok) => !ok)) {
-    throw new Error("dummy notices check failed");
+const first = mergeAnnouncementNotices([], posts);
+const flu = first.find((item) => item.id === "announcement:flu");
+if (!flu || flu.text !== "Flu shot" || flu.unread !== true) {
+    throw new Error("announcement missing");
 }
 
-console.log("dummy notices ok");
+const seeded = mergeAnnouncementNotices([marker], posts);
+if (seeded.some((item) => item.id === "announcement:flu")) {
+    throw new Error("deleted announcement came back");
+}
+
+const kept = mergeAnnouncementNotices([{ ...flu, unread: false }, marker], [{ ...posts[0], title: "流感疫苗" }]);
+const updated = kept.find((item) => item.id === "announcement:flu");
+if (!updated || updated.text !== "流感疫苗" || updated.unread !== false) {
+    throw new Error("saved announcement did not keep read state");
+}
+
+const sample = [
+    { ...marker, id: "newer", createdAt: "2026-10-20T02:00:00.000Z" },
+    { ...marker, id: "older", createdAt: "2026-10-18T00:00:00.000Z" },
+];
+if (sortNotices(sample)[0]?.id !== "newer" || sortNotices(sample, "oldest")[0]?.id !== "older") {
+    throw new Error("notice order is wrong");
+}
+const onDay = sortNotices(sample, "date", "2026-10-18", "2026-10-18");
+if (onDay.length !== 1 || onDay[0]?.id !== "older") {
+    throw new Error("date filter is wrong");
+}
+const open = sortNotices(sample, "date");
+if (open.length !== 2 || open[0]?.id !== "newer") {
+    throw new Error("open date range is wrong");
+}
+const fromStart = sortNotices(sample, "date", "2026-10-19");
+if (fromStart.length !== 1 || fromStart[0]?.id !== "newer") {
+    throw new Error("start date is wrong");
+}
+const untilEnd = sortNotices(sample, "date", "", "2026-10-18");
+if (untilEnd.length !== 1 || untilEnd[0]?.id !== "older") {
+    throw new Error("end date is wrong");
+}
+
+console.log("notifications ok");

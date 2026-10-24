@@ -1,7 +1,7 @@
-import type { Medicine, MedicineId, ShotView } from "@/utils/prescribed-medicine";
+import type { Medicine, MedicineImageKey, ShotView } from "@/utils/prescribed-medicine";
 import { cx } from "@/utils/cx";
 
-export const medicineShots: Record<MedicineId, Record<ShotView, string>> = {
+export const medicineShots: Record<MedicineImageKey, Record<ShotView, string>> = {
     amox: {
         bottle: "/medicine/amox-bottle.jpg",
         box: "/medicine/amox-box.jpg",
@@ -24,7 +24,7 @@ export const medicineShots: Record<MedicineId, Record<ShotView, string>> = {
 
 export const MedicineShot = ({ medicine, view, className }: { medicine: Medicine; view: ShotView; className?: string }) => (
     <img
-        src={medicineShots[medicine.id][view]}
+        src={medicineShots[medicine.imageKey][view]}
         alt={medicine.name}
         className={cx("block size-full object-cover object-center", className)}
     />

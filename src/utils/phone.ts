@@ -12,7 +12,12 @@ export function parsePhoneLocal(phone: string | null | undefined) {
 }
 
 export function isValidLocalPhone(localDigits: string) {
-    return /^1\d{8,9}$/.test(localDigits);
+    // National digits after +60, without the leading 0.
+    // 012, 013, 016, 017, 018, 019 are 9 digits. 011 is 10. 010 and 014 are 9 or 10.
+    if (/^11\d{8}$/.test(localDigits)) return true;
+    if (/^1[04]\d{7,8}$/.test(localDigits)) return true;
+    if (/^1[236-9]\d{7}$/.test(localDigits)) return true;
+    return false;
 }
 
 export function composePhone(nationalNumber: string) {

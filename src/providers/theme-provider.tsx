@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { TOKEN_KEY } from "@/services/api";
+import { profileApi } from "@/services/profileApi";
 
 type Theme = "light" | "dark" | "system";
 
 interface ThemeContextType {
     theme: Theme;
     setTheme: (theme: Theme) => void;
+    applyTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -39,11 +42,11 @@ interface ThemeProviderProps {
     storageKey?: string;
 }
 
-export const ThemeProvider = ({ children, defaultTheme = "system", storageKey = "ui-theme", darkModeClass = "dark-mode" }: ThemeProviderProps) => {
-    const [theme, setTheme] = useState<Theme>(() => {
+export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "ui-theme", darkModeClass = "dark-mode" }: ThemeProviderProps) => {
+    const [theme, setThemeState] = useState<Theme>(() => {
         if (typeof window !== "undefined") {
-            const savedTheme = localStorage.getItem(storageKey) as Theme | null;
-            return savedTheme || defaultTheme;
+            const savedTheme = localStorage.getItem(storageKey);
+            return savedTheme === "light" || savedTheme === "dark" ? savedTheme : defaultTheme;
         }
         return defaultTheme;
     });
@@ -80,5 +83,16 @@ export const ThemeProvider = ({ children, defaultTheme = "system", storageKey = 
         return () => mediaQuery.removeEventListener("change", handleChange);
     }, [theme]);
 
-    return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+    const applyTheme = useCallback((next: Theme) => {
+        setThemeState(next);
+    }, []);
+
+    const setTheme = useCallback((next: Theme) => {
+        setThemeState(next);
+        if ((next === "light" || next === "dark") && localStorage.getItem(TOKEN_KEY)) {
+            void profileApi.saveAppSetting({ appearance: next }).catch(() => undefined);
+        }
+    }, []);
+
+    return <ThemeContext.Provider value={{ theme, setTheme, applyTheme }}>{children}</ThemeContext.Provider>;
 };
