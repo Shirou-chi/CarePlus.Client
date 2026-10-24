@@ -215,6 +215,10 @@ export const removeFamilyMember = (profile: Profile, memberId: string) => {
 export const leaveFamily = (profile: Profile, transferToId?: string) => {
     const found = findMembership(profile.email);
     if (!found || found.member.status !== "active") return { ok: false as const, reason: "missing" as const };
+    if (found.family.members.every((member) => member.id === found.member.id)) {
+        writeFamilies(readFamilies().filter((item) => item.id !== found.family.id));
+        return { ok: true as const, family: null };
+    }
     const otherParent = found.family.members.some((member) => member.id !== found.member.id && member.status === "active" && member.permission === "parent");
     if (found.member.permission !== "parent" || otherParent) {
         const members = found.family.members.filter((member) => member.id !== found.member.id);

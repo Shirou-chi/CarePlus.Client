@@ -20,8 +20,8 @@ export const AuthCardFrame = ({ mode, title, body, children }: AuthCardFrameProp
         <div className="careplus-landing careplus-auth min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
             <PageBreadcrumb />
-            <section className="px-4 py-12 md:px-8 md:py-16">
-                <div className="flex w-full flex-col gap-6 bg-primary sm:mx-auto sm:max-w-110 sm:rounded-2xl sm:px-10 sm:py-8 sm:shadow-sm sm:ring-1 sm:ring-secondary">
+            <section className="px-4 py-6 md:px-8 md:py-16">
+                <div className="mx-auto flex w-full max-w-110 flex-col gap-8 rounded-2xl bg-primary px-5 py-8 shadow-sm ring-1 ring-secondary sm:px-10 sm:py-10">
                 <div className="flex flex-col items-center gap-6 text-center">
                     <CarePlusLogo />
                     <div className="flex flex-col gap-2 md:gap-3">
@@ -35,7 +35,7 @@ export const AuthCardFrame = ({ mode, title, body, children }: AuthCardFrameProp
                         href="/register"
                         aria-current={mode === "register" ? "page" : undefined}
                         className={cx(
-                            "cursor-pointer rounded-lg py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
+                            "flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
                             mode === "register"
                                 ? "bg-[#456f75] text-white ring-[#456f75]"
                                 : "bg-primary text-primary ring-secondary hover:bg-[#456f75] hover:text-white hover:ring-[#456f75] dark:bg-white/10 dark:text-white dark:ring-white/45",
@@ -47,7 +47,7 @@ export const AuthCardFrame = ({ mode, title, body, children }: AuthCardFrameProp
                         href="/login"
                         aria-current={mode === "login" ? "page" : undefined}
                         className={cx(
-                            "cursor-pointer rounded-lg py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
+                            "flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
                             mode === "login"
                                 ? "bg-[#456f75] text-white ring-[#456f75]"
                                 : "bg-primary text-primary ring-secondary hover:bg-[#456f75] hover:text-white hover:ring-[#456f75] dark:bg-white/10 dark:text-white dark:ring-white/45",

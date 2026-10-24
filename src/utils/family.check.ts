@@ -3,6 +3,7 @@ import {
     acceptInvite,
     bookingFamily,
     canUseFamilyAccount,
+    createFamily,
     decideUseRequest,
     deleteFamily,
     familyLogin,
@@ -69,6 +70,7 @@ const checks = [
     transferred.ok && ainaOwns?.permission === "parent",
     transferred.ok && !transferred.family?.members.some((member) => member.email === dummyProfile.email),
     removed.ok && readFamily(dummyProfile) === null,
+    createFamily(dummyProfile, "Solo").ok && leaveFamily(dummyProfile).ok && readFamily(dummyProfile) === null,
     !removeFamilyMember(dummyProfile, "patient-1").ok,
     setPermission(dummyProfile, "missing", "child").ok === false,
 ];

@@ -33,10 +33,10 @@ export const LoginCardCombined = ({ error, success, isLoading, defaultEmail, def
                         rememberMe,
                     });
                 }}
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-7 [&_input]:min-h-12"
             >
                 <FormStatus error={error} success={success} />
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-6">
                     <Input isRequired label={t.loginId} type="text" name="email" placeholder={t.loginIdPlaceholder} autoComplete="username" size="lg" defaultValue={defaultEmail} />
                     <Input
                         isRequired
@@ -52,19 +52,19 @@ export const LoginCardCombined = ({ error, success, isLoading, defaultEmail, def
 
                 {hint ? <p className="text-sm text-tertiary">{hint}</p> : null}
 
-                <div className="flex items-center">
-                    <Checkbox label={t.remember30} isSelected={rememberMe} onChange={setRememberMe} />
-                    <Button color="link-color" size="md" href="/forgot-password" className="ml-auto">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <Checkbox size="md" label={t.remember30} isSelected={rememberMe} onChange={setRememberMe} className="py-1" />
+                    <Button color="link-color" size="md" href="/forgot-password" className="min-h-11 self-start sm:ml-auto sm:self-auto">
                         {t.forgotPassword}
                     </Button>
                 </div>
 
-                <Button type="submit" size="lg" isLoading={isLoading} showTextWhileLoading>
+                <Button type="submit" size="lg" isLoading={isLoading} showTextWhileLoading className="min-h-12">
                     {t.signIn}
                 </Button>
             </Form>
 
-            <div className="flex justify-center gap-1 text-center">
+            <div className="flex justify-center gap-1 py-1 text-center">
                 <span className="text-sm text-tertiary">{t.dontHaveAccount}</span>
                 <Button color="link-color" size="md" href="/register">
                     {t.signUp}

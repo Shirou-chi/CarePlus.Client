@@ -38,7 +38,7 @@ import {
     type FamilyRelation,
 } from "@/utils/family";
 
-const relations: FamilyRelation[] = ["parent", "child", "spouse", "other"];
+const relations: FamilyRelation[] = ["parent", "child"];
 const grantPermissions: FamilyPermission[] = ["parent", "child"];
 
 const relationLabel = (t: Copy, relation: FamilyRelation | "you" | string) => {
@@ -73,7 +73,7 @@ const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 const dialogClass = "flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-5 ring-1 ring-secondary outline-hidden sm:p-6";
 
 export const FamilyPage = () => {
-    const { profile, isReady, logout, switchProfile } = useAuth();
+    const { profile, isReady, switchProfile } = useAuth();
     const { t } = useI18n();
     const navigate = useNavigate();
     const [tick, setTick] = useState(0);
@@ -87,10 +87,6 @@ export const FamilyPage = () => {
     const invites = useMemo(() => (profile ? incomingInvites(profile.email) : []), [profile, tick]);
     const accessRequests = useMemo(() => (profile ? pendingUseRequests(profile) : []), [profile, tick]);
     const refresh = () => setTick((value) => value + 1);
-    const signOut = async () => {
-        await logout();
-        navigate("/login");
-    };
 
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
@@ -107,14 +103,9 @@ export const FamilyPage = () => {
             <LandingHeader />
             <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-6 md:px-8 md:py-10">
-                <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                        <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.familyProfiles}</h1>
-                        <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.familyBody}</p>
-                    </div>
-                    <Button color="secondary" size="sm" onClick={signOut}>
-                        {t.familyLogOut}
-                    </Button>
+                <div>
+                    <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.familyProfiles}</h1>
+                    <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.familyBody}</p>
                 </div>
 
                 {invites.length > 0 && !family ? (
@@ -174,15 +165,6 @@ export const FamilyPage = () => {
                                         {t.familyChange}
                                     </Button>
                                 ) : null}
-                            </div>
-                            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
-                                <div>
-                                    <p className="text-sm text-tertiary">{t.familyContact}</p>
-                                    <p className="mt-1 text-md font-semibold text-primary">{profile.phone || t.familyContactMissing}</p>
-                                </div>
-                                <Button color="link-color" size="sm" href="/account">
-                                    {t.familyContactEdit}
-                                </Button>
                             </div>
                             <div className="flex flex-wrap gap-2 px-4 py-4 sm:px-5">
                                 <Button color="secondary" size="sm" onClick={() => setLeaving(true)}>
@@ -343,7 +325,7 @@ export const FamilyPage = () => {
             {leaving && family ? (
                 <LeaveDialog
                     people={active.filter((member) => member.email.toLowerCase() !== profile.email.toLowerCase())}
-                    mustTransfer={onlyParent}
+                    mustTransfer={onlyParent && active.some((member) => member.email.toLowerCase() !== profile.email.toLowerCase())}
                     onClose={() => setLeaving(false)}
                     onLeave={(transferToId) => {
                         const result = leaveFamily(profile, transferToId);
@@ -439,10 +421,9 @@ const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: 
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [relation, setRelation] = useState<FamilyRelation>("child");
-    const [permission, setGrant] = useState<FamilyPermission>("child");
-    const [error, setError] = useState<string | null>(null);
+    const [fieldError, setFieldError] = useState<{ field: "name" | "email"; message: string } | null>(null);
     const relationOptions = relations.map((id) => ({ id, label: relationLabel(t, id) }));
-    const permissionOptions = grantPermissions.map((id) => ({ id, label: permissionLabel(t, id) }));
+    const permission: FamilyPermission = relation === "parent" ? "parent" : "child";
 
     return (
         <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
@@ -454,25 +435,41 @@ const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: 
                         onSubmit={(event) => {
                             event.preventDefault();
                             if (!name.trim()) {
-                                setError(t.familyNameRequired);
+                                setFieldError({ field: "name", message: t.familyNameRequired });
                                 return;
                             }
                             if (!emailOk(email.trim())) {
-                                setError(t.familyEmailInvalid);
+                                setFieldError({ field: "email", message: t.familyEmailInvalid });
                                 return;
                             }
-                            setError(onSave({ name, email, relation, permission }));
+                            const message = onSave({ name, email, relation, permission });
+                            if (message) setFieldError({ field: "email", message });
                         }}
                     >
-                        <Input label={t.familyPersonName} value={name} onChange={setName} />
-                        <Input label={t.email} type="email" value={email} onChange={setEmail} />
+                        <Input
+                            label={t.familyPersonName}
+                            value={name}
+                            onChange={(value) => {
+                                setName(value);
+                                if (fieldError?.field === "name") setFieldError(null);
+                            }}
+                            isInvalid={fieldError?.field === "name"}
+                            hint={fieldError?.field === "name" ? fieldError.message : undefined}
+                        />
+                        <Input
+                            label={t.email}
+                            type="email"
+                            value={email}
+                            onChange={(value) => {
+                                setEmail(value);
+                                if (fieldError?.field === "email") setFieldError(null);
+                            }}
+                            isInvalid={fieldError?.field === "email"}
+                            hint={fieldError?.field === "email" ? fieldError.message : undefined}
+                        />
                         <Select label={t.familyRelation} selectedKey={relation} onSelectionChange={(key) => key && setRelation(String(key) as FamilyRelation)} items={relationOptions}>
                             {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
                         </Select>
-                        <Select label={t.familyPermission} selectedKey={permission} onSelectionChange={(key) => key && setGrant(String(key) as FamilyPermission)} items={permissionOptions}>
-                            {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
-                        </Select>
-                        <FormStatus error={error} />
                         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                             <Button type="button" color="tertiary" size="md" onClick={onClose}>
                                 {t.notifCancel}
@@ -673,39 +670,18 @@ const LeaveDialog = ({
 }) => {
     const { t } = useI18n();
     const [transferTo, setTransferTo] = useState(people[0]?.id ?? "");
-    const [confirming, setConfirming] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const options = people.map((person) => ({ id: person.id, label: person.name }));
     const targetName = people.find((person) => person.id === transferTo)?.name ?? "";
-
-    if (confirming) {
-        return (
-            <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
-                <Modal className="w-full max-w-md">
-                    <Dialog className={dialogClass}>
-                        <h2 className="text-lg font-semibold text-primary">{mustTransfer ? t.familyTransferConfirm : t.familyLeave}</h2>
-                        <p className="mt-2 text-sm text-tertiary">{mustTransfer ? t.familyTransferLeaveAsk.replace("{name}", targetName) : t.familyLeaveAsk}</p>
-                        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <Button type="button" color="tertiary" size="md" onClick={() => setConfirming(false)}>
-                                {t.notifCancel}
-                            </Button>
-                            <Button color="primary-destructive" size="md" onClick={() => setError(onLeave(mustTransfer ? transferTo : undefined))}>
-                                {mustTransfer ? t.familyTransferConfirm : t.familyLeave}
-                            </Button>
-                        </div>
-                        <FormStatus error={error} />
-                    </Dialog>
-                </Modal>
-            </ModalOverlay>
-        );
-    }
 
     return (
         <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
             <Modal className="w-full max-w-md">
                 <Dialog className={dialogClass}>
                     <h2 className="text-lg font-semibold text-primary">{t.familyLeave}</h2>
-                    <p className="mt-2 text-sm text-tertiary">{mustTransfer ? t.familyTransferBody : t.familyLeaveBody}</p>
+                    <p className="mt-2 text-sm text-tertiary">
+                        {mustTransfer ? t.familyTransferLeaveAsk.replace("{name}", targetName) : t.familyLeaveAsk}
+                    </p>
                     {mustTransfer && people.length === 0 ? <p className="mt-3 text-sm text-error-primary">{t.familyNeedTransfer}</p> : null}
                     {mustTransfer && people.length > 0 ? (
                         <div className="mt-4">
@@ -719,7 +695,7 @@ const LeaveDialog = ({
                         <Button type="button" color="tertiary" size="md" onClick={onClose}>
                             {t.notifCancel}
                         </Button>
-                        <Button color="primary-destructive" size="md" isDisabled={mustTransfer && people.length === 0} onClick={() => setConfirming(true)}>
+                        <Button color="primary-destructive" size="md" isDisabled={mustTransfer && people.length === 0} onClick={() => setError(onLeave(mustTransfer ? transferTo : undefined))}>
                             {t.familyLeave}
                         </Button>
                     </div>

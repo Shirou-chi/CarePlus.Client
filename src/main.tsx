@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useLayoutEffect, useState } from "react";
+import { StrictMode, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import { useAuth } from "@/providers/auth-provider";
@@ -43,8 +43,7 @@ import { AnnouncementsPage } from "@/pages/user-side/announcements/announcements
 import { NotificationsPage } from "@/pages/user-side/notifications/notifications-page";
 import { RegisterPage } from "@/pages/user-side/auth/register-page";
 import { AuthProvider } from "@/providers/auth-provider";
-import { getClinicRecords } from "@/utils/clinic-records";
-import { hasOverdueInvoice } from "@/utils/invoices";
+import { OutstandingInvoicesProvider, useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { CartProvider } from "@/providers/cart-provider";
 import { MedicineCatalogProvider } from "@/providers/medicine-catalog";
 import { ChatProvider } from "@/providers/chat-provider";
@@ -107,16 +106,9 @@ const featurePath = (pathname: string) =>
 const AppRoutes = () => {
     const location = useLocation();
     const { profile, isReady } = useAuth();
-    const [paidTick, setPaidTick] = useState(0);
+    const { overdue, ready: invoicesReady } = useOutstandingInvoices();
     const bookStickyBar = location.pathname === "/book";
     const isStaffRoute = location.pathname.startsWith("/staff");
-    const overdue = isReady && profile ? hasOverdueInvoice(getClinicRecords("en")) : false;
-
-    useEffect(() => {
-        const refresh = () => setPaidTick((tick) => tick + 1);
-        window.addEventListener("careplus-invoices", refresh);
-        return () => window.removeEventListener("careplus-invoices", refresh);
-    }, []);
 
     useLayoutEffect(() => {
         const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
@@ -131,11 +123,11 @@ const AppRoutes = () => {
 
     if (isReady && profile && location.pathname === "/") return <Navigate to="/home" replace />;
     if (isReady && !profile && location.pathname === "/home") return <Navigate to="/" replace />;
-    if (overdue && featurePath(location.pathname)) return <Navigate to="/invoices" replace />;
+    if (invoicesReady && overdue && featurePath(location.pathname)) return <Navigate to="/invoices" replace />;
 
     return (
         <>
-            <div key={`${location.pathname}-${paidTick}`} className="careplus-page">
+            <div key={location.pathname} className="careplus-page">
                 <Routes location={location}>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/home" element={<HomePage />} />
@@ -196,6 +188,7 @@ createRoot(document.getElementById("root")!).render(
                 <BrowserRouter>
                     <RouteProvider>
                         <AuthProvider>
+                            <OutstandingInvoicesProvider>
                             <MedicineCatalogProvider>
                             <CartProvider>
                                 <NotificationProvider>
@@ -205,6 +198,7 @@ createRoot(document.getElementById("root")!).render(
                                 </NotificationProvider>
                             </CartProvider>
                             </MedicineCatalogProvider>
+                            </OutstandingInvoicesProvider>
                         </AuthProvider>
                     </RouteProvider>
                 </BrowserRouter>
