@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useTheme } from '../../../../components/theme/useTheme'
-import { Icon, type IconName } from '../../navbar/StaffIcon'
-import { StaffNavbar } from '../../navbar/StaffNavbar'
-import { StaffSidebar, type StaffRole } from '../../navbar/StaffSidebar'
+import { useNavigate } from 'react-router'
+import { useTheme } from '../../../components/theme/useTheme'
+import { Icon, type IconName } from '../navbar/StaffIcon'
+import { StaffNavbar } from '../navbar/StaffNavbar'
+import { StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
 import '../StaffHomePage.css'
 import './NotificationsPage.css'
 
@@ -60,6 +60,7 @@ export function NotificationsPage() {
       Overview: '/staff',
       Appointments: '/staff/appointments',
       Patients: '/staff/patients',
+      Staff: '/staff/staff',
       'Schedules & availability': '/staff/schedules',
       Leave: '/staff/leave',
       'Audit & logs': '/staff/audit-logs',

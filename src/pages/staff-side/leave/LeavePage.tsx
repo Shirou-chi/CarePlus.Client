@@ -1,9 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useTheme } from '../../../../components/theme/useTheme'
-import { Icon } from '../../navbar/StaffIcon'
-import { StaffNavbar } from '../../navbar/StaffNavbar'
-import { StaffSidebar, type StaffRole } from '../../navbar/StaffSidebar'
+import { useNavigate } from 'react-router'
+import { useTheme } from '../../../components/theme/useTheme'
+import { Icon } from '../navbar/StaffIcon'
+import { StaffNavbar } from '../navbar/StaffNavbar'
+import { StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
 import '../StaffHomePage.css'
 import './LeavePage.css'
 
@@ -64,6 +64,10 @@ export function LeavePage() {
   }
 
   const handleNavigate = (label: string) => {
+    if (label === 'Staff') {
+      navigate('/staff/staff')
+      return
+    }
     if (label === 'Overview') {
       navigate('/staff')
       return

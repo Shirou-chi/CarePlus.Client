@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../components/auth'
-import { useTheme } from '../../../components/theme/useTheme'
-import { Icon, type IconName } from '../navbar/StaffIcon'
-import { StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
-import { StaffNavbar } from '../navbar/StaffNavbar'
+import { useNavigate } from 'react-router'
+import { useAuth } from '@/providers/auth-provider'
+import { useTheme } from '../../components/theme/useTheme'
+import { Icon, type IconName } from './navbar/StaffIcon'
+import { StaffSidebar, type StaffRole } from './navbar/StaffSidebar'
+import { StaffNavbar } from './navbar/StaffNavbar'
 import './StaffHomePage.css'
 
 type OverviewPeriod = 'This week' | 'Last week'
@@ -256,6 +256,10 @@ export function StaffHomePage() {
   }
 
   const handleNavigate = (label: string) => {
+    if (label === 'Staff') {
+      navigate('/staff/staff')
+      return
+    }
     if (label === 'Appointments') {
       navigate('/staff/appointments')
       return

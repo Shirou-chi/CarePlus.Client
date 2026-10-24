@@ -1,16 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../../../../components/auth'
-import { useTheme } from '../../../../components/theme/useTheme'
-import { authApi } from '../../../../services/authApi'
-import { staffRoutes } from '../../routes'
-import { Icon } from '../../navbar/StaffIcon'
+import { useNavigate } from 'react-router'
+import { useAuth } from '@/providers/auth-provider'
+import { useTheme } from '../../../components/theme/useTheme'
+import { Icon } from '../navbar/StaffIcon'
 import './StaffLoginPage.css'
 
 export function StaffLoginPage() {
   const navigate = useNavigate()
-  const { signIn } = useAuth()
+  const { staffLogin } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -23,20 +21,8 @@ export function StaffLoginPage() {
     setIsSubmitting(true)
 
     try {
-      const { token } = await authApi.staffLogin(identifier, password)
-
-      authApi.saveToken(token)
-      const currentUser = await authApi.getCurrentUser()
-
-      signIn({
-        name: currentUser.username,
-        userId: String(currentUser.userId),
-        role: currentUser.role,
-        accountType: currentUser.accountType,
-        patientId: currentUser.patientId,
-        staffId: currentUser.staffId,
-      })
-      navigate(staffRoutes.home, { replace: true })
+      await staffLogin(identifier, password)
+      navigate('/staff', { replace: true })
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Login failed.')
     } finally {
@@ -48,7 +34,7 @@ export function StaffLoginPage() {
     <main className="staff-login-page">
       <div className="staff-login-page__topbar">
         <div className="staff-login-page__brand">
-          <span className="staff-login-page__brand-mark"><img alt="" src="/Care+.png" /></span>
+          <span className="staff-login-page__brand-mark"><img alt="CarePlus Clinic logo" src="/clinic-logo.png" /></span>
           <span className="staff-login-page__brand-copy"><strong>CarePlus</strong><small>CLINIC STAFF</small></span>
         </div>
         <button

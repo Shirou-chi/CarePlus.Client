@@ -1,5 +1,7 @@
 import type { Theme } from '../../../components/theme/useTheme'
-import { useAuth } from '../../../components/auth'
+import { useAuth } from '@/providers/auth-provider'
+import { useNavigate } from 'react-router'
+import { StaffAccountMenu } from '../components/StaffAccountMenu'
 import type { StaffRole } from './StaffSidebar'
 import { Icon } from './StaffIcon'
 
@@ -17,6 +19,7 @@ type StaffNavbarProps = {
 }
 
 export function StaffNavbar({ activeNav, announce, notificationsOpen, onOpenSidebar, onSearchChange, onToggleNotifications, searchTerm, selectedRole, theme, toggleTheme }: StaffNavbarProps) {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
@@ -51,7 +54,7 @@ export function StaffNavbar({ activeNav, announce, notificationsOpen, onOpenSide
           <span aria-hidden="true" className="staff-theme-toggle__track"><span className="staff-theme-toggle__thumb"><Icon name={theme === 'dark' ? 'moon' : 'sun'} size={13} /></span></span>
           <span className="sr-only">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
         </button>
-        <button aria-label="Open profile" className="staff-topbar__avatar" type="button" onClick={() => announce('Profile controls are ready.')}><span className="staff-avatar">{initials}</span><Icon name="chevronDown" size={16} /></button>
+        <StaffAccountMenu className="staff-account-menu-wrap--topbar" onSettings={() => navigate('/staff/settings')} triggerClassName="staff-topbar__avatar" triggerLabel="Open account menu"><span className="staff-avatar">{initials}</span><Icon name="chevronDown" size={16} /></StaffAccountMenu>
       </div>
     </header>
   )
