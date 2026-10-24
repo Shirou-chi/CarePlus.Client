@@ -10,10 +10,11 @@ import { LandingFooter } from "@/components/marketing/header-navigation/landing-
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { profileApi } from "@/services/profileApi";
+import { invoiceApi } from "@/services/invoiceApi";
 import { useI18n } from "@/providers/locale-provider";
-import { clinicChargeCategoryLabel, getClinicRecordById, getClinicRecordTotals, getClinicRecords } from "@/utils/clinic-records";
-import { hasOverdueInvoice, listOutstandingInvoices, listPaymentHistory, payInvoice } from "@/utils/invoices";
+import { clinicChargeCategoryLabel, getClinicRecordById, getClinicRecordTotals } from "@/utils/clinic-records";
 import { formatRm } from "@/utils/prescribed-medicine";
 import { applyPaymentCards, readProfileSettings, writeProfileSettings } from "@/utils/profile-settings";
 
@@ -23,6 +24,7 @@ export const InvoicePaymentPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { profile, isReady } = useAuth();
+    const { invoices, ready, reload } = useOutstandingInvoices();
     const { t, locale } = useI18n();
     const [method, setMethod] = useState<PaymentMethod>("fpx");
     const [cardId, setCardId] = useState<string | null>(null);
@@ -49,7 +51,7 @@ export const InvoicePaymentPage = () => {
         };
     }, [profile]);
 
-    const invoice = useMemo(() => (profile ? listOutstandingInvoices(getClinicRecords(locale)).find((item) => item.id === id) : undefined), [profile, locale, id]);
+    const invoice = useMemo(() => invoices.find((item) => item.id === id), [invoices, id]);
     const settings = useMemo(() => (profile ? readProfileSettings(profile.id) : null), [profile, cardTick]);
     const cards = settings?.paymentCards ?? [];
     const selectedCard = cards.find((card) => card.id === (cardId ?? settings?.defaultCardId)) ?? cards[0];
@@ -62,13 +64,9 @@ export const InvoicePaymentPage = () => {
             timeZone: "Asia/Kuala_Lumpur",
         });
 
-    if (!isReady) return <div className="careplus-landing min-h-dvh" />;
+    if (!isReady || !ready) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
-    if (!invoice) {
-        const records = getClinicRecords(locale);
-        const settled = listPaymentHistory(records).some((item) => item.id === id);
-        return <Navigate to={settled && !hasOverdueInvoice(records) ? "/payments" : "/invoices"} replace />;
-    }
+    if (!invoice) return <Navigate to="/invoices" replace />;
 
     const record = getClinicRecordById(locale, invoice.recordId);
     if (!record) return <Navigate to="/invoices" replace />;
@@ -81,9 +79,11 @@ export const InvoicePaymentPage = () => {
             return;
         }
         const paidWith = method === "card" && selectedCard ? `${selectedCard.brand} ···· ${selectedCard.last4}` : t.medCartPayFpx;
-        payInvoice(invoice.id, paidWith, new Date().toISOString(), invoice.lateFee, invoice.daysOverdue);
-        const records = getClinicRecords(locale);
-        navigate(hasOverdueInvoice(records) ? "/invoices" : "/payments");
+        invoiceApi
+            .pay(invoice.id, paidWith)
+            .then(() => reload())
+            .then((rows) => navigate(rows.some((item) => item.status === "overdue") ? "/invoices" : "/payments"))
+            .catch(() => setError(t.invoicesPayFailed));
     };
 
     return (

@@ -11,7 +11,6 @@ import { useI18n } from "@/providers/locale-provider";
 export const HomePage = () => {
     const { t } = useI18n();
     const { profile } = useAuth();
-    const moduleHref = profile ? "/account" : "/login";
     const bookHref = profile ? "/book" : "/login";
     const visitsHref = profile ? "/visits" : "/login";
     const recordsHref = profile ? "/records" : "/login";
@@ -19,6 +18,7 @@ export const HomePage = () => {
     const medicineHref = profile ? "/medicine" : "/login";
     const ordersHref = profile ? "/orders" : "/login";
     const invoicesHref = profile ? "/invoices" : "/login";
+    const familyHref = profile ? "/family" : "/login";
 
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
@@ -35,16 +35,16 @@ export const HomePage = () => {
                 />
                 <ServiceNav
                     items={[
-                        { label: t.homeNavAppointment, href: visitsHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
-                        { label: t.homeNavBooking, href: bookHref, Icon: CalendarPlus01, tone: "bg-[#dbeafe] text-[#1d4ed8]" },
-                        { label: t.homeNavMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
-                        { label: t.ordersTrack, href: ordersHref, Icon: Truck01, tone: "bg-[#e0e7ff] text-[#4338ca]" },
-                        { label: t.homeNavFamily, href: moduleHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },
-                        { label: t.homeNavClinicRecords, href: clinicRecordsHref, Icon: File06, tone: "bg-[#e2e8f0] text-[#334155]" },
-                        { label: t.homeNavPhr, href: recordsHref, Icon: ActivityHeart, tone: "bg-[#fce7f3] text-[#be185d]" },
-                        { label: t.homeNavBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" },
-                        { label: t.homeNavDoctors, href: "/doctors", Icon: UserSquare, tone: "bg-[#ccfbf1] text-[#0d9488]" },
-                        { label: t.homeNavContact, href: "/contact", Icon: Mail01, tone: "bg-[#fef3c7] text-[#b45309]" },
+                        { label: t.homeNavAppointment, hint: t.tourVisit, href: visitsHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
+                        { label: t.homeNavBooking, hint: t.tourBook, href: bookHref, Icon: CalendarPlus01, tone: "bg-[#dbeafe] text-[#1d4ed8]" },
+                        { label: t.homeNavMedicine, hint: t.tourMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
+                        { label: t.ordersTrack, hint: t.tourOrders, href: ordersHref, Icon: Truck01, tone: "bg-[#e0e7ff] text-[#4338ca]" },
+                        { label: t.homeNavFamily, hint: t.tourFamily, href: familyHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },
+                        { label: t.homeNavClinicRecords, hint: t.tourClinicRecords, href: clinicRecordsHref, Icon: File06, tone: "bg-[#e2e8f0] text-[#334155]" },
+                        { label: t.homeNavPhr, hint: t.tourPhr, href: recordsHref, Icon: ActivityHeart, tone: "bg-[#fce7f3] text-[#be185d]" },
+                        { label: t.homeNavBill, hint: t.tourBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" },
+                        { label: t.homeNavDoctors, hint: t.tourDoctors, href: "/doctors", Icon: UserSquare, tone: "bg-[#ccfbf1] text-[#0d9488]" },
+                        { label: t.homeNavContact, hint: t.tourContact, href: "/contact", Icon: Mail01, tone: "bg-[#fef3c7] text-[#b45309]" },
                     ]}
                 />
                 <ClinicCoverflow

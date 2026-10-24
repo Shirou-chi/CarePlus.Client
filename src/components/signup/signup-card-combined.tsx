@@ -88,10 +88,10 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                     }
                     onSubmit({ fullName: name, username: usernameValue, ic: icValue, email: emailValue, phone: phoneNumber || "", password });
                 }}
-                className="flex flex-col gap-6"
+                className="flex flex-col gap-7 [&_input]:min-h-12"
             >
                 <FormStatus error={submitted && issues.length > 0 ? t.signupCheck : error} details={submitted ? issues : undefined} />
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-6">
                     <Input
                         isRequired
                         label={t.fullName}
@@ -182,7 +182,7 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                     />
                 </div>
 
-                <Button type="submit" size="lg" isLoading={isLoading} showTextWhileLoading>
+                <Button type="submit" size="lg" isLoading={isLoading} showTextWhileLoading className="min-h-12">
                     {t.signUp}
                 </Button>
             </Form>

@@ -11,9 +11,10 @@ import { LandingFooter } from "@/components/marketing/header-navigation/landing-
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useI18n } from "@/providers/locale-provider";
-import { clinicChargeCategoryLabel, getClinicRecordById, getClinicRecordTotals, getClinicRecords } from "@/utils/clinic-records";
-import { listOutstandingInvoices, type InvoiceStatus, type OutstandingInvoice } from "@/utils/invoices";
+import { clinicChargeCategoryLabel, getClinicRecordById, getClinicRecordTotals } from "@/utils/clinic-records";
+import type { InvoiceStatus, OutstandingInvoice } from "@/utils/invoices";
 import { formatRm } from "@/utils/prescribed-medicine";
 
 type StatusFilter = "all" | InvoiceStatus;
@@ -21,12 +22,11 @@ type DueOrder = "oldest" | "latest";
 
 export const OutstandingInvoicesPage = () => {
     const { profile, isReady } = useAuth();
+    const { invoices, ready } = useOutstandingInvoices();
     const { t, locale } = useI18n();
     const [status, setStatus] = useState<StatusFilter>("all");
     const [order, setOrder] = useState<DueOrder>("oldest");
     const [openId, setOpenId] = useState<string | null>(null);
-
-    const invoices = useMemo(() => listOutstandingInvoices(getClinicRecords(locale)), [locale]);
     const filtered = useMemo(() => {
         const list = invoices.filter((invoice) => status === "all" || invoice.status === status);
         return [...list].sort((left, right) => {
@@ -47,7 +47,7 @@ export const OutstandingInvoicesPage = () => {
             timeZone: "Asia/Kuala_Lumpur",
         });
 
-    if (!isReady) return <div className="careplus-landing min-h-dvh" />;
+    if (!isReady || !ready) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
 
     return (

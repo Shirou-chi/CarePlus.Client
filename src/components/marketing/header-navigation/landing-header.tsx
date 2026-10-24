@@ -7,6 +7,7 @@ import {
     ChevronRight,
     File06,
     Grid01,
+    HelpCircle,
     Moon01,
     Receipt,
     SearchMd,
@@ -23,10 +24,10 @@ import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/but
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { NavMenuItemLink } from "@/components/marketing/header-navigation/base-components/nav-menu-item";
+import { requestHomeTour } from "@/components/marketing/home/home-tour";
 import { HeaderNotifications } from "@/components/marketing/notifications/header-notifications";
 import { useAuth } from "@/providers/auth-provider";
-import { getClinicRecords } from "@/utils/clinic-records";
-import { hasOverdueInvoice } from "@/utils/invoices";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
@@ -108,7 +109,8 @@ const useServiceGroups = (): ServiceGroup[] => {
 
 const useOverdueLock = () => {
     const { profile } = useAuth();
-    return Boolean(profile && hasOverdueInvoice(getClinicRecords("en")));
+    const { overdue } = useOutstandingInvoices();
+    return Boolean(profile && overdue);
 };
 
 export const LandingHeader = () => {
@@ -136,10 +138,12 @@ export const LandingHeader = () => {
                             <LanguageSwitch />
                         </div>
                     )}
+                    {profile ? <TourButton /> : null}
                     <div className="mx-3 h-8 w-px bg-border-secondary" />
                     {profile ? (
                         <Dropdown.Root>
                             <AriaButton
+                                data-tour="account"
                                 aria-label={`${t.hello} ${signedInName}`}
                                 className="group flex cursor-pointer items-center gap-2.5 rounded-full py-1 pr-3 pl-1 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-[#456f75] focus-visible:outline-2 data-[pressed]:bg-[#456f75]"
                             >
@@ -175,6 +179,8 @@ export const LandingHeader = () => {
                     {overdue ? null : <HeaderNotifications />}
                     {overdue ? null : <HeaderCart />}
                     <MobileNav />
+                    {profile ? <TourButton /> : null}
+                    {profile ? <MobileAccount /> : null}
                 </div>
             </div>
         </header>
@@ -348,15 +354,59 @@ const ServicesMega = () => {
     );
 };
 
-const MobileNav = () => {
+const TourButton = () => {
+    const { t } = useI18n();
+    const navigate = useNavigate();
+
+    return (
+        <button
+            type="button"
+            data-tour="tutorial"
+            aria-label={t.tourNavTitle}
+            className={iconGhost}
+            onClick={() => {
+                requestHomeTour();
+                if (window.location.pathname !== "/home") navigate("/home");
+            }}
+        >
+            <HelpCircle className="size-5" />
+        </button>
+    );
+};
+
+const MobileAccount = () => {
     const { t } = useI18n();
     const { profile, logout } = useAuth();
     const navigate = useNavigate();
-    const serviceGroups = useServiceGroups();
+    if (!profile) return null;
     const signOut = async () => {
         await logout();
         navigate("/login");
     };
+
+    return (
+        <Dropdown.Root>
+            <AriaButton data-tour="account" aria-label={t.viewProfile} className="cursor-pointer rounded-full p-0.5 outline-focus-ring focus-visible:outline-2">
+                <Avatar size="sm" src={profile.avatarUrl} alt="" />
+            </AriaButton>
+            <Dropdown.Popover>
+                <Dropdown.Menu>
+                    <Dropdown.Item icon={User01} selectionIndicator="none" onAction={() => navigate("/account")}>
+                        {t.viewProfile}
+                    </Dropdown.Item>
+                    <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
+                        {t.signOut}
+                    </Dropdown.Item>
+                </Dropdown.Menu>
+            </Dropdown.Popover>
+        </Dropdown.Root>
+    );
+};
+
+const MobileNav = () => {
+    const { t } = useI18n();
+    const { profile } = useAuth();
+    const serviceGroups = useServiceGroups();
 
     return (
         <AriaDialogTrigger>
@@ -409,27 +459,16 @@ const MobileNav = () => {
                                 <LanguageSwitch />
                             </div>
                         )}
-                        <div className="mt-1 flex flex-col gap-2 px-2 pb-2">
-                            {profile ? (
-                                <>
-                                    <a href="/account" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
-                                        {t.viewProfile}
-                                    </a>
-                                    <button type="button" className="rounded-lg px-3 py-2.5 text-left text-md font-semibold text-secondary hover:bg-primary_hover" onClick={() => void signOut()}>
-                                        {t.signOut}
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <a href="/login" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
-                                        {t.logIn}
-                                    </a>
-                                    <a href="/register" className="careplus-ink rounded-lg px-3 py-2.5 text-center text-md font-semibold text-white">
-                                        {t.signUp}
-                                    </a>
-                                </>
-                            )}
-                        </div>
+                        {profile ? null : (
+                            <div className="mt-1 flex flex-col gap-2 px-2 pb-2">
+                                <a href="/login" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
+                                    {t.logIn}
+                                </a>
+                                <a href="/register" className="careplus-ink rounded-lg px-3 py-2.5 text-center text-md font-semibold text-white">
+                                    {t.signUp}
+                                </a>
+                            </div>
+                        )}
                     </nav>
                 </AriaDialog>
             </AriaPopover>
