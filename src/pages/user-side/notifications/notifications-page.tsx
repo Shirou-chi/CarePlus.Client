@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Heading, type Selection } from "react-aria-components";
 import { Bell01, Trash01 } from "@untitledui/icons";
 import { Navigate } from "react-router";
@@ -10,13 +10,17 @@ import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { Label } from "@/components/base/input/label";
+import { Select } from "@/components/base/select/select";
+import { SelectItem } from "@/components/base/select/select-item";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { NotificationItem, noticeKindLabel, noticeMessage, noticeMeta } from "@/components/marketing/notifications/notification-item";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useNotices } from "@/providers/notification-provider";
-import { formatNoticeAge, type ClinicNotice } from "@/utils/notifications";
+import { clinicAnnouncementNav, formatNoticeAge, sortNotices, type ClinicNotice, type NoticeOrder } from "@/utils/notifications";
 
 type TabKey = "all" | "unread";
 
@@ -29,14 +33,70 @@ const idsFromSelection = (selection: Selection, rows: ClinicNotice[]) => {
 
 const rowIsSelected = (selection: Selection, id: string) => selection === "all" || (selection instanceof Set && selection.has(id));
 
+const leaveCheckbox = (event: { stopPropagation: () => void }) => event.stopPropagation();
+
+const NoticeDateField = ({
+    label,
+    anyLabel,
+    locale,
+    value,
+    onChange,
+}: {
+    label: string;
+    anyLabel: string;
+    locale: "en" | "zh";
+    value: string;
+    onChange: (value: string) => void;
+}) => {
+    const id = useId();
+    const shown = value
+        ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`))
+        : anyLabel;
+
+    return (
+        <div className="flex w-full max-w-xs flex-col gap-1.5">
+            <Label htmlFor={id}>{label}</Label>
+            <div className="relative flex items-center rounded-lg bg-primary px-3 py-2 text-sm text-primary shadow-xs ring-1 ring-primary ring-inset focus-within:ring-2 focus-within:ring-brand">
+                <span className="pointer-events-none min-w-0 flex-1 truncate">{shown}</span>
+                <svg viewBox="0 0 20 20" aria-hidden="true" className="pointer-events-none size-4 shrink-0 text-fg-quaternary">
+                    <rect x="3" y="4" width="14" height="13" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M3 8h14M7 2.5v3M13 2.5v3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <input
+                    id={id}
+                    type="date"
+                    value={value}
+                    aria-label={label}
+                    onChange={(event) => onChange(event.target.value)}
+                    onMouseDown={(event) => {
+                        event.preventDefault();
+                        try {
+                            event.currentTarget.showPicker();
+                        } catch {
+                            event.currentTarget.focus();
+                        }
+                    }}
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                />
+            </div>
+        </div>
+    );
+};
+
 export const NotificationsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
-    const { items, unread, markRead, markAllRead, remove } = useNotices();
+    const { items, unread, markRead, markReadMany, markAllRead, remove } = useNotices();
     const [tab, setTab] = useState<TabKey>("all");
+    const [order, setOrder] = useState<NoticeOrder>("latest");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
     const [selected, setSelected] = useState<Selection>(new Set());
     const [confirming, setConfirming] = useState(false);
-    const rows = tab === "unread" ? unread : items;
+    const allRows = sortNotices(items, order, startDate, endDate);
+    const unreadRows = sortNotices(unread, order, startDate, endDate);
+    const dateLimited = order === "date" && Boolean(startDate || endDate);
+    const rows = tab === "unread" ? unreadRows : allRows;
     const selectedIds = idsFromSelection(selected, rows);
 
     const changeTab = (key: TabKey) => {
@@ -66,26 +126,74 @@ export const NotificationsPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
                 <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.notifPageTitle}</h1>
                 <p className="mt-2 max-w-2xl text-md text-tertiary">{t.notifPageBody}</p>
+                <Button color="secondary" size="md" className="mt-4" href={clinicAnnouncementNav.href}>
+                    {t[clinicAnnouncementNav.copyKey]}
+                </Button>
+
+                <div className="mt-6 flex flex-wrap items-end gap-3">
+                    <Select
+                        label={t.notifSort}
+                        size="sm"
+                        className="w-full max-w-xs"
+                        selectedKey={order}
+                        onSelectionChange={(key) => {
+                            setOrder(String(key) as NoticeOrder);
+                            setSelected(new Set());
+                        }}
+                        items={[
+                            { id: "latest", label: t.notifSortLatest },
+                            { id: "oldest", label: t.notifSortOldest },
+                            { id: "date", label: t.notifSortDate },
+                        ]}
+                    >
+                        {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
+                    </Select>
+                    {order === "date" ? (
+                        <>
+                            <NoticeDateField
+                                label={t.notifSortStart}
+                                anyLabel={t.notifSortAny}
+                                locale={locale}
+                                value={startDate}
+                                onChange={(value) => {
+                                    setStartDate(value);
+                                    setSelected(new Set());
+                                }}
+                            />
+                            <NoticeDateField
+                                label={t.notifSortEnd}
+                                anyLabel={t.notifSortAny}
+                                locale={locale}
+                                value={endDate}
+                                onChange={(value) => {
+                                    setEndDate(value);
+                                    setSelected(new Set());
+                                }}
+                            />
+                        </>
+                    ) : null}
+                </div>
 
                 <Tabs selectedKey={tab} onSelectionChange={(key) => changeTab(String(key) as TabKey)} className="mt-8">
-                    <Tabs.List type="button-border" size="sm" className="w-full max-w-md sm:w-auto">
-                        <Tabs.Item id="all" className="flex-1 sm:flex-none">
+                    <Tabs.List type="button-border" size="sm" fullWidth className="w-full">
+                        <Tabs.Item id="all" className="flex-1">
                             <span className="flex items-center gap-1.5">
                                 {t.notifAll}
                                 <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#0b1f38] px-1.5 py-0.5 text-[11px] leading-none font-semibold text-white">
-                                    {items.length}
+                                    {allRows.length}
                                 </span>
                             </span>
                         </Tabs.Item>
-                        <Tabs.Item id="unread" className="flex-1 sm:flex-none">
+                        <Tabs.Item id="unread" className="flex-1">
                             <span className="flex items-center gap-1.5">
                                 {t.notifUnread}
-                                {unread.length > 0 ? (
+                                {unreadRows.length > 0 ? (
                                     <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-secondary px-1.5 py-0.5 text-[11px] leading-none font-semibold text-secondary">
-                                        {unread.length}
+                                        {unreadRows.length}
                                     </span>
                                 ) : null}
                             </span>
@@ -102,8 +210,11 @@ export const NotificationsPage = () => {
                             unreadCount={unread.length}
                             onSelectionChange={setSelected}
                             onOpen={markRead}
+                            onMarkRead={markReadMany}
                             onClear={markAllRead}
                             onDelete={() => setConfirming(true)}
+                            emptyTitle={dateLimited ? t.notifEmptyDate : undefined}
+                            emptyHint={dateLimited ? t.notifEmptyDateHint : undefined}
                         />
                     </Tabs.Panel>
                     <Tabs.Panel id="unread" className="pt-5">
@@ -116,8 +227,11 @@ export const NotificationsPage = () => {
                             unreadCount={unread.length}
                             onSelectionChange={setSelected}
                             onOpen={markRead}
+                            onMarkRead={markReadMany}
                             onClear={markAllRead}
                             onDelete={() => setConfirming(true)}
+                            emptyTitle={dateLimited ? t.notifEmptyDate : undefined}
+                            emptyHint={dateLimited ? t.notifEmptyDateHint : undefined}
                         />
                     </Tabs.Panel>
                 </Tabs>
@@ -157,12 +271,16 @@ type NoticeListProps = {
     unreadCount: number;
     onSelectionChange: (keys: Selection) => void;
     onOpen: (id: string) => void;
+    onMarkRead: (ids: string[]) => void;
     onClear: () => void;
     onDelete: () => void;
+    emptyTitle?: string;
+    emptyHint?: string;
 };
 
-const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionChange, onOpen, onClear, onDelete }: NoticeListProps) => {
+const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionChange, onOpen, onMarkRead, onClear, onDelete, emptyTitle, emptyHint }: NoticeListProps) => {
     const selectedCount = idsFromSelection(selected, rows).length;
+    const selectedUnreadIds = idsFromSelection(selected, rows).filter((id) => rows.some((item) => item.id === id && item.unread));
     const allSelected = rows.length > 0 && selectedCount === rows.length;
     const someSelected = selectedCount > 0 && selectedCount < rows.length;
 
@@ -191,8 +309,8 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                     <EmptyState.FeaturedIcon icon={Bell01} color="gray" theme="modern" />
                 </EmptyState.Header>
                 <EmptyState.Content>
-                    <EmptyState.Title>{tab === "unread" ? t.notifEmptyUnread : t.notifEmpty}</EmptyState.Title>
-                    <EmptyState.Description>{tab === "unread" ? t.notifEmptyUnreadHint : t.notifEmptyHint}</EmptyState.Description>
+                    <EmptyState.Title>{emptyTitle ?? (tab === "unread" ? t.notifEmptyUnread : t.notifEmpty)}</EmptyState.Title>
+                    <EmptyState.Description>{emptyHint ?? (tab === "unread" ? t.notifEmptyUnreadHint : t.notifEmptyHint)}</EmptyState.Description>
                 </EmptyState.Content>
             </EmptyState>
         );
@@ -209,7 +327,12 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                     isIndeterminate={someSelected}
                     onChange={(isSelected) => onSelectionChange(isSelected ? "all" : new Set())}
                 />
-                <Button color="secondary" size="sm" isDisabled={unreadCount === 0} onPress={onClear}>
+                <Button
+                    color="secondary"
+                    size="sm"
+                    isDisabled={selectedUnreadIds.length === 0 && unreadCount === 0}
+                    onPress={() => (selectedUnreadIds.length > 0 ? onMarkRead(selectedUnreadIds) : onClear())}
+                >
                     {t.notifClearAll}
                 </Button>
                 {selectedCount > 0 ? (
@@ -229,15 +352,22 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                             isSelected={rowIsSelected(selected, item.id)}
                             onChange={(isSelected) => toggleOne(item.id, isSelected)}
                         />
-                        <NotificationItem
-                            actor={item.actor}
-                            initials={item.initials}
-                            message={noticeMessage(item, t)}
-                            meta={noticeMeta(item, t, locale)}
-                            unread={item.unread}
-                            href={item.href}
-                            onOpen={() => onOpen(item.id)}
-                        />
+                        <div className="min-w-0 flex-1">
+                            <NotificationItem
+                                actor={item.actor}
+                                initials={item.initials}
+                                message={noticeMessage(item, t)}
+                                meta={noticeMeta(item, t, locale)}
+                                unread={item.unread}
+                                href={item.href}
+                                onOpen={() => onOpen(item.id)}
+                            />
+                            {item.unread ? (
+                                <Button color="secondary" size="sm" className="mb-2 ml-14" onPress={() => onOpen(item.id)}>
+                                    {t.notifMarkRead}
+                                </Button>
+                            ) : null}
+                        </div>
                     </li>
                 ))}
             </ul>
@@ -248,14 +378,17 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                         <Table.Head label={t.notifColNotice} isRowHeader />
                         <Table.Head label={t.notifColCategory} />
                         <Table.Head label={t.notifColWhen} />
-                        <Table.Head label={t.notifColStatus} className="w-24" />
+                        <Table.Head label={t.notifColStatus} />
                     </Table.Header>
                     <Table.Body items={rows}>
                         {(item) => (
                             <Table.Row id={item.id}>
-                                <Table.Cell>
+                                <Table.Cell onPointerDown={leaveCheckbox}
+                                    onPointerUp={leaveCheckbox}>
                                     <a
                                         href={item.href}
+                                        onPointerDown={leaveCheckbox}
+                                    onPointerUp={leaveCheckbox}
                                         onClick={(event) => {
                                             event.stopPropagation();
                                             onOpen(item.id);
@@ -269,21 +402,34 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                         </span>
                                     </a>
                                 </Table.Cell>
-                                <Table.Cell>
+                                <Table.Cell onPointerDown={leaveCheckbox}
+                                    onPointerUp={leaveCheckbox}>
                                     <Badge color="gray" size="sm" type="modern">
                                         {noticeKindLabel(item.kind, t)}
                                     </Badge>
                                 </Table.Cell>
-                                <Table.Cell>{formatNoticeAge(item.createdAt, Date.now(), locale)}</Table.Cell>
-                                <Table.Cell>
-                                    {item.unread ? (
-                                        <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
-                                            <span aria-hidden="true" className="size-2 rounded-full bg-[#0b1f38]" />
-                                            {t.notifUnreadLabel}
-                                        </span>
-                                    ) : (
-                                        <span className="text-sm text-tertiary">{t.notifReadLabel}</span>
-                                    )}
+                                <Table.Cell onPointerDown={leaveCheckbox}
+                                    onPointerUp={leaveCheckbox}>{formatNoticeAge(item.createdAt, Date.now(), locale)}</Table.Cell>
+                                <Table.Cell onPointerDown={leaveCheckbox}
+                                    onPointerUp={leaveCheckbox}>
+                                    <div className="flex items-center justify-between gap-3">
+                                        {item.unread ? (
+                                            <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                                                <span aria-hidden="true" className="size-2 rounded-full bg-[#0b1f38]" />
+                                                {t.notifUnreadLabel}
+                                            </span>
+                                        ) : (
+                                            <span className="text-sm text-tertiary">{t.notifReadLabel}</span>
+                                        )}
+                                        {item.unread ? (
+                                            <span onClick={(event) => event.stopPropagation()} onPointerDown={leaveCheckbox}
+                                    onPointerUp={leaveCheckbox}>
+                                                <Button color="secondary" size="sm" onPress={() => onOpen(item.id)}>
+                                                    {t.notifMarkRead}
+                                                </Button>
+                                            </span>
+                                        ) : null}
+                                    </div>
                                 </Table.Cell>
                             </Table.Row>
                         )}

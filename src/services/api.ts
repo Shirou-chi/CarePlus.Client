@@ -1,4 +1,4 @@
-export const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+export const baseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export const TOKEN_KEY = 'careplus-token'
 
@@ -35,6 +35,22 @@ export function formatApiErrorDetails(data: unknown): string {
   return ''
 }
 
+export function messageFromBody(body: unknown, fallback: string) {
+  if (!body || typeof body !== "object") {
+    return fallback
+  }
+
+  const record = body as { respMessage?: string; data?: unknown }
+  if (Array.isArray(record.data)) {
+    const lines = record.data.filter((item): item is string => typeof item === "string" && item.length > 0)
+    if (lines.length > 0) {
+      return lines.join("\n")
+    }
+  }
+
+  return record.respMessage || fallback
+}
+
 export async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -42,7 +58,7 @@ export async function request<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers)
 
-  if (options.body && !headers.has('Content-Type')) {
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
@@ -64,15 +80,7 @@ export async function request<T>(
   const body = await response.json().catch(() => null)
 
   if (!response.ok) {
-    const errorBody = body as { respMessage?: string; data?: unknown } | null
-    const errorMessage = errorBody?.respMessage
-    const errorDetails = formatApiErrorDetails(errorBody?.data)
-
-    throw new Error(
-      [errorMessage ?? `Request failed with status ${response.status}`, errorDetails]
-        .filter(Boolean)
-        .join(': '),
-    )
+    throw new Error(messageFromBody(body, `Request failed with status ${response.status}`))
   }
 
   return body as T

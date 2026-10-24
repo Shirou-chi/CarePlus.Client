@@ -1,18 +1,18 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { TOKEN_KEY } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
+import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
+import { useI18n } from "@/providers/locale-provider";
+import { useTheme } from "@/providers/theme-provider";
 import { dummyLogin, SESSION_KEY, type Profile } from "@/utils/auth";
+import { familyLogin } from "@/utils/family";
+import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
 
-<<<<<<< Updated upstream
 const OLD_STAFF_SESSION_KEY = "careplus-staff-session";
 
 export type AuthUser = {
     name: string;
     username?: string;
-=======
-
-export type AuthUser = {
-    name: string;
->>>>>>> Stashed changes
     email?: string;
     userId?: string;
     role?: string;
@@ -35,23 +35,24 @@ type AuthContextValue = {
     login: (email: string, password: string) => Promise<void>;
     staffLogin: (identifier: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    switchProfile: (next: Profile) => void;
     updateProfile: (patch: Partial<Profile>) => void;
     updateStaffProfile: (patch: Partial<Pick<AuthUser, "name" | "phone" | "username">>) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Both patient and staff accounts are saved under SESSION_KEY.
+// Both patient and staff accounts use SESSION_KEY. Patient profiles are also
+// accepted in their older unwrapped format for backwards compatibility.
 function saveSession(session: StoredSession | null) {
     if (session) {
         localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } else {
         localStorage.removeItem(SESSION_KEY);
     }
-
 }
 
-function readSession(): StoredSession | null {
+function readStoredSession(): StoredSession | null {
     if (typeof window === "undefined") return null;
 
     try {
@@ -67,15 +68,12 @@ function readSession(): StoredSession | null {
             if ("type" in data && data.type === "staff") {
                 return data;
             }
-<<<<<<< Updated upstream
 
-            // Support the old patient-only session format.
-            if ("fullName" in data) {
+            if ("fullName" in data && "email" in data) {
                 return { type: "patient", profile: data };
             }
         }
 
-        // Migrate an existing staff session from the previous key.
         const oldStaffSession = localStorage.getItem(OLD_STAFF_SESSION_KEY);
         if (oldStaffSession) {
             const user = JSON.parse(oldStaffSession) as AuthUser;
@@ -85,10 +83,6 @@ function readSession(): StoredSession | null {
                 return migratedSession;
             }
         }
-=======
-        }
-
->>>>>>> Stashed changes
     } catch {
         return null;
     }
@@ -99,10 +93,7 @@ function readSession(): StoredSession | null {
 function convertApiUser(user: CurrentUserResponse): AuthUser {
     return {
         name: user.name || user.username,
-<<<<<<< Updated upstream
         username: user.username,
-=======
->>>>>>> Stashed changes
         email: user.email,
         userId: String(user.userId),
         role: user.role,
@@ -114,34 +105,171 @@ function convertApiUser(user: CurrentUserResponse): AuthUser {
     };
 }
 
+export const profileFromUser = (user: CurrentUserResponse): Profile => ({
+    id: user.patientId || String(user.userId),
+    email: user.email,
+    fullName: user.name,
+    identityCard: user.identityCardNumber || null,
+    phone: user.phone || null,
+    dateOfBirth: null,
+    address: user.address || null,
+    gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
+    nationality: "Malaysian",
+    avatarUrl: profilePictureUrl(user.profilePicture),
+});
+
+const isNotificationLevel = (value: string | null | undefined): value is NotificationLevel =>
+    value === "all" || value === "reminder" || value === "none";
+
+async function loadPatientPreferences(
+    profileId: string,
+    applyTheme: (theme: "light" | "dark") => void,
+    applyLocale: (locale: "en" | "zh") => void,
+) {
+    const setting = await profileApi.getAppSetting();
+    if (!setting) {
+        applyTheme("light");
+        applyLocale("en");
+        const current = readProfileSettings(profileId);
+        writeProfileSettings(profileId, { ...current, notificationLevel: "all" });
+        return;
+    }
+
+    applyAppSetting(profileId, setting, applyTheme, applyLocale);
+}
+
+function applyAppSetting(
+    profileId: string,
+    setting: AppSettingResponse,
+    applyTheme: (theme: "light" | "dark") => void,
+    applyLocale: (locale: "en" | "zh") => void,
+) {
+    if (setting.appearance === "light" || setting.appearance === "dark") {
+        applyTheme(setting.appearance);
+    }
+    if (setting.language === "en" || setting.language === "zh") {
+        applyLocale(setting.language);
+    }
+    if (isNotificationLevel(setting.notification)) {
+        const current = readProfileSettings(profileId);
+        writeProfileSettings(profileId, { ...current, notificationLevel: setting.notification });
+    }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [session, setSession] = useState<StoredSession | null>(readSession);
+    const { applyTheme } = useTheme();
+    const { applyLocale } = useI18n();
+    const [session, setSession] = useState<StoredSession | null>(() => readStoredSession());
+    const [isReady, setIsReady] = useState(false);
 
     const profile = session?.type === "patient" ? session.profile : null;
     const user = session?.type === "staff" ? session.user : null;
 
-    const login = async (email: string, password: string) => {
-        const nextSession: StoredSession = {
-            type: "patient",
-            profile: dummyLogin(email, password),
-        };
+    useEffect(() => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) {
+            setIsReady(true);
+            return;
+        }
 
+        let cancelled = false;
+        authApi
+            .getCurrentUser()
+            .then(async (apiUser) => {
+                if (cancelled) return;
+
+                if (apiUser.accountType === "Staff" || apiUser.staffId) {
+                    const nextSession: StoredSession = {
+                        type: "staff",
+                        user: convertApiUser(apiUser),
+                    };
+                    saveSession(nextSession);
+                    setSession(nextSession);
+                    return;
+                }
+
+                const nextProfile = profileFromUser(apiUser);
+                await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
+                if (cancelled) return;
+
+                const nextSession: StoredSession = {
+                    type: "patient",
+                    profile: nextProfile,
+                };
+                saveSession(nextSession);
+                setSession(nextSession);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                authApi.clearToken();
+                saveSession(null);
+                setSession(null);
+            })
+            .finally(() => {
+                if (!cancelled) setIsReady(true);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [applyLocale, applyTheme]);
+
+    const login = async (email: string, password: string) => {
         authApi.clearToken();
-        saveSession(nextSession);
-        setSession(nextSession);
+
+        try {
+            const { token } = await authApi.patientLogin(email.trim(), password);
+            authApi.saveToken(token);
+            const apiUser = await authApi.getCurrentUser();
+
+            if (apiUser.accountType === "Staff" || apiUser.staffId) {
+                throw new Error("This account is not a patient account.");
+            }
+
+            const nextProfile = profileFromUser(apiUser);
+            await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
+            const nextSession: StoredSession = {
+                type: "patient",
+                profile: nextProfile,
+            };
+            saveSession(nextSession);
+            setSession(nextSession);
+        } catch (error) {
+            authApi.clearToken();
+
+            const family = familyLogin(email, password);
+            if (family) {
+                const nextSession: StoredSession = { type: "patient", profile: family };
+                saveSession(nextSession);
+                setSession(nextSession);
+                return;
+            }
+
+            try {
+                const fallbackProfile = dummyLogin(email, password);
+                const nextSession: StoredSession = { type: "patient", profile: fallbackProfile };
+                saveSession(nextSession);
+                setSession(nextSession);
+            } catch {
+                throw error;
+            }
+        }
     };
 
     const staffLogin = async (identifier: string, password: string) => {
-        const { token } = await authApi.staffLogin(identifier, password);
+        const { token } = await authApi.staffLogin(identifier.trim(), password);
         authApi.saveToken(token);
 
         try {
             const apiUser = await authApi.getCurrentUser();
+            if (apiUser.accountType !== "Staff" && !apiUser.staffId) {
+                throw new Error("This account is not a staff account.");
+            }
+
             const nextSession: StoredSession = {
                 type: "staff",
                 user: convertApiUser(apiUser),
             };
-
             saveSession(nextSession);
             setSession(nextSession);
         } catch (error) {
@@ -154,6 +282,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         authApi.clearToken();
         saveSession(null);
         setSession(null);
+    };
+
+    const switchProfile = (next: Profile) => {
+        const nextSession: StoredSession = { type: "patient", profile: next };
+        saveSession(nextSession);
+        setSession(nextSession);
     };
 
     const updateProfile = (patch: Partial<Profile>) => {
@@ -175,7 +309,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return nextSession;
         });
     };
-<<<<<<< Updated upstream
 
     const updateStaffProfile = (patch: Partial<Pick<AuthUser, "name" | "phone" | "username">>) => {
         setSession((currentSession) => {
@@ -195,25 +328,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return nextSession;
         });
     };
-=======
->>>>>>> Stashed changes
 
     const value = useMemo<AuthContextValue>(
         () => ({
             profile,
             user,
-            isReady: true,
+            isReady,
             isAuthenticated: session !== null,
             login,
             staffLogin,
             logout,
+            switchProfile,
             updateProfile,
-<<<<<<< Updated upstream
             updateStaffProfile,
-=======
->>>>>>> Stashed changes
         }),
-        [profile, user, session],
+        [profile, user, isReady, session, login, staffLogin, logout, switchProfile, updateProfile, updateStaffProfile],
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

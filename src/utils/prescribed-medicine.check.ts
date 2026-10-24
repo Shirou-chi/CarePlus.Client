@@ -2,7 +2,6 @@ import {
     addCartLine,
     clampAddQty,
     filterMedicines,
-    getMedicineCatalog,
     qtyInCart,
     removeCartLines,
     roomLeft,
@@ -10,10 +9,27 @@ import {
     setCartQty,
     wholeQty,
     type CartLine,
+    type Medicine,
 } from "./prescribed-medicine.ts";
 
 const sample: CartLine[] = [{ medicineId: "amox", pharmacyId: "clinic", name: "Amox", pharmacy: "Clinic", unitPrice: 12.5, qty: 3 }];
-const catalog = getMedicineCatalog("en");
+const catalog: Medicine[] = [
+    {
+        id: "amox",
+        brand: "CarePlus Pharmacy",
+        name: "Amox",
+        pack: "16 capsules",
+        form: "Capsule",
+        formKey: "capsule",
+        kind: "antibiotic",
+        origin: "Malaysia",
+        method: "1 capsule",
+        description: "course",
+        price: 12.5,
+        tone: "amber",
+        imageKey: "amox",
+    },
+];
 
 const checks = [
     roomLeft(0) === 5,
@@ -28,6 +44,8 @@ const checks = [
     sanitizeCart([{ ...sample[0], pharmacyId: "guardian" as unknown as CartLine["pharmacyId"], qty: 2 }])[0].pharmacyId === "clinic",
     qtyInCart(sample, "amox") === 3,
     addCartLine(sample, { ...sample[0], qty: 4 }).added === 2,
+    addCartLine(sample, { ...sample[0], qty: 4 }, 4).added === 1,
+    setCartQty(sample, "amox", 5, 4)[0].qty === 4,
     addCartLine(sample, { ...sample[0], qty: 4 }).lines[0].qty === 5,
     addCartLine(sample, { medicineId: "para", pharmacyId: "clinic", name: "Para", pharmacy: "Clinic", unitPrice: 8, qty: 2 }).lines.length === 2,
     setCartQty(sample, "amox", 2)[0].qty === 2,

@@ -1,8 +1,12 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useAuth } from "@/providers/auth-provider";
+import { TOKEN_KEY } from "@/services/api";
+import { cartApi } from "@/services/cartApi";
 import {
     addCartLine,
     cartCount,
     CART_ICON_SELECTOR,
+    MAX_MEDICINE_UNITS,
     CART_STORAGE_KEY,
     qtyInCart,
     removeCartLine,
@@ -16,6 +20,7 @@ import {
 
 type CartContextValue = {
     lines: CartLine[];
+    bought: Record<string, number>;
     count: number;
     bump: number;
     remainingFor: (medicineId: MedicineId) => number;
@@ -54,50 +59,126 @@ const visibleCartIcon = () =>
 
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export const CartProvider = ({ children }: { children: ReactNode }) => {
-    const [lines, setLines] = useState<CartLine[]>(() => (typeof window === "undefined" ? [] : readCart()));
-    const [bump, setBump] = useState(0);
+const remoteCart = () => typeof window !== "undefined" && Boolean(localStorage.getItem(TOKEN_KEY));
 
-    const persist = useCallback((next: CartLine[]) => {
+export const CartProvider = ({ children }: { children: ReactNode }) => {
+    const { profile } = useAuth();
+    const [lines, setLines] = useState<CartLine[]>(() => (typeof window === "undefined" || remoteCart() ? [] : readCart()));
+    const [bought, setBought] = useState<Record<string, number>>({});
+    const [bump, setBump] = useState(0);
+    const linesRef = useRef(lines);
+    const boughtRef = useRef(bought);
+    const modeRef = useRef<"guest" | "account" | null>(null);
+    linesRef.current = lines;
+    boughtRef.current = bought;
+
+    const monthCap = (medicineId: MedicineId) => Math.max(0, MAX_MEDICINE_UNITS - (boughtRef.current[medicineId] ?? 0));
+
+    const applyRemote = (next: { lines: CartLine[]; bought: Record<string, number> }) => {
+        const capped = sanitizeCart(next.lines.map((line) => ({ ...line, qty: Math.min(line.qty, Math.max(0, MAX_MEDICINE_UNITS - (next.bought[line.medicineId] ?? 0))) })));
+        boughtRef.current = next.bought;
+        linesRef.current = capped;
+        setBought(next.bought);
+        setLines(capped);
+    };
+
+    useEffect(() => {
+        let cancel = false;
+        const account = remoteCart();
+        if (account && modeRef.current !== "account") {
+            setLines([]);
+        }
+        modeRef.current = account ? "account" : "guest";
+        if (!account) {
+            boughtRef.current = {};
+            setBought({});
+            setLines(readCart());
+            return;
+        }
+        cartApi
+            .list()
+            .then((next) => {
+                if (!cancel) {
+                    applyRemote(next);
+                }
+            })
+            .catch(() => {
+                if (!cancel) {
+                    setLines([]);
+                }
+            });
+        return () => {
+            cancel = true;
+        };
+    }, [profile?.id]);
+
+    const keep = useCallback((next: CartLine[]) => {
+        linesRef.current = next;
         setLines(next);
-        sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(next));
+        if (!remoteCart()) {
+            sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(next));
+        }
+    }, []);
+
+    const pushQty = useCallback((medicineId: MedicineId, qty: number) => {
+        if (!remoteCart()) {
+            return;
+        }
+        cartApi
+            .setQty(medicineId, qty)
+            .then(applyRemote)
+            .catch(() => cartApi.list().then(applyRemote).catch(() => undefined));
     }, []);
 
     const add = useCallback(
         (line: Omit<CartLine, "qty"> & { qty: number }) => {
-            const result = addCartLine(readCart(), line);
-            persist(result.lines);
+            const result = addCartLine(remoteCart() ? linesRef.current : readCart(), line, monthCap(line.medicineId));
+            keep(result.lines);
             if (result.added > 0) {
                 setBump((n) => n + 1);
+                const qty = result.lines.find((item) => item.medicineId === line.medicineId)?.qty ?? 0;
+                pushQty(line.medicineId, qty);
             }
             return result.added;
         },
-        [persist],
+        [keep, pushQty],
     );
 
     const clear = useCallback(() => {
-        persist([]);
-    }, [persist]);
+        keep([]);
+        if (remoteCart()) {
+            cartApi.clear().then(applyRemote).catch(() => undefined);
+        }
+    }, [keep]);
 
     const setQty = useCallback(
         (medicineId: MedicineId, qty: number) => {
-            persist(setCartQty(readCart(), medicineId, qty));
+            const next = setCartQty(remoteCart() ? linesRef.current : readCart(), medicineId, qty, monthCap(medicineId));
+            keep(next);
+            pushQty(medicineId, next.find((item) => item.medicineId === medicineId)?.qty ?? qty);
         },
-        [persist],
+        [keep, pushQty],
     );
 
     const remove = useCallback(
         (medicineId: MedicineId) => {
-            persist(removeCartLine(readCart(), medicineId));
+            keep(removeCartLine(remoteCart() ? linesRef.current : readCart(), medicineId));
+            pushQty(medicineId, 0);
         },
-        [persist],
+        [keep, pushQty],
     );
 
     const removeMany = useCallback(
         (medicineIds: MedicineId[]) => {
-            persist(removeCartLines(readCart(), medicineIds));
+            keep(removeCartLines(remoteCart() ? linesRef.current : readCart(), medicineIds));
+            if (remoteCart() && medicineIds.length > 0) {
+                cartApi
+                    .removeMany(medicineIds)
+                    .then(applyRemote)
+                    .catch(() => cartApi.list().then(applyRemote).catch(() => undefined));
+            }
         },
-        [persist],
+        [keep],
     );
 
     const flyToCart = useCallback((source: HTMLElement, onArrive?: () => void) => {
@@ -150,9 +231,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     const value = useMemo<CartContextValue>(
         () => ({
             lines,
+            bought,
             count: cartCount(lines),
             bump,
-            remainingFor: (medicineId) => roomLeft(qtyInCart(lines, medicineId)),
+            remainingFor: (medicineId) => roomLeft(qtyInCart(lines, medicineId), monthCap(medicineId)),
             add,
             setQty,
             remove,
@@ -160,7 +242,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             clear,
             flyToCart,
         }),
-        [add, bump, clear, flyToCart, lines, remove, removeMany, setQty],
+        [add, bought, bump, clear, flyToCart, lines, remove, removeMany, setQty],
     );
 
     return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

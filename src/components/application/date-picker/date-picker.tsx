@@ -15,10 +15,12 @@ interface DatePickerProps extends AriaDatePickerProps<DateValue> {
     onApply?: () => void;
     /** The function to call when the cancel button is clicked. */
     onCancel?: () => void;
+    /** Shown on the button when no date is selected. */
+    placeholder?: string;
     size?: ButtonProps["size"];
 }
 
-export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, onCancel, size = "sm", ...props }: DatePickerProps) => {
+export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, onCancel, placeholder = "Select date", size = "sm", ...props }: DatePickerProps) => {
     const formatter = useDateFormatter({
         month: "short",
         day: "numeric",
@@ -26,7 +28,7 @@ export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, 
     });
     const [value, setValue] = useControlledState(valueProp, defaultValue || null, onChange);
 
-    const formattedDate = value ? formatter.format(value.toDate(getLocalTimeZone())) : "Select date";
+    const formattedDate = value ? formatter.format(value.toDate(getLocalTimeZone())) : placeholder;
 
     return (
         <AriaDatePicker aria-label="Date picker" shouldCloseOnSelect={false} {...props} value={value} onChange={setValue}>

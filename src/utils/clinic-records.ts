@@ -2,6 +2,16 @@ import type { Locale } from "@/providers/locale-provider";
 
 export type ClinicChargeCategory = "consultation" | "medicine" | "procedure" | "lab" | "other";
 
+export type LabFlag = "normal" | "high" | "low";
+
+export type LabMarker = {
+    name: string;
+    value: string;
+    unit: string;
+    range: string;
+    flag: LabFlag;
+};
+
 export type ClinicChargeLine = {
     id: string;
     category: ClinicChargeCategory;
@@ -9,6 +19,7 @@ export type ClinicChargeLine = {
     detail: string;
     unitPrice: number;
     qty: number;
+    markers?: LabMarker[];
 };
 
 export type ClinicRecord = {
@@ -81,14 +92,39 @@ const records: Record<Locale, ClinicRecord[]> = {
             visitedAt: "2026-01-20T08:00:00+08:00",
             status: "completed",
             diagnosis: "Annual health screening review",
-            doctorComment: "Fasting bloods are within range. Repeat lipids in 12 months unless symptoms change.",
+            doctorComment: "Triglycerides are above the reference range. Repeat the lipid panel in 6 months. The other fasting results are fine.",
             medications: [],
             ward: "Screening Bay 1",
             sstRate: 0.06,
             charges: [
                 { id: "c1", category: "consultation", item: "Health screening consult", detail: "Annual review · 45 min", unitPrice: 80, qty: 1 },
-                { id: "c2", category: "lab", item: "Fasting lipid panel", detail: "Blood draw", unitPrice: 65, qty: 1 },
-                { id: "c3", category: "lab", item: "Full blood count", detail: "Blood draw", unitPrice: 35, qty: 1 },
+                {
+                    id: "c2",
+                    category: "lab",
+                    item: "Fasting lipid panel",
+                    detail: "Blood draw",
+                    unitPrice: 65,
+                    qty: 1,
+                    markers: [
+                        { name: "Total cholesterol", value: "4.8", unit: "mmol/L", range: "< 5.2", flag: "normal" },
+                        { name: "LDL cholesterol", value: "2.9", unit: "mmol/L", range: "< 3.4", flag: "normal" },
+                        { name: "HDL cholesterol", value: "1.4", unit: "mmol/L", range: "> 1.0", flag: "normal" },
+                        { name: "Triglycerides", value: "2.4", unit: "mmol/L", range: "< 1.7", flag: "high" },
+                    ],
+                },
+                {
+                    id: "c3",
+                    category: "lab",
+                    item: "Full blood count",
+                    detail: "Blood draw",
+                    unitPrice: 35,
+                    qty: 1,
+                    markers: [
+                        { name: "Haemoglobin", value: "14.6", unit: "g/dL", range: "13.0–17.0", flag: "normal" },
+                        { name: "White cell count", value: "6.8", unit: "×10⁹/L", range: "4.0–11.0", flag: "normal" },
+                        { name: "Platelets", value: "248", unit: "×10⁹/L", range: "150–410", flag: "normal" },
+                    ],
+                },
                 { id: "c4", category: "procedure", item: "ECG screening", detail: "Resting ECG", unitPrice: 45, qty: 1 },
             ],
         },
@@ -169,14 +205,39 @@ const records: Record<Locale, ClinicRecord[]> = {
             visitedAt: "2026-01-20T08:00:00+08:00",
             status: "completed",
             diagnosis: "年度健康检查跟进",
-            doctorComment: "空腹血液指标在范围内。若无新症状，12 个月后复查血脂。",
+            doctorComment: "甘油三酯高于参考范围。请在 6 个月后复查血脂。其余空腹结果正常。",
             medications: [],
             ward: "检查室 1",
             sstRate: 0.06,
             charges: [
                 { id: "c1", category: "consultation", item: "健康检查咨询", detail: "年度跟进 · 45 分钟", unitPrice: 80, qty: 1 },
-                { id: "c2", category: "lab", item: "空腹血脂检查", detail: "抽血", unitPrice: 65, qty: 1 },
-                { id: "c3", category: "lab", item: "全血计数", detail: "抽血", unitPrice: 35, qty: 1 },
+                {
+                    id: "c2",
+                    category: "lab",
+                    item: "空腹血脂检查",
+                    detail: "抽血",
+                    unitPrice: 65,
+                    qty: 1,
+                    markers: [
+                        { name: "总胆固醇", value: "4.8", unit: "mmol/L", range: "< 5.2", flag: "normal" },
+                        { name: "低密度脂蛋白", value: "2.9", unit: "mmol/L", range: "< 3.4", flag: "normal" },
+                        { name: "高密度脂蛋白", value: "1.4", unit: "mmol/L", range: "> 1.0", flag: "normal" },
+                        { name: "甘油三酯", value: "2.4", unit: "mmol/L", range: "< 1.7", flag: "high" },
+                    ],
+                },
+                {
+                    id: "c3",
+                    category: "lab",
+                    item: "全血计数",
+                    detail: "抽血",
+                    unitPrice: 35,
+                    qty: 1,
+                    markers: [
+                        { name: "血红蛋白", value: "14.6", unit: "g/dL", range: "13.0–17.0", flag: "normal" },
+                        { name: "白细胞", value: "6.8", unit: "×10⁹/L", range: "4.0–11.0", flag: "normal" },
+                        { name: "血小板", value: "248", unit: "×10⁹/L", range: "150–410", flag: "normal" },
+                    ],
+                },
                 { id: "c4", category: "procedure", item: "心电图筛查", detail: "静息心电图", unitPrice: 45, qty: 1 },
             ],
         },
@@ -227,6 +288,13 @@ const records: Record<Locale, ClinicRecord[]> = {
 export const getClinicRecords = (locale: Locale) => records[locale];
 
 export const getClinicRecordById = (locale: Locale, id: string) => getClinicRecords(locale).find((record) => record.id === id) ?? null;
+
+export const listLabReports = (records: ClinicRecord[]) =>
+    records.flatMap((record) =>
+        record.charges
+            .filter((line) => line.category === "lab" && line.markers && line.markers.length > 0)
+            .map((line) => ({ id: `${record.id}-${line.id}`, record, line })),
+    );
 
 export const clinicChargeCategoryLabel = (locale: Locale, category: ClinicChargeCategory) => {
     const en: Record<ClinicChargeCategory, string> = {

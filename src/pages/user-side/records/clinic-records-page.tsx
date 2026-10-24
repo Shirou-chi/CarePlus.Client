@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Download01, Eye, SearchLg } from "@untitledui/icons";
-import { Link, Navigate } from "react-router";
+import { Navigate, useSearchParams } from "react-router";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -8,6 +8,7 @@ import { Table, TableCard } from "@/components/application/table/table";
 import { Input } from "@/components/base/input/input";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { SectionDivider } from "@/components/section-divider";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
@@ -23,9 +24,14 @@ import { formatRm } from "@/utils/prescribed-medicine";
 export const ClinicRecordsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
-    const records = getClinicRecords(locale);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const records = useMemo(
+        () => getClinicRecords(locale).map((record) => (profile ? { ...record, patientName: profile.fullName } : record)),
+        [locale, profile],
+    );
     const [query, setQuery] = useState("");
-    const [detail, setDetail] = useState<ClinicRecord | null>(null);
+    const [picked, setPicked] = useState<ClinicRecord | null>(null);
+    const detail = picked ?? records.find((record) => record.id === searchParams.get("record")) ?? null;
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -83,16 +89,9 @@ export const ClinicRecordsPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
-                <nav aria-label="Breadcrumb" className="text-sm text-tertiary">
-                    <ol className="flex flex-wrap items-center gap-2">
-                        <li><Link to="/home" className="hover:text-primary">{t.medHome}</Link></li>
-                        <li aria-hidden="true">/</li>
-                        <li className="font-medium text-primary">{t.clinicRecordsTitle}</li>
-                    </ol>
-                </nav>
-
-                <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+                <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.clinicRecordsTitle}</h1>
                         <p className="mt-2 max-w-2xl text-md text-tertiary">{t.clinicRecordsBody}</p>
@@ -139,7 +138,7 @@ export const ClinicRecordsPage = () => {
                                     </Table.Cell>
                                     <Table.Cell>
                                         <div className="flex flex-wrap gap-2">
-                                            <Button color="secondary" size="sm" iconLeading={Eye} onClick={() => setDetail(record)}>
+                                            <Button color="secondary" size="sm" iconLeading={Eye} onClick={() => setPicked(record)}>
                                                 {t.clinicRecordsView}
                                             </Button>
                                             <Button color="tertiary" size="sm" iconLeading={Download01} onClick={() => printHtmlDocument(record.id, recordPdfHtml(record))}>
@@ -161,7 +160,13 @@ export const ClinicRecordsPage = () => {
                     locale={locale}
                     t={t}
                     formatWhen={formatWhen}
-                    onClose={() => setDetail(null)}
+                    onClose={() => {
+                        setPicked(null);
+                        if (!searchParams.get("record")) return;
+                        const next = new URLSearchParams(searchParams);
+                        next.delete("record");
+                        setSearchParams(next, { replace: true });
+                    }}
                     onDownload={() => printHtmlDocument(detail.id, recordPdfHtml(detail))}
                 />
             ) : null}
