@@ -132,7 +132,7 @@ body:has(.staff-login-page) .health-widget {
 .staff-login-page__brand-mark img {
   width: 31px;
   height: 31px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .staff-login-page__brand-copy {

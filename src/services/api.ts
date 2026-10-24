@@ -1,4 +1,4 @@
-export const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5156'
+export const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
 export const TOKEN_KEY = 'careplus-token'
 
@@ -16,6 +16,23 @@ export type LoginResponse = {
 export type ChatResponse = {
   reply: string
   disclaimer: string
+}
+
+export function formatApiErrorDetails(data: unknown): string {
+  if (Array.isArray(data)) {
+    return data.filter(Boolean).map(String).join('; ')
+  }
+
+  if (data && typeof data === 'object') {
+    return Object.entries(data)
+      .flatMap(([field, messages]) => {
+        const values = Array.isArray(messages) ? messages : [messages]
+        return values.filter(Boolean).map((message) => `${field}: ${String(message)}`)
+      })
+      .join('; ')
+  }
+
+  return ''
 }
 
 export async function request<T>(
@@ -47,10 +64,14 @@ export async function request<T>(
   const body = await response.json().catch(() => null)
 
   if (!response.ok) {
-    const errorMessage = (body as { respMessage?: string } | null)?.respMessage
+    const errorBody = body as { respMessage?: string; data?: unknown } | null
+    const errorMessage = errorBody?.respMessage
+    const errorDetails = formatApiErrorDetails(errorBody?.data)
 
     throw new Error(
-      errorMessage ?? `Request failed with status ${response.status}`,
+      [errorMessage ?? `Request failed with status ${response.status}`, errorDetails]
+        .filter(Boolean)
+        .join(': '),
     )
   }
 

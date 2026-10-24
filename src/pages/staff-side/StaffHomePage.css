@@ -97,7 +97,7 @@ body:has(.staff-page) .site-back-to-top {
 .staff-brand__mark img {
   width: 31px;
   height: 31px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .staff-brand__copy {
@@ -497,6 +497,7 @@ body:has(.staff-page) .site-back-to-top {
 }
 
 .staff-user-card {
+  position: relative;
   display: grid;
   grid-template-columns: 32px 1fr auto;
   gap: 9px;
@@ -517,13 +518,87 @@ body:has(.staff-page) .site-back-to-top {
   font-weight: 800;
 }
 
-.staff-user-card button {
+.staff-user-card__menu-trigger {
   display: grid;
   padding: 3px;
   border: 0;
   background: transparent;
   color: var(--staff-muted);
   cursor: pointer;
+}
+
+.staff-user-card__menu-trigger:hover {
+  color: var(--staff-ink);
+}
+
+.staff-account-menu-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.staff-account-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 20;
+  display: grid;
+  width: 218px;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--staff-line);
+  border-radius: 10px;
+  background: var(--staff-card);
+  box-shadow: 0 18px 38px rgba(7, 28, 43, 0.2);
+}
+
+.staff-account-menu-wrap--topbar .staff-account-menu {
+  top: calc(100% + 11px);
+  right: 0;
+  bottom: auto;
+}
+
+.staff-account-menu__heading {
+  display: grid;
+  gap: 3px;
+  padding: 7px 9px 9px;
+  border-bottom: 1px solid var(--staff-line);
+}
+
+.staff-account-menu__heading small {
+  color: var(--staff-muted);
+  font-size: 0.58rem;
+}
+
+.staff-account-menu__heading strong {
+  overflow: hidden;
+  color: var(--staff-ink);
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-account-menu > button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--staff-ink);
+  font-size: 0.66rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.staff-account-menu > button:hover {
+  background: var(--staff-subtle);
+}
+
+.staff-account-menu__danger {
+  color: #c6534d !important;
 }
 
 .staff-main {

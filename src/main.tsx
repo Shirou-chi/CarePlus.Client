@@ -1,6 +1,17 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
+import { useAuth } from "@/providers/auth-provider";
+import { StaffHomePage } from "@/pages/staff-side/StaffHomePage";
+import { StaffLoginPage } from "@/pages/staff-side/login/StaffLoginPage";
+import { AppointmentsPage as StaffAppointmentsPage } from "@/pages/staff-side/appointments/AppointmentsPage";
+import { AuditLogsPage } from "@/pages/staff-side/audit/AuditLogsPage";
+import { LeavePage } from "@/pages/staff-side/leave/LeavePage";
+import { NotificationsPage as StaffNotificationsPage } from "@/pages/staff-side/notifications/NotificationsPage";
+import { PatientsPage } from "@/pages/staff-side/patients/PatientsPage";
+import { SchedulePage } from "@/pages/staff-side/schedule/SchedulePage";
+import { StaffManagementPage } from "@/pages/staff-side/staff/StaffManagementPage";
+import { SettingsPage } from "@/pages/staff-side/settings/SettingsPage";
 import { AccountPage } from "@/pages/user-side/account-page";
 import { AboutPage } from "@/pages/user-side/about-page";
 import { BookingPage } from "@/pages/user-side/booking-page";
@@ -32,9 +43,45 @@ import { ChatWidget } from "@/components/marketing/chat/chat-widget";
 import { BackToTop } from "@/components/marketing/back-to-top";
 import "@/assets/styles/globals.css";
 
+type StaffRole = "Admin" | "Doctor" | "Pharmacist";
+
+function isStaffRole(value: string | undefined): value is StaffRole {
+    return value === "Admin" || value === "Doctor" || value === "Pharmacist";
+}
+
+function StaffRouteGuard({ roles }: { roles?: StaffRole[] }) {
+    const { user } = useAuth();
+    const location = useLocation();
+
+    if (!user) {
+        return <Navigate replace state={{ from: location.pathname }} to="/staff/login" />;
+    }
+
+    if (!isStaffRole(user?.role)) {
+        return <Navigate replace to="/home" />;
+    }
+
+    if (roles && !roles.includes(user.role)) {
+        return <Navigate replace to="/staff" />;
+    }
+
+    return <Outlet />;
+}
+
+function StaffLoginRoute() {
+    const { user } = useAuth();
+
+    if (user && isStaffRole(user.role)) {
+        return <Navigate replace to="/staff" />;
+    }
+
+    return <StaffLoginPage />;
+}
+
 const AppRoutes = () => {
     const location = useLocation();
     const bookStickyBar = location.pathname === "/book";
+    const isStaffRoute = location.pathname.startsWith("/staff");
 
     return (
         <>
@@ -59,11 +106,25 @@ const AppRoutes = () => {
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/chat" element={<ChatPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
+                    <Route path="/staff/login" element={<StaffLoginRoute />} />
+                    <Route element={<StaffRouteGuard />}>
+                        <Route path="/staff" element={<StaffHomePage />} />
+                        <Route path="/staff/appointments" element={<StaffAppointmentsPage />} />
+                        <Route path="/staff/schedules" element={<SchedulePage />} />
+                        <Route path="/staff/leave" element={<LeavePage />} />
+                        <Route path="/staff/notifications" element={<StaffNotificationsPage />} />
+                        <Route path="/staff/settings" element={<SettingsPage />} />
+                    </Route>
+                    <Route element={<StaffRouteGuard roles={["Admin"]} />}>
+                        <Route path="/staff/staff" element={<StaffManagementPage />} />
+                        <Route path="/staff/patients" element={<PatientsPage />} />
+                        <Route path="/staff/audit-logs" element={<AuditLogsPage />} />
+                    </Route>
                     <Route path="*" element={<NotFound />} />
                 </Routes>
             </div>
-            {location.pathname === "/chat" ? null : <ChatWidget liftAboveStickyBar={bookStickyBar} />}
-            <BackToTop offsetForChat={location.pathname !== "/chat"} liftAboveStickyBar={bookStickyBar} />
+            {!isStaffRoute && location.pathname !== "/chat" ? <ChatWidget liftAboveStickyBar={bookStickyBar} /> : null}
+            {!isStaffRoute ? <BackToTop offsetForChat={location.pathname !== "/chat"} liftAboveStickyBar={bookStickyBar} /> : null}
         </>
     );
 };

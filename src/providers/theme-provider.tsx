@@ -56,9 +56,11 @@ export const ThemeProvider = ({ children, defaultTheme = "system", storageKey = 
                 const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
                 root.classList.toggle(darkModeClass, systemTheme === "dark");
+                root.dataset.theme = systemTheme;
                 localStorage.removeItem(storageKey);
             } else {
                 root.classList.toggle(darkModeClass, theme === "dark");
+                root.dataset.theme = theme;
                 localStorage.setItem(storageKey, theme);
             }
         };

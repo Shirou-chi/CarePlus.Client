@@ -1,0 +1,548 @@
+.staff-management-content {
+  padding-top: 34px;
+}
+
+.staff-management-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 26px;
+  margin-bottom: 26px;
+}
+
+.staff-management-hero h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-family: var(--site-font-display);
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.staff-management-hero__copy {
+  max-width: 620px;
+  margin: 11px 0 0;
+  color: var(--staff-muted);
+  font-size: 0.94rem;
+}
+
+.staff-management-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 17px;
+}
+
+.staff-management-summary-card {
+  display: grid;
+  grid-template-columns: 33px 1fr;
+  column-gap: 10px;
+  align-items: center;
+  min-height: 116px;
+  padding: 15px 16px;
+  border: 1px solid var(--staff-line);
+  border-radius: 11px;
+  background: var(--staff-card);
+}
+
+.staff-management-summary-card > span {
+  display: grid;
+  width: 33px;
+  height: 33px;
+  grid-row: span 2;
+  place-items: center;
+  border-radius: 9px;
+}
+
+.staff-management-summary-card--teal > span { background: #e1f6f2; color: #188b82; }
+.staff-management-summary-card--blue > span { background: #e9f0fc; color: #4f83d2; }
+.staff-management-summary-card--amber > span { background: #fff2df; color: #c1852f; }
+.staff-management-summary-card--violet > span { background: #efebff; color: #7465d7; }
+
+:root[data-theme='dark'] .staff-management-summary-card--teal > span { background: rgba(49, 184, 173, 0.14); }
+:root[data-theme='dark'] .staff-management-summary-card--blue > span { background: rgba(90, 146, 232, 0.14); }
+:root[data-theme='dark'] .staff-management-summary-card--amber > span { background: rgba(229, 165, 75, 0.14); }
+:root[data-theme='dark'] .staff-management-summary-card--violet > span { background: rgba(139, 122, 244, 0.14); }
+
+.staff-management-summary-card small,
+.staff-management-summary-card em {
+  color: var(--staff-muted);
+  font-size: 0.65rem;
+  font-style: normal;
+}
+
+.staff-management-summary-card strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--staff-ink);
+  font-family: var(--site-font-display);
+  font-size: 1.45rem;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.staff-management-summary-card em {
+  grid-column: 2;
+  margin-top: 8px;
+}
+
+.staff-management-list-card {
+  overflow: hidden;
+}
+
+.staff-management-list-card__header {
+  align-items: flex-start;
+}
+
+.staff-management-description {
+  display: block;
+  margin-top: 5px;
+  color: var(--staff-muted);
+  font-size: 0.72rem;
+}
+
+.staff-management-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 15px 17px;
+  border-top: 1px solid var(--staff-line);
+  border-bottom: 1px solid var(--staff-line);
+  background: var(--staff-subtle);
+}
+
+.staff-management-search,
+.staff-management-select {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  border: 1px solid var(--staff-line);
+  border-radius: 7px;
+  background: var(--staff-card);
+  color: var(--staff-muted);
+}
+
+.staff-management-search {
+  flex: 1 1 300px;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.staff-management-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--staff-ink);
+  font-size: 0.7rem;
+}
+
+.staff-management-search input::placeholder {
+  color: var(--staff-muted);
+}
+
+.staff-management-select {
+  min-width: 132px;
+  padding-right: 27px;
+}
+
+.staff-management-select select {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--staff-ink);
+  font-size: 0.7rem;
+  cursor: pointer;
+  color-scheme: light;
+}
+
+.staff-management-select .staff-icon {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+}
+
+.staff-management-select select option,
+.staff-management-form select option {
+  background: var(--staff-card);
+  color: var(--staff-ink);
+}
+
+:root[data-theme='dark'] .staff-management-select select,
+:root[data-theme='dark'] .staff-management-form select {
+  color-scheme: dark;
+}
+
+.staff-management-result-count {
+  margin-left: auto;
+  color: var(--staff-muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.staff-management-result-count strong {
+  color: var(--staff-ink);
+}
+
+.staff-management-alert {
+  margin: 14px 17px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(210, 92, 84, 0.28);
+  border-radius: 8px;
+  background: rgba(210, 92, 84, 0.08);
+  color: #b64b46;
+  font-size: 0.7rem;
+}
+
+.staff-management-table-wrap {
+  overflow-x: auto;
+}
+
+.staff-management-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.staff-management-table th {
+  padding: 13px 17px 10px;
+  color: var(--staff-muted);
+  font-size: 0.59rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.staff-management-table td {
+  padding: 14px 17px;
+  border-top: 1px solid var(--staff-line);
+  color: var(--staff-ink);
+  font-size: 0.7rem;
+  vertical-align: middle;
+}
+
+.staff-management-table td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.staff-management-table td:first-child > span:last-child,
+.staff-management-contact {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.staff-management-table td strong {
+  color: var(--staff-ink);
+  font-size: 0.7rem;
+}
+
+.staff-management-table td small {
+  color: var(--staff-muted);
+  font-size: 0.59rem;
+}
+
+.staff-management-avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.staff-management-avatar--blue { background: #e9f0fc; color: #4f83d2; }
+.staff-management-avatar--amber { background: #fff2df; color: #c1852f; }
+.staff-management-avatar--violet { background: #efebff; color: #7465d7; }
+
+:root[data-theme='dark'] .staff-management-avatar--blue { background: rgba(90, 146, 232, 0.14); }
+:root[data-theme='dark'] .staff-management-avatar--amber { background: rgba(229, 165, 75, 0.14); }
+:root[data-theme='dark'] .staff-management-avatar--violet { background: rgba(139, 122, 244, 0.14); }
+
+.staff-management-role {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 99px;
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.staff-management-status {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--staff-muted);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.staff-management-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.staff-management-status--active { color: #2d9a53; }
+.staff-management-status--inactive { color: #9eabba; }
+.staff-management-status--suspended { color: #c1852f; }
+
+.staff-management-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.staff-management-view,
+.staff-management-edit {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--staff-line);
+  border-radius: 6px;
+  background: var(--staff-card);
+  color: var(--staff-brand);
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.staff-management-view {
+  border-color: transparent;
+  background: transparent;
+  color: var(--staff-muted);
+}
+
+.staff-management-view:hover,
+.staff-management-edit:hover {
+  background: var(--staff-subtle);
+}
+
+.staff-management-view:hover {
+  color: var(--staff-brand);
+}
+
+.staff-management-empty {
+  display: grid;
+  gap: 7px;
+  justify-items: center;
+  padding: 48px 20px;
+  color: var(--staff-muted);
+  text-align: center;
+}
+
+.staff-management-empty strong {
+  color: var(--staff-ink);
+  font-size: 0.8rem;
+}
+
+.staff-management-empty span {
+  font-size: 0.68rem;
+}
+
+.staff-management-empty button {
+  border: 0;
+  background: transparent;
+  color: var(--staff-brand);
+  font-size: 0.67rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.staff-management-form {
+  display: grid;
+  gap: 14px;
+}
+
+.staff-management-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--staff-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.staff-management-form input,
+.staff-management-form select {
+  min-height: 40px;
+  width: 100%;
+  padding: 0 11px;
+  border: 1px solid var(--staff-line);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  font-size: 0.72rem;
+}
+
+.staff-management-form input:focus,
+.staff-management-form select:focus {
+  border-color: var(--staff-teal);
+  box-shadow: 0 0 0 3px rgba(49, 184, 173, 0.12);
+}
+
+.staff-management-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.staff-management-related-fields {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--staff-line);
+}
+
+.staff-management-related-fields__title {
+  margin: 0;
+  color: var(--staff-muted);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.staff-management-readonly {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 8px;
+  background: var(--staff-subtle);
+}
+
+.staff-management-readonly span,
+.staff-management-readonly small {
+  color: var(--staff-muted);
+  font-size: 0.61rem;
+}
+
+.staff-management-readonly strong {
+  color: var(--staff-ink);
+  font-size: 0.75rem;
+}
+
+.staff-management-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 5px;
+}
+
+.staff-dialog--view {
+  width: min(560px, 100%);
+}
+
+.staff-management-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 9px;
+  background: var(--staff-subtle);
+}
+
+.staff-management-profile-heading > span:last-child {
+  display: grid;
+  gap: 4px;
+}
+
+.staff-management-profile-heading strong {
+  color: var(--staff-ink);
+  font-size: 0.8rem;
+}
+
+.staff-management-profile-heading small {
+  color: var(--staff-muted);
+  font-size: 0.65rem;
+}
+
+.staff-management-profile-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.staff-management-profile-details div {
+  display: grid;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 8px;
+  background: var(--staff-card);
+}
+
+.staff-management-profile-details dt {
+  color: var(--staff-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.staff-management-profile-details dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--staff-ink);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 760px) {
+  .staff-management-hero {
+    display: grid;
+    gap: 18px;
+  }
+
+  .staff-management-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-management-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .staff-management-search {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .staff-management-summary {
+    gap: 9px;
+  }
+
+  .staff-management-summary-card {
+    min-height: 104px;
+    padding: 12px;
+  }
+
+  .staff-management-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-management-profile-details {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-management-dialog {
+    padding: 17px;
+  }
+}

@@ -11,7 +11,10 @@ export type IconName =
   | 'clock'
   | 'close'
   | 'download'
+  | 'edit'
+  | 'eye'
   | 'grid'
+  | 'logout'
   | 'menu'
   | 'moon'
   | 'more'
@@ -37,7 +40,10 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
     clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3 2',
     close: 'm6 6 12 12M18 6 6 18',
     download: 'M12 3v12m0 0 4-4m-4 4-4-4M5 21h14',
+    edit: 'M4 20h4l10.5-10.5a2.12 2.12 0 0 0-3-3L5 17v3ZM14.5 7.5l2 2',
+    eye: 'M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+    logout: 'M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 0 0-2-2h-5',
     menu: 'M4 7h16M4 12h16M4 17h16',
     moon: 'M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z',
     more: 'M5 12h.01M12 12h.01M19 12h.01',

@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { useAuth } from '../../../components/auth'
+import { useNavigate } from 'react-router'
+import { useAuth } from '@/providers/auth-provider'
+import { StaffAccountMenu } from '../components/StaffAccountMenu'
 import { Icon, type IconName } from './StaffIcon'
 
 export type StaffRole = 'Admin' | 'Doctor' | 'Pharmacist'
@@ -34,7 +36,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Notifications', icon: 'bell', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Reports & analytics', icon: 'chart', roles: ['Admin'] },
       { label: 'Audit & logs', icon: 'activity', roles: ['Admin'] },
-      { label: 'Settings', icon: 'settings', roles: ['Admin'] },
+      { label: 'Settings', icon: 'settings', roles: ['Admin', 'Doctor', 'Pharmacist'] },
     ],
   },
 ]
@@ -47,8 +49,8 @@ const roleDetails: Record<StaffRole, { initials: string; description: string }> 
 
 const roleModules: Record<StaffRole, string[]> = {
   Admin: ['Overview', 'Appointments', 'Patients', 'Queue', 'Staff', 'Schedules & availability', 'Leave', 'Clinic rooms', 'Notifications', 'Reports & analytics', 'Audit & logs', 'Settings'],
-  Doctor: ['Overview', 'Appointments', 'Queue', 'Schedules & availability', 'Leave', 'Notifications', 'Prescriptions', 'Medical records'],
-  Pharmacist: ['Overview', 'Appointments', 'Queue', 'Schedules & availability', 'Leave', 'Notifications', 'Inventory', 'Prescriptions'],
+  Doctor: ['Overview', 'Appointments', 'Queue', 'Schedules & availability', 'Leave', 'Notifications', 'Prescriptions', 'Medical records', 'Settings'],
+  Pharmacist: ['Overview', 'Appointments', 'Queue', 'Schedules & availability', 'Leave', 'Notifications', 'Inventory', 'Prescriptions', 'Settings'],
 }
 
 function isStaffRole(value: string | undefined): value is StaffRole {
@@ -66,11 +68,18 @@ type StaffSidebarProps = {
 }
 
 export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleChange, role, sidebarOpen }: StaffSidebarProps) {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const claimRole = isStaffRole(user?.role) ? user.role : undefined
   const effectiveRole = claimRole ?? role
   const [rolePanelOpen, setRolePanelOpen] = useState(false)
   const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+
+  const openAccountSettings = () => {
+    navigate('/staff/settings')
+    announce('Account settings selected.')
+    onClose()
+  }
 
   const visibleNavGroups = navGroups
     .map((group) => ({ ...group, items: group.items.filter((item) => item.roles.includes(effectiveRole)) }))
@@ -81,7 +90,7 @@ export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleC
       <div aria-hidden={!sidebarOpen} className={`staff-sidebar-backdrop${sidebarOpen ? ' is-visible' : ''}`} onClick={onClose} />
       <aside className={`staff-sidebar${sidebarOpen ? ' is-open' : ''}`}>
         <div className="staff-brand">
-          <span className="staff-brand__mark"><img alt="" src="/Care+.png" /></span>
+          <span className="staff-brand__mark"><img alt="CarePlus Clinic logo" src="/clinic-logo.png" /></span>
           <span className="staff-brand__copy"><strong>CarePlus</strong><small>CLINIC STAFF</small></span>
         </div>
 
@@ -135,7 +144,11 @@ export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleC
                     key={item.label}
                     type="button"
                     onClick={() => {
-                      onNavigate(item.label)
+                      if (item.label === 'Settings') {
+                        navigate('/staff/settings')
+                      } else {
+                        onNavigate(item.label)
+                      }
                       onClose()
                     }}
                   >
@@ -153,7 +166,7 @@ export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleC
           <div className="staff-user-card">
             <span className="staff-avatar">{initials}</span>
             <span><strong>{user?.name || 'Staff user'}</strong><small>{user?.role || role}</small></span>
-            <button aria-label="Open account menu" type="button" onClick={() => announce('Account menu is ready for your profile controls.')}><Icon name="more" size={19} /></button>
+            <StaffAccountMenu onClose={onClose} onSettings={openAccountSettings} triggerClassName="staff-user-card__menu-trigger" triggerLabel="Open account menu"><Icon name="more" size={19} /></StaffAccountMenu>
           </div>
         </div>
       </aside>
