@@ -2,11 +2,17 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { dummyLogin, SESSION_KEY, type Profile } from "@/utils/auth";
 
+<<<<<<< Updated upstream
 const OLD_STAFF_SESSION_KEY = "careplus-staff-session";
 
 export type AuthUser = {
     name: string;
     username?: string;
+=======
+
+export type AuthUser = {
+    name: string;
+>>>>>>> Stashed changes
     email?: string;
     userId?: string;
     role?: string;
@@ -61,6 +67,7 @@ function readSession(): StoredSession | null {
             if ("type" in data && data.type === "staff") {
                 return data;
             }
+<<<<<<< Updated upstream
 
             // Support the old patient-only session format.
             if ("fullName" in data) {
@@ -78,6 +85,10 @@ function readSession(): StoredSession | null {
                 return migratedSession;
             }
         }
+=======
+        }
+
+>>>>>>> Stashed changes
     } catch {
         return null;
     }
@@ -88,7 +99,10 @@ function readSession(): StoredSession | null {
 function convertApiUser(user: CurrentUserResponse): AuthUser {
     return {
         name: user.name || user.username,
+<<<<<<< Updated upstream
         username: user.username,
+=======
+>>>>>>> Stashed changes
         email: user.email,
         userId: String(user.userId),
         role: user.role,
@@ -161,6 +175,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return nextSession;
         });
     };
+<<<<<<< Updated upstream
 
     const updateStaffProfile = (patch: Partial<Pick<AuthUser, "name" | "phone" | "username">>) => {
         setSession((currentSession) => {
@@ -180,6 +195,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return nextSession;
         });
     };
+=======
+>>>>>>> Stashed changes
 
     const value = useMemo<AuthContextValue>(
         () => ({
@@ -191,7 +208,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             staffLogin,
             logout,
             updateProfile,
+<<<<<<< Updated upstream
             updateStaffProfile,
+=======
+>>>>>>> Stashed changes
         }),
         [profile, user, session],
     );
