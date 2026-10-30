@@ -64,9 +64,9 @@ export const UpcomingVisitsPage = () => {
     const [next, ...later] = visits;
 
     const typeLabel = (id: string) => {
-        if (id === "general") return t.visitGeneral;
-        if (id === "mental") return t.visitMental;
-        if (id === "screening") return t.visitScreening;
+        if (id === "VT01") return t.visitGeneral;
+        if (id === "VT02") return t.visitScreening;
+        if (id === "VT03") return t.visitMental;
         return id;
     };
 

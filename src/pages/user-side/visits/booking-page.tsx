@@ -122,9 +122,9 @@ export const BookingPage = () => {
     );
 
     const typeLabel = (id: string) => {
-        if (id === "general") return t.visitGeneral;
-        if (id === "mental") return t.visitMental;
-        if (id === "screening") return t.visitScreening;
+        if (id === "VT01") return t.visitGeneral;
+        if (id === "VT02") return t.visitScreening;
+        if (id === "VT03") return t.visitMental;
         return id;
     };
 
@@ -359,7 +359,7 @@ export const BookingPage = () => {
                                 <RadioGroup value={visitType} onChange={setVisitType} size="md" className="gap-3" aria-label={t.bookTypeTitle}>
                                     {(catalog?.types ?? []).map((item) => (
                                         <div key={item.id} className={cx("rounded-xl px-4 py-3 ring-1", visitType === item.id ? "ring-2 ring-brand-solid" : "ring-secondary")}>
-                                            <RadioButton value={item.id} label={typeLabel(item.id)} hint={item.id === "general" ? t.visitGeneralHint : item.id === "mental" ? t.visitMentalHint : t.visitScreeningHint} size="md" />
+                                            <RadioButton value={item.id} label={typeLabel(item.id)} hint={item.id === "VT01" ? t.visitGeneralHint : item.id === "VT03" ? t.visitMentalHint : t.visitScreeningHint} size="md" />
                                         </div>
                                     ))}
                                 </RadioGroup>

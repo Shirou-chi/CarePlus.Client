@@ -17,7 +17,7 @@ import { useI18n, type Locale } from "@/providers/locale-provider";
 import { appointmentApi, type Appointment } from "@/services/appointmentApi";
 
 type StatusFilter = "all" | "completed" | "cancelled";
-type TypeFilter = "all" | "general" | "mental" | "screening";
+type TypeFilter = "all" | "VT01" | "VT02" | "VT03";
 
 const klDay = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
 
@@ -86,9 +86,9 @@ export const VisitHistoryPage = () => {
     };
 
     const typeLabel = (id: string) => {
-        if (id === "general") return t.visitGeneral;
-        if (id === "mental") return t.visitMental;
-        if (id === "screening") return t.visitScreening;
+        if (id === "VT01") return t.visitGeneral;
+        if (id === "VT02") return t.visitScreening;
+        if (id === "VT03") return t.visitMental;
         return id;
     };
 
@@ -157,9 +157,9 @@ export const VisitHistoryPage = () => {
                         onSelectionChange={(key) => key && setVisitType(String(key) as TypeFilter)}
                         items={[
                             { id: "all", label: t.historyAll },
-                            { id: "general", label: t.visitGeneral },
-                            { id: "mental", label: t.visitMental },
-                            { id: "screening", label: t.visitScreening },
+                            { id: "VT01", label: t.visitGeneral },
+                            { id: "VT02", label: t.visitScreening },
+                            { id: "VT03", label: t.visitMental },
                         ]}
                     >
                         {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}

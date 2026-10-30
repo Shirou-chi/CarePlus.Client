@@ -27,7 +27,7 @@ export type Appointment = {
     forName: string;
     doctorId: string;
     doctorName: string;
-    type: "general" | "mental" | "screening" | string;
+    type: "VT01" | "VT02" | "VT03" | string;
     notes: string | null;
     recordId?: string | null;
     startAt: string;
