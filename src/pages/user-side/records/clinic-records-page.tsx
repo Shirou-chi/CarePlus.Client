@@ -4,6 +4,7 @@ import { Navigate, useSearchParams } from "react-router";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { FormStatus } from "@/components/application/form-status";
 import { Table, TableCard } from "@/components/application/table/table";
 import { Input } from "@/components/base/input/input";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
@@ -12,11 +13,11 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { SectionDivider } from "@/components/section-divider";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { useClinicRecords } from "@/hooks/use-clinic-records";
 import { printHtmlDocument } from "@/utils/document-download";
 import {
     clinicChargeCategoryLabel,
     getClinicRecordTotals,
-    getClinicRecords,
     type ClinicRecord,
 } from "@/utils/clinic-records";
 import { formatRm } from "@/utils/prescribed-medicine";
@@ -25,10 +26,7 @@ export const ClinicRecordsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const [searchParams, setSearchParams] = useSearchParams();
-    const records = useMemo(
-        () => getClinicRecords(locale).map((record) => (profile ? { ...record, patientName: profile.fullName } : record)),
-        [locale, profile],
-    );
+    const { records, loading, error } = useClinicRecords();
     const [query, setQuery] = useState("");
     const [picked, setPicked] = useState<ClinicRecord | null>(null);
     const detail = picked ?? records.find((record) => record.id === searchParams.get("record")) ?? null;
@@ -99,7 +97,15 @@ export const ClinicRecordsPage = () => {
                     <Input placeholder={t.search} icon={SearchLg} value={query} onChange={setQuery} className="w-full sm:w-72" />
                 </div>
 
-                <TableCard.Root className="mt-8 overflow-hidden">
+                {error ? <FormStatus error={error} className="mt-8" /> : null}
+                {loading ? <p role="status" className="mt-8 rounded-2xl bg-primary px-6 py-8 text-sm text-tertiary ring-1 ring-secondary">{t.clinicRecordsLoading}</p> : null}
+                {!loading && !error && records.length === 0 ? (
+                    <div className="mt-8 rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
+                        <h2 className="text-lg font-semibold text-primary">{t.clinicRecordsEmptyTitle}</h2>
+                        <p className="mt-2 text-sm text-tertiary">{t.clinicRecordsEmptyBody}</p>
+                    </div>
+                ) : null}
+                {!loading && !error && records.length > 0 ? <TableCard.Root className="mt-8 overflow-hidden">
                     <Table aria-label={t.clinicRecordsTitle}>
                         <Table.Header>
                             <Table.Head id="id" label={t.clinicRecordsId} isRowHeader />
@@ -150,7 +156,7 @@ export const ClinicRecordsPage = () => {
                             )}
                         </Table.Body>
                     </Table>
-                </TableCard.Root>
+                </TableCard.Root> : null}
             </main>
             <LandingFooter />
 

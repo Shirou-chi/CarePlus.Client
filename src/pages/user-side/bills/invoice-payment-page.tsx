@@ -14,7 +14,8 @@ import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { profileApi } from "@/services/profileApi";
 import { invoiceApi } from "@/services/invoiceApi";
 import { useI18n } from "@/providers/locale-provider";
-import { clinicChargeCategoryLabel, getClinicRecordById, getClinicRecordTotals } from "@/utils/clinic-records";
+import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { clinicChargeCategoryLabel, getClinicRecordTotals } from "@/utils/clinic-records";
 import { formatRm } from "@/utils/prescribed-medicine";
 import { applyPaymentCards, readProfileSettings, writeProfileSettings } from "@/utils/profile-settings";
 
@@ -26,6 +27,7 @@ export const InvoicePaymentPage = () => {
     const { profile, isReady } = useAuth();
     const { invoices, ready, reload } = useOutstandingInvoices();
     const { t, locale } = useI18n();
+    const { records, loading: recordsLoading } = useClinicRecords();
     const [method, setMethod] = useState<PaymentMethod>("fpx");
     const [cardId, setCardId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -64,11 +66,11 @@ export const InvoicePaymentPage = () => {
             timeZone: "Asia/Kuala_Lumpur",
         });
 
-    if (!isReady || !ready) return <div className="careplus-landing min-h-dvh" />;
+    if (!isReady || !ready || recordsLoading) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
     if (!invoice) return <Navigate to="/invoices" replace />;
 
-    const record = getClinicRecordById(locale, invoice.recordId);
+    const record = records.find((item) => item.id === invoice.recordId) ?? null;
     if (!record) return <Navigate to="/invoices" replace />;
     const totals = getClinicRecordTotals(record);
     const sstLabel = t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100));
