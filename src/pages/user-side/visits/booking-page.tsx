@@ -16,8 +16,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
-import { getBookingCatalog, getBookingSlots, bookAppointment, isBookingClosed, type BookedAppointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/utils/booking";
-import { isDoctorId } from "@/utils/doctors";
+import { appointmentApi, type Appointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/services/appointmentApi";
 import { cx } from "@/utils/cx";
 
 const ANY_DOCTOR = "any";
@@ -39,7 +38,7 @@ export const BookingPage = () => {
     const [step, setStep] = useState(0);
     const [catalog, setCatalog] = useState<BookingCatalog | null>(null);
     const [familyId, setFamilyId] = useState("");
-    const [doctorId, setDoctorId] = useState(() => (presetDoctor && isDoctorId(presetDoctor) ? presetDoctor : ANY_DOCTOR));
+    const [doctorId, setDoctorId] = useState(() => presetDoctor || ANY_DOCTOR);
     const [date, setDate] = useState<DateValue>(today(getLocalTimeZone()));
     const [shift, setShift] = useState<"morning" | "night">("morning");
     const [slot, setSlot] = useState<TimeSlot | null>(null);
@@ -49,49 +48,64 @@ export const BookingPage = () => {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [booked, setBooked] = useState<BookedAppointment | null>(null);
+    const [booked, setBooked] = useState<Appointment | null>(null);
 
     useEffect(() => {
         if (!profile) {
             return;
         }
 
+        let active = true;
         setLoading(true);
-        try {
-            const next = getBookingCatalog(profile);
-            setCatalog(next);
-            setFamilyId(next.family[0]?.id ?? profile.id);
-        } catch (cause) {
-            setError(cause instanceof Error ? cause.message : t.authFailed);
-        } finally {
-            setLoading(false);
-        }
-    }, [profile, t.authFailed]);
+        appointmentApi
+            .catalog()
+            .then((next) => {
+                if (!active) return;
+                setCatalog(next);
+                setFamilyId(profile.id);
+                if (presetDoctor && next.doctors.some((doctor) => doctor.id === presetDoctor)) setDoctorId(presetDoctor);
+            })
+            .catch((cause) => active && setError(cause instanceof Error ? cause.message : t.authFailed))
+            .finally(() => active && setLoading(false));
+        return () => {
+            active = false;
+        };
+    }, [profile, presetDoctor, t.authFailed]);
 
     useEffect(() => {
         if (!profile || step < 1) {
             return;
         }
 
-        try {
-            const next = getBookingSlots(date.toString(), doctorId);
-            setSlots(next);
-            setSlot((current) => {
-                const all = [...next.morning, ...next.night];
-                const stillOpen = current && all.some((item) => item.startAt === current.startAt && !item.booked);
-                if (current && !stillOpen) {
-                    setError(t.bookSlotTaken);
-                    return null;
-                }
-                return current;
-            });
-        } catch (cause) {
-            setError(cause instanceof Error ? cause.message : t.authFailed);
-            setSlots(null);
-        }
+        let active = true;
+        setLoading(true);
+        appointmentApi
+            .slots(date.toString(), doctorId)
+            .then((next) => {
+                if (!active) return;
+                setSlots(next);
+                setSlot((current) => {
+                    const all = [...next.morning, ...next.night];
+                    const stillOpen = current && all.some((item) => item.startAt === current.startAt && !item.booked);
+                    if (current && !stillOpen) {
+                        setError(t.bookSlotTaken);
+                        return null;
+                    }
+                    return current;
+                });
+            })
+            .catch((cause) => {
+                if (!active) return;
+                setError(cause instanceof Error ? cause.message : t.authFailed);
+                setSlots(null);
+            })
+            .finally(() => active && setLoading(false));
+        return () => {
+            active = false;
+        };
     }, [date, doctorId, profile, step, t.authFailed, t.bookSlotTaken]);
 
-    const family = catalog?.family.find((item) => item.id === familyId) ?? catalog?.family[0];
+    const family = profile && familyId === profile.id ? { id: profile.id, name: profile.fullName, relation: "", isYou: true } : undefined;
     const doctor = doctorId === ANY_DOCTOR ? null : catalog?.doctors.find((item) => item.id === doctorId);
     const openSlots = slots ? (shift === "morning" ? slots.morning : slots.night) : [];
     const openCount = openSlots.filter((item) => !item.booked).length;
@@ -138,6 +152,13 @@ export const BookingPage = () => {
     const isSlotConflict = (message: string) =>
         message.toLowerCase().includes("slot") || message.toLowerCase().includes("booked") || message.toLowerCase().includes("free");
 
+    const bookingRuleMessage = (message: string) => {
+        if (message === "booking-closed") return t.visitsBookingBlocked;
+        if (message === "upcoming-limit") return t.visitsUpcomingLimit;
+        if (message === "same-day-session-limit") return t.visitsSameDaySessionLimit;
+        return isSlotConflict(message) ? t.bookSlotTaken : message;
+    };
+
     const goNext = async () => {
         if (step !== 1) {
             setError(null);
@@ -151,7 +172,7 @@ export const BookingPage = () => {
 
         setLoading(true);
         try {
-            const next = getBookingSlots(date.toString(), doctorId);
+            const next = await appointmentApi.slots(date.toString(), doctorId);
             setSlots(next);
             const all = [...next.morning, ...next.night];
             const selected = all.find((item) => item.startAt === slot.startAt);
@@ -177,25 +198,21 @@ export const BookingPage = () => {
         setSaving(true);
         setError(null);
         try {
-            const result = bookAppointment({
-                profile,
+            const result = await appointmentApi.book({
                 doctorId,
                 startAt: slot.startAt,
                 type: visitType,
+                forName: family.name,
                 notes: notes.trim() || undefined,
             });
             setBooked(result);
         } catch (cause) {
             const message = cause instanceof Error ? cause.message : t.authFailed;
-            if (message === "booking-closed") {
-                setError(t.visitsBookingBlocked);
-                return;
-            }
             if (isSlotConflict(message)) {
                 setStep(1);
                 setSlot(null);
             }
-            setError(isSlotConflict(message) ? t.bookSlotTaken : message);
+            setError(bookingRuleMessage(message));
         } finally {
             setSaving(false);
         }
@@ -216,7 +233,8 @@ export const BookingPage = () => {
             <main className="mx-auto w-full max-w-container px-4 py-6 pb-28 md:px-8 md:py-10 md:pb-10">
                 <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.bookTitle}</h1>
                 <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.bookBody}</p>
-                {isBookingClosed() ? (
+                <p className="mt-4 max-w-3xl rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.bookLimitNote}</p>
+                {catalog?.bookingClosed ? (
                     <p role="status" className="mt-4 rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">
                         {t.visitsBookingBlocked}
                     </p>
@@ -236,7 +254,7 @@ export const BookingPage = () => {
                                     label={t.bookFamilyLabel}
                                     selectedKey={familyId}
                                     onSelectionChange={(key) => setFamilyId(String(key))}
-                                    items={(catalog?.family ?? []).map((item) => ({
+                                    items={(family ? [family] : []).map((item) => ({
                                         id: item.id,
                                         label: item.name,
                                         supportingText: item.isYou ? t.bookPrimaryContact : relationLabel(t, item.relation),
@@ -384,7 +402,7 @@ export const BookingPage = () => {
                                     {t.bookContinue}
                                 </Button>
                             ) : (
-                                <Button color="primary" size="lg" isDisabled={!canContinue || saving || isBookingClosed()} onClick={() => void confirm()}>
+                                <Button color="primary" size="lg" isDisabled={!canContinue || saving || catalog?.bookingClosed} onClick={() => void confirm()}>
                                     {saving ? t.bookSaving : t.bookConfirm}
                                 </Button>
                             )}
@@ -408,7 +426,7 @@ export const BookingPage = () => {
                                 {t.bookContinue}
                             </Button>
                         ) : (
-                            <Button color="primary" size="md" className="flex-1" isDisabled={!canContinue || saving || isBookingClosed()} onClick={() => void confirm()}>
+                            <Button color="primary" size="md" className="flex-1" isDisabled={!canContinue || saving || catalog?.bookingClosed} onClick={() => void confirm()}>
                                 {saving ? t.bookSaving : t.bookConfirm}
                             </Button>
                         )}
@@ -435,8 +453,8 @@ export const BookingPage = () => {
                                     <Button color="primary" size="lg" onClick={() => navigate("/home")}>
                                         {t.backToHome}
                                     </Button>
-                                    <Button color="secondary" size="lg" onClick={() => navigate("/account")}>
-                                        {t.bookViewAccount}
+                                    <Button color="secondary" size="lg" onClick={() => navigate("/visits")}>
+                                        {t.bookViewBooking}
                                     </Button>
                                 </div>
                             </>

@@ -18,6 +18,24 @@ export type PatientRegisterResponse = {
   userId: number
   name: string
   patientId: string
+  emailVerificationRequired: boolean
+  verificationChallengeId: string
+  maskedEmail: string
+  verificationExpiresInSeconds: number
+}
+
+export type EmailVerificationCodeSentResponse = {
+  challengeId: string
+  maskedEmail: string
+  expiresInSeconds: number
+}
+
+export type EmailVerificationStatusResponse = {
+  verified: boolean
+}
+
+export type UsernameAvailabilityResponse = {
+  available: boolean
 }
 
 export type CurrentUserResponse = {
@@ -82,13 +100,43 @@ export const authApi = {
     return unwrap(result, 'Patient registration failed.')
   },
 
+  async verifyEmail(challengeId: string, code: string): Promise<EmailVerificationStatusResponse> {
+    const result = await request<ApiResponse<EmailVerificationStatusResponse>>('/api/Patient/VerifyEmail', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId, code }),
+    })
+
+    return unwrap(result, 'Email verification failed.')
+  },
+
+  async resendEmailVerification(challengeId: string): Promise<EmailVerificationCodeSentResponse> {
+    const result = await request<ApiResponse<EmailVerificationCodeSentResponse>>('/api/Patient/ResendEmailVerification', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId }),
+    })
+
+    return unwrap(result, 'Unable to resend the verification code.')
+  },
+
+  async checkUsernameAvailability(username: string): Promise<boolean> {
+    const result = await request<ApiResponse<UsernameAvailabilityResponse>>(
+      `/api/Patient/UsernameAvailability?username=${encodeURIComponent(username)}`,
+    )
+
+    if (!result.isSuccess || !result.data) {
+      throw new Error(messageFromBody(result, 'Unable to check username availability.'))
+    }
+
+    return result.data.available
+  },
+
   async getLoginActivity(): Promise<LoginActivityResponse[]> {
     const result = await request<ApiResponse<LoginActivityResponse[]>>('/api/User/Activity', {
       method: 'GET',
     }, true)
 
     if (!result.isSuccess || !result.data) {
-      return []
+      throw new Error(messageFromBody(result, 'Unable to load account activity.'))
     }
 
     return result.data

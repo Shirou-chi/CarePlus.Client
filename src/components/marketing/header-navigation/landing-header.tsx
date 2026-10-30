@@ -245,7 +245,7 @@ const HeaderCart = () => {
                                 <Button color="primary" size="sm" href="/cart" className="mt-4 w-full">
                                     {t.medCartView}
                                 </Button>
-                                <Button color="secondary" size="sm" iconLeading={Trash01} className="mt-2 w-full" onPress={clear}>
+                                <Button color="secondary" size="sm" iconLeading={Trash01} className="mt-2 w-full" onClick={clear}>
                                     {t.medClearCart}
                                 </Button>
                             </>

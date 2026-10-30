@@ -14,7 +14,11 @@ export type AppSettingResponse = {
     appearance: string;
     language: string | null;
     notification: string | null;
+    twoFactorEnabled: boolean;
+    hasCompletedTutorial: boolean;
 };
+
+export type TwoFactorAction = "enable" | "disable";
 
 export type PaymentCardResponse = {
     id: number;
@@ -36,6 +40,7 @@ export type AppSettingSaveRequest = {
     appearance?: string;
     language?: string;
     notification?: string;
+    hasCompletedTutorial?: boolean;
 };
 
 export type DeliveryAddressResponse = {
@@ -77,6 +82,17 @@ export const profileApi = {
         );
         if (!result.isSuccess) {
             throw new Error(messageFromBody(result, "Unable to update the password."));
+        }
+    },
+
+    async deleteAccount(currentPassword: string): Promise<void> {
+        const result = await request<ApiResponse<{ deleted: boolean }>>(
+            "/api/User/Me",
+            { method: "DELETE", body: JSON.stringify({ currentPassword }) },
+            true,
+        );
+        if (!result.isSuccess) {
+            throw new Error(messageFromBody(result, "Unable to delete the account."));
         }
     },
 
@@ -132,6 +148,24 @@ export const profileApi = {
             true,
         );
         return unwrap(result, "Unable to save preferences.");
+    },
+
+    async sendTwoFactorCode(action: TwoFactorAction): Promise<{ maskedEmail: string; expiresInSeconds: number }> {
+        const result = await request<ApiResponse<{ maskedEmail: string; expiresInSeconds: number }>>(
+            "/api/User/TwoFactor/SendCode",
+            { method: "POST", body: JSON.stringify({ action }) },
+            true,
+        );
+        return unwrap(result, "Unable to send the verification code.");
+    },
+
+    async verifyTwoFactorCode(action: TwoFactorAction, code: string): Promise<{ enabled: boolean }> {
+        const result = await request<ApiResponse<{ enabled: boolean }>>(
+            "/api/User/TwoFactor/Verify",
+            { method: "POST", body: JSON.stringify({ action, code }) },
+            true,
+        );
+        return unwrap(result, "Unable to verify the code.");
     },
 
     async listPaymentCards(): Promise<PaymentCardResponse[]> {

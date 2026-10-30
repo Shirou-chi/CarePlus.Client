@@ -247,10 +247,10 @@ export const NotificationsPage = () => {
                             </Heading>
                             <p className="mt-2 text-sm text-tertiary">{t.notifDeleteBody.replace("{count}", String(selectedIds.length))}</p>
                             <div className="mt-6 flex justify-end gap-3">
-                                <Button color="secondary" onPress={() => setConfirming(false)}>
+                                <Button color="secondary" onClick={() => setConfirming(false)}>
                                     {t.notifCancel}
                                 </Button>
-                                <Button color="primary-destructive" iconLeading={Trash01} onPress={confirmDelete}>
+                                <Button color="primary-destructive" iconLeading={Trash01} onClick={confirmDelete}>
                                     {t.notifDelete}
                                 </Button>
                             </div>
@@ -331,12 +331,12 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                     color="secondary"
                     size="sm"
                     isDisabled={selectedUnreadIds.length === 0 && unreadCount === 0}
-                    onPress={() => (selectedUnreadIds.length > 0 ? onMarkRead(selectedUnreadIds) : onClear())}
+                    onClick={() => (selectedUnreadIds.length > 0 ? onMarkRead(selectedUnreadIds) : onClear())}
                 >
                     {t.notifClearAll}
                 </Button>
                 {selectedCount > 0 ? (
-                    <Button color="secondary-destructive" size="sm" iconLeading={Trash01} onPress={onDelete}>
+                    <Button color="secondary-destructive" size="sm" iconLeading={Trash01} onClick={onDelete}>
                         {`${t.notifDelete} (${selectedCount})`}
                     </Button>
                 ) : null}
@@ -363,7 +363,7 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                 onOpen={() => onOpen(item.id)}
                             />
                             {item.unread ? (
-                                <Button color="secondary" size="sm" className="mb-2 ml-14" onPress={() => onOpen(item.id)}>
+                                <Button color="secondary" size="sm" className="mb-2 ml-14" onClick={() => onOpen(item.id)}>
                                     {t.notifMarkRead}
                                 </Button>
                             ) : null}
@@ -424,7 +424,7 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                         {item.unread ? (
                                             <span onClick={(event) => event.stopPropagation()} onPointerDown={leaveCheckbox}
                                     onPointerUp={leaveCheckbox}>
-                                                <Button color="secondary" size="sm" onPress={() => onOpen(item.id)}>
+                                                <Button color="secondary" size="sm" onClick={() => onOpen(item.id)}>
                                                     {t.notifMarkRead}
                                                 </Button>
                                             </span>

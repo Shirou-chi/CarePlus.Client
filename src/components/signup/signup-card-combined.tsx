@@ -20,19 +20,29 @@ type SignupPayload = {
 };
 
 type SignupCardCombinedProps = {
+    initialEmail?: string;
     error?: string | null;
     isLoading?: boolean;
+    usernameAvailability?: "idle" | "checking" | "available" | "taken" | "error";
+    onUsernameChange?: (username: string) => void;
     onSubmit: (payload: SignupPayload) => void;
 };
 
 const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCombinedProps) => {
+export const SignupCardCombined = ({
+    initialEmail = "",
+    error,
+    isLoading,
+    usernameAvailability = "idle",
+    onUsernameChange,
+    onSubmit,
+}: SignupCardCombinedProps) => {
     const { t } = useI18n();
     const [fullName, setFullName] = useState("");
     const [ic, setIc] = useState("");
     const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
+    const [email, setEmail] = useState(initialEmail);
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
@@ -61,9 +71,22 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                 ? t.icDate
                 : undefined;
     const phoneHint = phone.trim() && !composePhone(phone.trim()) ? t.phoneFormat : undefined;
+    const usernameValidationHint =
+        usernameAvailability === "checking"
+            ? t.usernameChecking
+            : usernameAvailability === "taken"
+              ? t.usernameTaken
+              : usernameAvailability === "available"
+                ? t.usernameAvailable
+                : usernameAvailability === "error"
+                  ? t.usernameCheckFailed
+                  : submitted && !username.trim()
+                    ? t.usernameRequired
+                    : undefined;
     const issues = [
         fullName.trim().length < 3 ? t.nameTooShort : "",
         !username.trim() ? t.usernameRequired : "",
+        usernameAvailability === "taken" ? t.usernameTaken : "",
         cardIssue === "empty" ? t.icRequired : cardIssue === "length" ? t.icLength : cardIssue === "date" ? t.icDate : "",
         !emailOk(email.trim()) ? t.settingsInvalidEmail : "",
         phoneHint ?? "",
@@ -109,11 +132,15 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                         label={t.username}
                         name="username"
                         value={username}
-                        onChange={setUsername}
+                        onChange={(value) => {
+                            setUsername(value);
+                            onUsernameChange?.(value);
+                        }}
                         placeholder={t.usernamePlaceholder}
+                        tooltip={t.usernameHint}
                         size="lg"
-                        hint={submitted && !username.trim() ? t.usernameRequired : undefined}
-                        isInvalid={submitted && !username.trim()}
+                        hint={usernameValidationHint}
+                        isInvalid={usernameAvailability === "taken" || (submitted && !username.trim())}
                         autoComplete="username"
                     />
                     <Input

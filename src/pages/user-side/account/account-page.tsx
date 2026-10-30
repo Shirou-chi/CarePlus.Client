@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
     Check,
     CreditCard01,
@@ -10,7 +10,7 @@ import {
     User01,
 } from "@untitledui/icons";
 import { Heading } from "react-aria-components";
-import { Navigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { AddressLocator } from "@/components/application/address-map/address-map";
 import { FormStatus } from "@/components/application/form-status";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
@@ -34,7 +34,7 @@ import { CreditCard } from "@/components/credit-card/credit-card";
 import { useAuth } from "@/providers/auth-provider";
 import { TOKEN_KEY } from "@/services/api";
 import { authApi } from "@/services/authApi";
-import { profileApi, profilePictureUrl, type DeliveryAddressResponse } from "@/services/profileApi";
+import { profileApi, profilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { DUMMY_PASSWORD, type Profile } from "@/utils/auth";
@@ -93,9 +93,10 @@ type EditField = "fullName" | "address" | "phone" | "email";
 type DialogState =
     | { type: "edit"; field: EditField }
     | { type: "notif-disable" }
-    | { type: "two-factor-off" }
+    | { type: "two-factor"; action: TwoFactorAction; maskedEmail: string; loading?: boolean }
     | { type: "view-photo" }
     | { type: "save-photo"; url: string; file: File }
+    | { type: "delete-account" }
     | { type: "remove-card"; id: string; label: string }
     | { type: "remove-address"; id: string; label: string };
 
@@ -107,9 +108,10 @@ const genderLabel = (value: string | null, t: Copy) => {
 };
 
 export const AccountPage = () => {
-    const { profile, isReady, updateProfile } = useAuth();
+    const { profile, isReady, updateProfile, logout } = useAuth();
     const { t, locale, setLocale } = useI18n();
     const { theme, setTheme } = useTheme();
+    const navigate = useNavigate();
     const [activeSection, setActiveSection] = useState<SectionId>("profile");
     const [settings, setSettings] = useState<ProfileSettings>(() =>
         profile ? readProfileSettings(profile.id) : readProfileSettings("guest"),
@@ -118,6 +120,8 @@ export const AccountPage = () => {
     const [editingAddressId, setEditingAddressId] = useState<string | "new" | null>(null);
     const [dialog, setDialog] = useState<DialogState | null>(null);
     const [profileNotice, setProfileNotice] = useState<{ success?: string; error?: string } | null>(null);
+    const [securityNotice, setSecurityNotice] = useState<{ success?: string; error?: string } | null>(null);
+    const [twoFactorBusy, setTwoFactorBusy] = useState(false);
     const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
     const [activity, setActivity] = useState<AccountActivity[]>([]);
     const sectionRefs = useRef<Record<SectionId, HTMLElement | null>>({ profile: null, preference: null, payment: null, security: null });
@@ -183,6 +187,19 @@ export const AccountPage = () => {
                 }
                 setSettings((current) => {
                     const next = applyPaymentCards(current, cards);
+                    writeProfileSettings(profile.id, next);
+                    return next;
+                });
+            })
+            .catch(() => undefined);
+        profileApi
+            .getAppSetting()
+            .then((appSetting) => {
+                if (cancelled || !appSetting) {
+                    return;
+                }
+                setSettings((current) => {
+                    const next = { ...current, twoFactorEnabled: appSetting.twoFactorEnabled };
                     writeProfileSettings(profile.id, next);
                     return next;
                 });
@@ -256,6 +273,58 @@ export const AccountPage = () => {
     const persistSettings = (next: ProfileSettings) => {
         setSettings(next);
         writeProfileSettings(profile.id, next);
+    };
+
+    const requestTwoFactorCode = async (action: TwoFactorAction) => {
+        setSecurityNotice(null);
+        setTwoFactorBusy(true);
+        setDialog({ type: "two-factor", action, maskedEmail: t.settingsTwoFactorSending, loading: true });
+        try {
+            const result = await profileApi.sendTwoFactorCode(action);
+            setDialog((current) =>
+                current?.type === "two-factor" && current.action === action
+                    ? { ...current, maskedEmail: result.maskedEmail, loading: false }
+                    : current,
+            );
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "";
+            setDialog((current) => (current?.type === "two-factor" && current.action === action ? null : current));
+            setSecurityNotice({
+                error: message.includes("email") || message.includes("Email") ? t.settingsTwoFactorEmailFailed : message || t.settingsTwoFactorCodeWrong,
+            });
+        } finally {
+            setTwoFactorBusy(false);
+        }
+    };
+
+    const verifyTwoFactorCode = async (action: TwoFactorAction, code: string) => {
+        try {
+            const result = await profileApi.verifyTwoFactorCode(action, code);
+            persistSettings({ ...settings, twoFactorEnabled: result.enabled });
+            setDialog(null);
+            setSecurityNotice({ success: result.enabled ? t.settingsTwoFactorEnabled : t.settingsTwoFactorDisabled });
+            return null;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "";
+            const friendly = message || t.settingsTwoFactorCodeWrong;
+            setSecurityNotice({ error: friendly });
+            return friendly;
+        }
+    };
+
+    const deleteCurrentAccount = async (currentPassword: string) => {
+        try {
+            await profileApi.deleteAccount(currentPassword);
+            setDialog(null);
+            await logout();
+            navigate("/login", { replace: true });
+            return null;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "";
+            if (message === "Current password is incorrect.") return t.settingsCurrentPasswordWrong;
+            if (message === "Transfer family ownership before deleting your account.") return t.settingsDeleteAccountOwnerBlocked;
+            return message || t.settingsDeleteAccountFailed;
+        }
     };
 
     const scrollToSection = (id: SectionId) => {
@@ -866,19 +935,15 @@ export const AccountPage = () => {
                             className="scroll-mt-44 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavSecurity} />
+                            <FormStatus success={securityNotice?.success} error={securityNotice?.error} className="mt-4" />
                             <div className="mt-6 flex flex-col gap-8">
                                 <ChangePasswordForm t={t} />
 
                                 <PreferenceBlock title={t.settingsTwoFactor}>
                                     <Toggle
                                         isSelected={settings.twoFactorEnabled}
-                                        onChange={(enabled) => {
-                                            if (!enabled) {
-                                                setDialog({ type: "two-factor-off" });
-                                                return;
-                                            }
-                                            persistSettings({ ...settings, twoFactorEnabled: true });
-                                        }}
+                                        isDisabled={twoFactorBusy}
+                                        onChange={(enabled) => void requestTwoFactorCode(enabled ? "enable" : "disable")}
                                         label={t.settingsTwoFactor}
                                         hint={t.settingsTwoFactorHint}
                                         size="md"
@@ -913,6 +978,23 @@ export const AccountPage = () => {
                                         </Table>
                                     </TableCard.Root>
                                     )}
+                                </PreferenceBlock>
+
+                                <PreferenceBlock title={t.settingsDeleteAccountTitle}>
+                                    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                                        <div className="max-w-2xl">
+                                            <p id="delete-account-description" className="text-sm text-tertiary">{t.settingsDeleteAccountBody}</p>
+                                        </div>
+                                        <Button
+                                            color="secondary-destructive"
+                                            size="sm"
+                                            iconLeading={Trash01}
+                                            aria-describedby="delete-account-description"
+                                            onClick={() => setDialog({ type: "delete-account" })}
+                                        >
+                                            {t.settingsDeleteAccountButton}
+                                        </Button>
+                                    </div>
                                 </PreferenceBlock>
                             </div>
                         </section>
@@ -1041,31 +1123,18 @@ export const AccountPage = () => {
                 </ModalOverlay>
             ) : null}
 
-            {dialog?.type === "two-factor-off" ? (
-                <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
-                    <Modal className="w-full max-w-md">
-                        <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
-                            <Heading slot="title" className="text-lg font-semibold text-primary">
-                                {t.settingsTwoFactorOffTitle}
-                            </Heading>
-                            <p className="mt-2 text-sm text-tertiary">{t.settingsTwoFactorOffBody}</p>
-                            <div className="mt-6 flex justify-end gap-3">
-                                <Button color="secondary" onClick={() => setDialog(null)}>
-                                    {t.notifCancel}
-                                </Button>
-                                <Button
-                                    color="primary-destructive"
-                                    onClick={() => {
-                                        persistSettings({ ...settings, twoFactorEnabled: false });
-                                        setDialog(null);
-                                    }}
-                                >
-                                    {t.settingsTwoFactorOffConfirm}
-                                </Button>
-                            </div>
-                        </Dialog>
-                    </Modal>
-                </ModalOverlay>
+            {dialog?.type === "two-factor" ? (
+                <TwoFactorDialog
+                    t={t}
+                    action={dialog.action}
+                    maskedEmail={dialog.maskedEmail}
+                    onClose={() => setDialog(null)}
+                    onVerify={(code) => verifyTwoFactorCode(dialog.action, code)}
+                />
+            ) : null}
+
+            {dialog?.type === "delete-account" ? (
+                <DeleteAccountDialog t={t} onClose={() => setDialog(null)} onDelete={deleteCurrentAccount} />
             ) : null}
 
             {dialog?.type === "notif-disable" ? (
@@ -1089,6 +1158,162 @@ export const AccountPage = () => {
                 </ModalOverlay>
             ) : null}
         </div>
+    );
+};
+
+const DeleteAccountDialog = ({
+    t,
+    onClose,
+    onDelete,
+}: {
+    t: Copy;
+    onClose: () => void;
+    onDelete: (currentPassword: string) => Promise<string | null>;
+}) => {
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
+    const submit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (deleting) return;
+        if (!currentPassword.trim()) {
+            setError(t.settingsCurrentPasswordRequired);
+            return;
+        }
+
+        setError(null);
+        setDeleting(true);
+        const message = await onDelete(currentPassword);
+        if (message) {
+            setError(message);
+            setDeleting(false);
+        }
+    };
+
+    return (
+        <ModalOverlay isDismissable={!deleting} isOpen onOpenChange={(open) => !open && !deleting && onClose()}>
+            <Modal className="w-full max-w-md">
+                <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                    <Heading slot="title" className="text-lg font-semibold text-primary">
+                        {t.settingsDeleteAccountConfirmTitle}
+                    </Heading>
+                    <p className="mt-2 text-sm text-tertiary">{t.settingsDeleteAccountConfirmBody}</p>
+                    <form className="mt-6 flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+                        <FormStatus error={error} />
+                        <Input
+                            type="password"
+                            label={t.settingsCurrentPassword}
+                            value={currentPassword}
+                            onChange={(value) => {
+                                setCurrentPassword(value);
+                                setError(null);
+                            }}
+                            isRequired
+                            isDisabled={deleting}
+                            maxLength={72}
+                            autoComplete="current-password"
+                            isInvalid={Boolean(error)}
+                            hint={error === t.settingsCurrentPasswordRequired || error === t.settingsCurrentPasswordWrong ? error : undefined}
+                            className="w-full"
+                        />
+                        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <Button type="button" color="secondary" isDisabled={deleting} onClick={onClose}>
+                                {t.notifCancel}
+                            </Button>
+                            <Button type="submit" color="primary-destructive" isLoading={deleting} isDisabled={deleting}>
+                                {t.settingsDeleteAccountConfirm}
+                            </Button>
+                        </div>
+                    </form>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
+    );
+};
+
+const TwoFactorDialog = ({
+    t,
+    action,
+    maskedEmail,
+    loading = false,
+    onClose,
+    onVerify,
+}: {
+    t: Copy;
+    action: TwoFactorAction;
+    maskedEmail: string;
+    loading?: boolean;
+    onClose: () => void;
+    onVerify: (code: string) => Promise<string | null>;
+}) => {
+    const [code, setCode] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const actionLabel = action === "enable" ? t.settingsTwoFactorCodeEnableAction : t.settingsTwoFactorCodeDisableAction;
+    const title = action === "enable" ? t.settingsTwoFactorEnableTitle : t.settingsTwoFactorDisableTitle;
+
+    const submit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const trimmed = code.trim();
+        if (!/^\d{6}$/.test(trimmed)) {
+            setError(t.settingsTwoFactorCodeRequired);
+            return;
+        }
+
+        setError(null);
+        setSaving(true);
+        const message = await onVerify(trimmed);
+        if (message) {
+            setError(message);
+        }
+        setSaving(false);
+    };
+
+    return (
+        <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
+            <Modal className="w-full max-w-md">
+                <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                    <Heading slot="title" className="text-lg font-semibold text-primary">
+                        {title}
+                    </Heading>
+                    <p className="mt-2 text-sm text-tertiary">
+                        {loading
+                            ? t.settingsTwoFactorSending
+                            : t.settingsTwoFactorCodeBody.replace("{email}", maskedEmail).replace("{action}", actionLabel)}
+                    </p>
+                    <form className="mt-6 flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+                        <Input
+                            label={t.settingsTwoFactorCodeLabel}
+                            value={code}
+                            onChange={(value) => {
+                                setCode(value.replace(/\D/g, "").slice(0, 6));
+                                setError(null);
+                            }}
+                            inputMode="numeric"
+                            maxLength={6}
+                            isRequired
+                            isDisabled={loading || saving}
+                            isInvalid={Boolean(error)}
+                            hint={loading ? t.settingsTwoFactorSending : error ?? t.settingsTwoFactorEmailHint}
+                        />
+                        <div className="flex justify-end gap-3">
+                            <Button color="secondary" type="button" onClick={onClose} isDisabled={saving}>
+                                {t.notifCancel}
+                            </Button>
+                            <Button
+                                color={action === "disable" ? "primary-destructive" : "primary"}
+                                type="submit"
+                                isLoading={loading || saving}
+                                isDisabled={loading || saving}
+                            >
+                                {loading ? t.settingsTwoFactorSending : t.settingsSaveConfirm}
+                            </Button>
+                        </div>
+                    </form>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
     );
 };
 
@@ -1380,7 +1605,7 @@ const EditFieldDialog = ({
     );
 };
 
-const ChangePasswordForm = ({ t }: { t: Copy }) => {
+const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: boolean }) => {
     const { profile } = useAuth();
     const [current, setCurrent] = useState("");
     const [next, setNext] = useState("");
@@ -1407,7 +1632,7 @@ const ChangePasswordForm = ({ t }: { t: Copy }) => {
                 className="max-w-3xl"
                 onSubmit={(event) => {
                     event.preventDefault();
-                    if (saving) {
+                    if (saving || isDisabled) {
                         return;
                     }
                     if (!current.trim()) {
@@ -1461,6 +1686,7 @@ const ChangePasswordForm = ({ t }: { t: Copy }) => {
                             setFieldError(null);
                         }}
                         isRequired
+                        isDisabled={isDisabled}
                         maxLength={72}
                         className="w-full"
                         isInvalid={Boolean(currentIssue)}
@@ -1474,6 +1700,7 @@ const ChangePasswordForm = ({ t }: { t: Copy }) => {
                             value={next}
                             onChange={setNext}
                             isRequired
+                            isDisabled={isDisabled}
                             maxLength={72}
                             hint={next && !nextCheck.ok ? nextCheck.message : t.passwordHint}
                             isInvalid={Boolean(next) && !nextCheck.ok}
@@ -1491,13 +1718,14 @@ const ChangePasswordForm = ({ t }: { t: Copy }) => {
                             setFieldError(null);
                         }}
                         isRequired
+                        isDisabled={isDisabled}
                         maxLength={72}
                         className="w-full"
                         isInvalid={Boolean(confirmIssue)}
                         hint={confirmIssue ?? undefined}
                     />
                     <div>
-                        <Button type="submit" color="primary" size="sm" isLoading={saving} isDisabled={saving}>
+                        <Button type="submit" color="primary" size="sm" isLoading={saving} isDisabled={saving || isDisabled}>
                             {t.settingsSave}
                         </Button>
                     </div>
