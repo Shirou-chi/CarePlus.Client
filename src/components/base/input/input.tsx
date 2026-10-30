@@ -58,6 +58,7 @@ export const InputBase = ({
     ...inputProps
 }: InputBaseProps) => {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 
     // Check if the input has a leading icon or tooltip
     const hasTrailingIcon = tooltip || isInvalid;
@@ -138,8 +139,11 @@ export const InputBase = ({
 
             {/* Tooltip and help icon */}
             {tooltip && type !== "password" && (
-                <Tooltip title={tooltip} placement="top">
+                <Tooltip title={tooltip} placement="top" isOpen={isTooltipOpen} onOpenChange={setIsTooltipOpen}>
                     <TooltipTrigger
+                        aria-label="Show field help"
+                        type="button"
+                        onPress={() => setIsTooltipOpen((open) => !open)}
                         className={cx(
                             "absolute cursor-pointer text-fg-quaternary transition duration-100 ease-linear group-invalid/input:hidden hover:text-fg-quaternary_hover focus:text-fg-quaternary_hover",
                             sizes[inputSize].iconTrailing,

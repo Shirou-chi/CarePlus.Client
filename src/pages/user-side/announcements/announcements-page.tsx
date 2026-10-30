@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Bell01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -7,7 +8,8 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
-import { getAnnouncements } from "@/utils/announcements";
+import { announcementApi } from "@/services/announcementApi";
+import type { ClinicAnnouncement } from "@/utils/announcements";
 
 const postedLabel = (isoDate: string, locale: "en" | "zh") =>
     new Date(`${isoDate}T00:00:00+08:00`).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-MY", {
@@ -20,7 +22,37 @@ const postedLabel = (isoDate: string, locale: "en" | "zh") =>
 export const AnnouncementsPage = () => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
-    const items = getAnnouncements(locale);
+    const [items, setItems] = useState<ClinicAnnouncement[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        setLoading(true);
+        setError(false);
+        void announcementApi
+            .list()
+            .then((rows) => {
+                if (!active) return;
+                setItems(
+                    rows.map((row) => ({
+                        id: row.id,
+                        postedOn: row.postedOn,
+                        title: locale === "zh" ? row.titleZh || row.title : row.title,
+                        body: locale === "zh" ? row.bodyZh || row.body : row.body,
+                    })),
+                );
+            })
+            .catch(() => {
+                if (active) setError(true);
+            })
+            .finally(() => {
+                if (active) setLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, [locale]);
 
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
@@ -34,7 +66,13 @@ export const AnnouncementsPage = () => {
                         <p className="mt-3 text-lg text-tertiary">{t.announcementsBody}</p>
 
                         <ul className="mt-10 flex flex-col gap-4">
-                            {items.map((item) => (
+                            {loading ? <li className="rounded-2xl bg-primary p-5 text-md text-tertiary ring-1 ring-secondary">{t.announcementsLoading}</li> : null}
+                            {error ? <li className="rounded-2xl bg-primary p-5 text-md text-error-primary ring-1 ring-secondary">{t.announcementsError}</li> : null}
+                            {!loading && !error && items.length === 0 ? (
+                                <li className="rounded-2xl bg-primary p-5 text-md text-tertiary ring-1 ring-secondary">{t.announcementsEmpty}</li>
+                            ) : null}
+                            {!loading && !error
+                                ? items.map((item) => (
                                 <li id={item.id} key={item.id} className="scroll-mt-28 rounded-2xl bg-primary p-5 shadow-xs ring-1 ring-secondary">
                                     <div className="flex items-start gap-4">
                                         <FeaturedIcon icon={Bell01} color="brand" theme="light" size="md" />
@@ -49,7 +87,8 @@ export const AnnouncementsPage = () => {
                                         </div>
                                     </div>
                                 </li>
-                            ))}
+                                ))
+                                : null}
                         </ul>
                     </div>
 

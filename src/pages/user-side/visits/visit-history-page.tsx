@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DateValue } from "@internationalized/date";
 import { CalendarCheck01 } from "@untitledui/icons";
 import { Link, Navigate } from "react-router";
@@ -14,8 +14,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Locale } from "@/providers/locale-provider";
-import { listVisitHistory, type BookedAppointment } from "@/utils/booking";
-import { getDoctorById, getDoctorCatalog } from "@/utils/doctors";
+import { appointmentApi, type Appointment } from "@/services/appointmentApi";
 
 type StatusFilter = "all" | "completed" | "cancelled";
 type TypeFilter = "all" | "general" | "mental" | "screening";
@@ -40,12 +39,28 @@ export const VisitHistoryPage = () => {
     const [status, setStatus] = useState<StatusFilter>("all");
     const [doctor, setDoctor] = useState("all");
     const [visitType, setVisitType] = useState<TypeFilter>("all");
-    const visits = profile ? listVisitHistory(profile) : [];
+    const [visits, setVisits] = useState<Appointment[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    useEffect(() => {
+        if (!profile) return;
+        let active = true;
+        setLoading(true);
+        setLoadError(null);
+        appointmentApi
+            .history()
+            .then((next) => active && setVisits(next))
+            .catch((cause) => active && setLoadError(cause instanceof Error ? cause.message : t.authFailed))
+            .finally(() => active && setLoading(false));
+        return () => {
+            active = false;
+        };
+    }, [profile, t.authFailed]);
     const doctorOptions = useMemo(() => {
-        const ids = new Set(visits.map((visit) => visit.doctorId));
-        const named = getDoctorCatalog(locale).filter((item) => ids.has(item.id));
-        return ids.has("any") ? [...named, { id: "any", name: t.bookAnyDoctor }] : named;
-    }, [visits, locale, t.bookAnyDoctor]);
+        const named = new Map(visits.map((visit) => [visit.doctorId, { id: visit.doctorId, name: visit.doctorName }]));
+        if (named.has("any")) named.set("any", { id: "any", name: t.bookAnyDoctor });
+        return Array.from(named.values());
+    }, [visits, t.bookAnyDoctor]);
     const filtered = useMemo(() => {
         const fromDay = from?.toString();
         const toDay = to?.toString();
@@ -156,7 +171,10 @@ export const VisitHistoryPage = () => {
                     )}
                 </div>
 
-                {filtered.length === 0 ? (
+                {loadError ? <p role="alert" className="mt-6 rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">{loadError}</p> : null}
+                {loading ? (
+                    <p className="mt-10 rounded-2xl bg-primary px-6 py-10 text-center text-sm text-tertiary ring-1 ring-secondary">{t.phrLoading}</p>
+                ) : filtered.length === 0 ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
                         <FeaturedIcon icon={CalendarCheck01} color="gray" theme="light" size="lg" />
                         <h2 className="mt-4 text-lg font-semibold text-primary">{filtering ? t.historyNoMatch : t.historyEmptyTitle}</h2>
@@ -199,8 +217,8 @@ export const VisitHistoryPage = () => {
     );
 };
 
-const HistoryPerson = ({ visit, locale }: { visit: BookedAppointment; locale: Locale }) => {
-    const doctor = visit.doctorId === "any" ? null : getDoctorById(locale, visit.doctorId);
+const HistoryPerson = ({ visit, locale: _locale }: { visit: Appointment; locale: Locale }) => {
+    const doctor = visit.doctorId === "any" ? null : { id: visit.doctorId, name: visit.doctorName };
     const { t } = useI18n();
     const name = doctor?.name ?? t.bookAnyDoctor;
 

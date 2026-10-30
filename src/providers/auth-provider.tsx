@@ -5,7 +5,6 @@ import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/servic
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { dummyLogin, SESSION_KEY, type Profile } from "@/utils/auth";
-import { familyLogin } from "@/utils/family";
 import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
 
 const OLD_STAFF_SESSION_KEY = "careplus-staff-session";
@@ -32,10 +31,11 @@ type AuthContextValue = {
     user: AuthUser | null;
     isReady: boolean;
     isAuthenticated: boolean;
+    hasCompletedTutorial: boolean | null;
     login: (email: string, password: string) => Promise<void>;
     staffLogin: (identifier: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
-    switchProfile: (next: Profile) => void;
+    completeTutorial: () => Promise<void>;
     updateProfile: (patch: Partial<Profile>) => void;
     updateStaffProfile: (patch: Partial<Pick<AuthUser, "name" | "phone" | "username">>) => void;
 };
@@ -59,10 +59,13 @@ function readStoredSession(): StoredSession | null {
         const saved = localStorage.getItem(SESSION_KEY);
 
         if (saved) {
-            const data = JSON.parse(saved) as StoredSession | Profile;
+            const data = JSON.parse(saved) as StoredSession | Profile | { type: "patient"; profile: Profile; ownProfile?: Profile };
 
             if ("type" in data && data.type === "patient") {
-                return data;
+                // Migrate sessions created by the retired family-account switcher
+                // back to the authenticated patient's own profile.
+                const patientSession = data as { type: "patient"; profile: Profile; ownProfile?: Profile };
+                return { type: "patient", profile: patientSession.ownProfile ?? patientSession.profile };
             }
 
             if ("type" in data && data.type === "staff") {
@@ -125,17 +128,18 @@ async function loadPatientPreferences(
     profileId: string,
     applyTheme: (theme: "light" | "dark") => void,
     applyLocale: (locale: "en" | "zh") => void,
-) {
+): Promise<AppSettingResponse | null> {
     const setting = await profileApi.getAppSetting();
     if (!setting) {
         applyTheme("light");
         applyLocale("en");
         const current = readProfileSettings(profileId);
         writeProfileSettings(profileId, { ...current, notificationLevel: "all" });
-        return;
+        return null;
     }
 
     applyAppSetting(profileId, setting, applyTheme, applyLocale);
+    return setting;
 }
 
 function applyAppSetting(
@@ -161,6 +165,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { applyLocale } = useI18n();
     const [session, setSession] = useState<StoredSession | null>(() => readStoredSession());
     const [isReady, setIsReady] = useState(false);
+    const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
 
     const profile = session?.type === "patient" ? session.profile : null;
     const user = session?.type === "staff" ? session.user : null;
@@ -168,6 +173,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) {
+            applyTheme("light");
+            applyLocale("en");
+            setHasCompletedTutorial(null);
             setIsReady(true);
             return;
         }
@@ -185,11 +193,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     };
                     saveSession(nextSession);
                     setSession(nextSession);
+                    setHasCompletedTutorial(null);
                     return;
                 }
 
                 const nextProfile = profileFromUser(apiUser);
-                await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
+                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
                 if (cancelled) return;
 
                 const nextSession: StoredSession = {
@@ -198,12 +207,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 };
                 saveSession(nextSession);
                 setSession(nextSession);
+                setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
             })
             .catch(() => {
                 if (cancelled) return;
                 authApi.clearToken();
                 saveSession(null);
                 setSession(null);
+                setHasCompletedTutorial(null);
+                applyTheme("light");
+                applyLocale("en");
             })
             .finally(() => {
                 if (!cancelled) setIsReady(true);
@@ -227,29 +240,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
             const nextProfile = profileFromUser(apiUser);
-            await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
+            const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
             const nextSession: StoredSession = {
                 type: "patient",
                 profile: nextProfile,
             };
             saveSession(nextSession);
             setSession(nextSession);
+            setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
         } catch (error) {
             authApi.clearToken();
-
-            const family = familyLogin(email, password);
-            if (family) {
-                const nextSession: StoredSession = { type: "patient", profile: family };
-                saveSession(nextSession);
-                setSession(nextSession);
-                return;
-            }
 
             try {
                 const fallbackProfile = dummyLogin(email, password);
                 const nextSession: StoredSession = { type: "patient", profile: fallbackProfile };
                 saveSession(nextSession);
                 setSession(nextSession);
+                setHasCompletedTutorial(false);
             } catch {
                 throw error;
             }
@@ -272,6 +279,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             };
             saveSession(nextSession);
             setSession(nextSession);
+            setHasCompletedTutorial(null);
         } catch (error) {
             authApi.clearToken();
             throw error;
@@ -282,12 +290,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         authApi.clearToken();
         saveSession(null);
         setSession(null);
+        setHasCompletedTutorial(null);
+        applyTheme("light");
+        applyLocale("en");
     };
 
-    const switchProfile = (next: Profile) => {
-        const nextSession: StoredSession = { type: "patient", profile: next };
-        saveSession(nextSession);
-        setSession(nextSession);
+    const completeTutorial = async () => {
+        if (!profile) return;
+
+        setHasCompletedTutorial(true);
+        if (!localStorage.getItem(TOKEN_KEY)) return;
+
+        await profileApi.saveAppSetting({ hasCompletedTutorial: true });
     };
 
     const updateProfile = (patch: Partial<Profile>) => {
@@ -335,14 +349,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             user,
             isReady,
             isAuthenticated: session !== null,
+            hasCompletedTutorial,
             login,
             staffLogin,
             logout,
-            switchProfile,
+            completeTutorial,
             updateProfile,
             updateStaffProfile,
         }),
-        [profile, user, isReady, session, login, staffLogin, logout, switchProfile, updateProfile, updateStaffProfile],
+        [profile, user, isReady, session, hasCompletedTutorial, login, staffLogin, logout, completeTutorial, updateProfile, updateStaffProfile],
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

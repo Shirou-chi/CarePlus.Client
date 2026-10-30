@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getLocalTimeZone, parseDate, today, type DateValue } from "@internationalized/date";
 import { CalendarPlus01 } from "@untitledui/icons";
 import { Link, Navigate } from "react-router";
@@ -13,9 +13,8 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Locale } from "@/providers/locale-provider";
-import { cancelAppointment, getBookingSlots, listUpcomingVisits, rescheduleAppointment, rescheduleBlocked, type BookedAppointment } from "@/utils/booking";
+import { appointmentApi, type Appointment, type BookingSlots } from "@/services/appointmentApi";
 import { cx } from "@/utils/cx";
-import { getDoctorById } from "@/utils/doctors";
 
 const initials = (name: string) =>
     name
@@ -37,12 +36,31 @@ const klShift = (iso: string): "morning" | "night" => {
 export const UpcomingVisitsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
-    const [tick, setTick] = useState(0);
+    const [visits, setVisits] = useState<Appointment[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
-    const [pendingCancel, setPendingCancel] = useState<BookedAppointment | null>(null);
-    const [pendingSave, setPendingSave] = useState<{ visit: BookedAppointment; startAt: string } | null>(null);
+    const [selectedVisit, setSelectedVisit] = useState<Appointment | null>(null);
+    const [pendingCancel, setPendingCancel] = useState<Appointment | null>(null);
+    const [pendingSave, setPendingSave] = useState<{ visit: Appointment; startAt: string } | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const visits = useMemo(() => (profile ? listUpcomingVisits(profile) : []), [profile, tick]);
+    const loadVisits = async () => {
+        if (!profile) return;
+        setLoading(true);
+        setLoadError(null);
+        try {
+            setVisits(await appointmentApi.upcoming());
+        } catch (cause) {
+            setLoadError(cause instanceof Error ? cause.message : t.authFailed);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        void loadVisits();
+    }, [profile]);
+
     const [next, ...later] = visits;
 
     const typeLabel = (id: string) => {
@@ -67,25 +85,33 @@ export const UpcomingVisitsPage = () => {
             timeZone: "Asia/Kuala_Lumpur",
         });
 
-    const confirmCancel = () => {
-        if (!profile || !pendingCancel) return;
-        cancelAppointment(profile, pendingCancel.id);
+    const confirmCancel = async () => {
+        if (!pendingCancel) return;
+        try {
+            await appointmentApi.cancel(pendingCancel.id);
+            await loadVisits();
+        } catch (cause) {
+            setNotice({ ok: false, text: cause instanceof Error ? cause.message : t.authFailed });
+            return;
+        }
         setEditingId((current) => (current === pendingCancel.id ? null : current));
         setPendingCancel(null);
         setNotice({ ok: true, text: t.visitsCancelled });
-        setTick((count) => count + 1);
     };
 
-    const confirmSave = () => {
-        if (!profile || !pendingSave) return;
+    const confirmSave = async () => {
+        if (!pendingSave) return;
         try {
-            rescheduleAppointment(profile, pendingSave.visit.id, pendingSave.startAt);
+            await appointmentApi.reschedule(pendingSave.visit.id, pendingSave.startAt);
+            await loadVisits();
             setEditingId(null);
             setNotice({ ok: true, text: t.visitsRescheduled });
-            setTick((count) => count + 1);
         } catch (cause) {
             const code = cause instanceof Error ? cause.message : "";
-            setNotice({ ok: false, text: code === "reschedule-limit" ? t.visitsRescheduleBlocked : t.bookSlotTaken });
+            setNotice({
+                ok: false,
+                text: code === "reschedule-limit" ? t.visitsRescheduleBlocked : code === "same-day-session-limit" ? t.visitsSameDaySessionLimit : t.bookSlotTaken,
+            });
         }
         setPendingSave(null);
     };
@@ -93,14 +119,14 @@ export const UpcomingVisitsPage = () => {
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
 
-    const actions = (visit: BookedAppointment) => (
-        <div className="mt-4 flex flex-col gap-3">
+    const actions = (visit: Appointment) => (
+        <div className="mt-4 flex flex-col gap-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
             <div className="flex flex-wrap gap-2">
                 <Button
                     color="secondary"
                     size="sm"
                     onClick={() => {
-                        if (rescheduleBlocked(visit.id)) {
+                        if (visit.rescheduleBlocked) {
                             setNotice({ ok: false, text: t.visitsRescheduleBlocked });
                             return;
                         }
@@ -137,13 +163,18 @@ export const UpcomingVisitsPage = () => {
                     ) : null}
                 </div>
 
+                {loadError ? (
+                    <p role="alert" className="mt-4 rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">{loadError}</p>
+                ) : null}
                 {notice ? (
                     <p role="status" className={cx("mt-4 rounded-xl px-4 py-3 text-sm font-semibold text-white", notice.ok ? "bg-success-solid" : "bg-error-solid")}>
                         {notice.text}
                     </p>
                 ) : null}
 
-                {!next ? (
+                {loading ? (
+                    <p className="mt-10 rounded-2xl bg-primary px-6 py-10 text-center text-sm text-tertiary ring-1 ring-secondary">{t.phrLoading}</p>
+                ) : !next ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
                         <FeaturedIcon icon={CalendarPlus01} color="brand" theme="light" size="lg" />
                         <h2 className="mt-4 text-lg font-semibold text-primary">{t.visitsEmptyTitle}</h2>
@@ -154,12 +185,25 @@ export const UpcomingVisitsPage = () => {
                     </div>
                 ) : (
                     <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                        <section className="min-w-0 rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary sm:p-6">
+                        <section
+                            className="min-w-0 cursor-pointer rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary transition hover:ring-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring sm:p-6"
+                            role="button"
+                            tabIndex={0}
+                            aria-label={t.visitsViewDetails}
+                            onClick={() => setSelectedVisit(next)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    setSelectedVisit(next);
+                                }
+                            }}
+                        >
                             <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-semibold text-tertiary">{t.visitsNext}</p>
-                                <Badge color="success" size="sm">
-                                    {t.visitsConfirmed}
-                                </Badge>
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <p className="text-sm font-semibold text-tertiary">{t.visitsNext}</p>
+                                    <span className="text-xs font-semibold text-brand-secondary">{t.visitsViewDetails}</span>
+                                </div>
+                                <Badge color="success" size="sm">{t.visitsConfirmed}</Badge>
                             </div>
                             <VisitPerson visit={next} locale={locale} />
                             <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-secondary px-4 py-3">
@@ -193,8 +237,22 @@ export const UpcomingVisitsPage = () => {
                             ) : (
                                 <ul className="mt-3 flex flex-col gap-3">
                                     {later.map((visit) => (
-                                        <li key={visit.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary">
+                                        <li
+                                            key={visit.id}
+                                            className="cursor-pointer rounded-2xl bg-primary p-4 ring-1 ring-secondary transition hover:ring-brand-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+                                            role="button"
+                                            tabIndex={0}
+                                            aria-label={t.visitsViewDetails}
+                                            onClick={() => setSelectedVisit(visit)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    setSelectedVisit(visit);
+                                                }
+                                            }}
+                                        >
                                             <VisitPerson visit={visit} locale={locale} compact />
+                                            <p className="mt-3 text-xs font-semibold text-brand-secondary">{t.visitsViewDetails}</p>
                                             <p className="mt-3 text-sm font-medium text-primary">
                                                 {formatDate(visit.startAt)} · {formatTime(visit.startAt)}
                                             </p>
@@ -257,17 +315,71 @@ export const UpcomingVisitsPage = () => {
                     </Dialog>
                 </Modal>
             </ModalOverlay>
+
+            <ModalOverlay isDismissable isOpen={selectedVisit !== null} onOpenChange={(open) => !open && setSelectedVisit(null)}>
+                <Modal className="w-full max-w-lg">
+                    <Dialog className="flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                        {selectedVisit ? (
+                            <>
+                                <h2 className="text-lg font-semibold text-primary">{t.visitsDetailsTitle}</h2>
+                                <p className="mt-1 text-sm text-tertiary">{selectedVisit.doctorName}</p>
+                                <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <dt className="text-xs text-tertiary">{t.date}</dt>
+                                        <dd className="mt-1 text-sm font-semibold text-primary">{formatDate(selectedVisit.startAt)}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-xs text-tertiary">{t.time}</dt>
+                                        <dd className="mt-1 text-sm font-semibold text-primary">{formatTime(selectedVisit.startAt)}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-xs text-tertiary">{t.visitsFor}</dt>
+                                        <dd className="mt-1 text-sm font-semibold text-primary">{selectedVisit.forName}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-xs text-tertiary">{t.bookStepType}</dt>
+                                        <dd className="mt-1 text-sm font-semibold text-primary">{typeLabel(selectedVisit.type)}</dd>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <dt className="text-xs text-tertiary">{t.visitsStatus}</dt>
+                                        <dd className="mt-1 text-sm font-semibold text-primary">{selectedVisit.status === "completed" ? t.historyCompleted : selectedVisit.status === "cancelled" ? t.historyCancelled : t.visitsConfirmed}</dd>
+                                    </div>
+                                </dl>
+                                <div className="mt-5 rounded-xl bg-secondary p-4">
+                                    <p className="text-xs text-tertiary">{t.visitsNotes}</p>
+                                    <p className="mt-1 text-sm text-primary">{selectedVisit.notes || t.bookNoNotes}</p>
+                                </div>
+                                <Button color="secondary" size="lg" className="mt-6" onClick={() => setSelectedVisit(null)}>
+                                    {t.visitsClose}
+                                </Button>
+                            </>
+                        ) : null}
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
         </div>
     );
 };
 
-const ReschedulePanel = ({ visit, onAskSave }: { visit: BookedAppointment; onAskSave: (startAt: string) => void }) => {
+const ReschedulePanel = ({ visit, onAskSave }: { visit: Appointment; onAskSave: (startAt: string) => void }) => {
     const { t } = useI18n();
     const [date, setDate] = useState<DateValue>(() => parseDate(klDay(visit.startAt)));
     const [shift, setShift] = useState<"morning" | "night">(() => klShift(visit.startAt));
     const [slot, setSlot] = useState<string | null>(visit.startAt);
-    const slots = getBookingSlots(date.toString(), visit.doctorId);
-    const open = (shift === "morning" ? slots.morning : slots.night).map((item) => (item.startAt === visit.startAt ? { ...item, booked: false } : item));
+    const [slots, setSlots] = useState<BookingSlots | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    useEffect(() => {
+        let active = true;
+        setError(null);
+        appointmentApi
+            .slots(date.toString(), visit.doctorId)
+            .then((next) => active && setSlots(next))
+            .catch((cause) => active && setError(cause instanceof Error ? cause.message : t.authFailed))
+        return () => {
+            active = false;
+        };
+    }, [date, visit.doctorId, t.authFailed]);
+    const open = slots ? (shift === "morning" ? slots.morning : slots.night).map((item) => (item.startAt === visit.startAt ? { ...item, booked: false } : item)) : [];
 
     return (
         <div className="rounded-xl bg-secondary p-3">
@@ -300,6 +412,7 @@ const ReschedulePanel = ({ visit, onAskSave }: { visit: BookedAppointment; onAsk
                         </button>
                     ))}
                 </div>
+                {error ? <p className="text-sm text-error-primary">{error}</p> : null}
                 <Button color="primary" size="sm" isDisabled={!slot || slot === visit.startAt} onClick={() => slot && onAskSave(slot)}>
                     {t.visitsRescheduleSave}
                 </Button>
@@ -308,8 +421,8 @@ const ReschedulePanel = ({ visit, onAskSave }: { visit: BookedAppointment; onAsk
     );
 };
 
-const VisitPerson = ({ visit, locale, compact }: { visit: BookedAppointment; locale: Locale; compact?: boolean }) => {
-    const doctor = visit.doctorId === "any" ? null : getDoctorById(locale, visit.doctorId);
+const VisitPerson = ({ visit, locale: _locale, compact }: { visit: Appointment; locale?: Locale; compact?: boolean }) => {
+    const doctor = visit.doctorId === "any" ? null : { id: visit.doctorId, name: visit.doctorName };
     const { t } = useI18n();
     const name = doctor?.name ?? t.bookAnyDoctor;
 
@@ -318,7 +431,7 @@ const VisitPerson = ({ visit, locale, compact }: { visit: BookedAppointment; loc
             <Avatar size={compact ? "md" : "lg"} initials={initials(name)} alt="" />
             <div className="min-w-0">
                 {doctor ? (
-                    <Link to={`/doctors/${doctor.id}`} className="block truncate text-md font-semibold text-primary outline-focus-ring hover:text-brand-secondary focus-visible:outline-2">
+                    <Link to={`/doctors/${doctor.id}`} onClick={(event) => event.stopPropagation()} className="block truncate text-md font-semibold text-primary outline-focus-ring hover:text-brand-secondary focus-visible:outline-2">
                         {doctor.name}
                     </Link>
                 ) : (

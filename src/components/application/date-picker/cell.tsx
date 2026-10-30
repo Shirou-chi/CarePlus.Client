@@ -83,7 +83,11 @@ export const CalendarCell = ({ date, isHighlighted, showOutOfRangeDates = false,
                             isFocusVisible ? "outline-2 outline-offset-2 outline-focus-ring" : "",
                             // Hover state for cells in the middle of the range.
                             isSelected && !isDisabled && isRangeCalendar ? "font-medium" : "",
-                            markedAsSelected && "bg-brand-solid font-medium text-white hover:bg-brand-solid_hover hover:text-white",
+                            // The landing-page theme intentionally makes the generic `bg-brand-solid`
+                            // utility transparent for buttons. Use the solid color token directly here
+                            // so a selected date remains visible in light mode.
+                            markedAsSelected &&
+                                "bg-[var(--color-bg-brand-solid)] font-medium text-white hover:bg-[var(--color-bg-brand-solid_hover)] hover:text-white",
                             // Hover state for non-selected cells.
                             !isSelected && !isDisabled ? "hover:bg-quaternary hover:font-medium!" : "",
                             !isSelected && isTodayDate ? "bg-active font-medium hover:bg-secondary_hover" : "",

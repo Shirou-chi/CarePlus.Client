@@ -27,7 +27,7 @@ export const FormStatus = ({ error, success, details, className }: FormStatusPro
 
     if (success) {
         return (
-            <p className={cx("rounded-xl bg-success-secondary px-4 py-3 text-sm font-semibold text-success-primary dark:text-white", className)}>
+            <p role="status" aria-live="polite" className={cx("rounded-xl bg-success-secondary px-4 py-3 text-sm font-semibold text-success-primary dark:text-white", className)}>
                 {success}
             </p>
         );

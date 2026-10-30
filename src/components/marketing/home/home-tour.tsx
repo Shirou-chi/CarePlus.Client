@@ -2,7 +2,6 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } f
 import { Button } from "@/components/base/buttons/button";
 import { useI18n } from "@/providers/locale-provider";
 
-const TOUR_KEY = "careplus-home-tour-v2";
 const TOUR_OPEN = "careplus-open-tour";
 
 export const requestHomeTour = () => {
@@ -17,28 +16,6 @@ export const takeHomeTourRequest = () => {
 };
 
 export const HOME_TOUR_EVENT = TOUR_OPEN;
-
-export const homeTourSeen = (profileId: string) => {
-    try {
-        const raw = localStorage.getItem(TOUR_KEY);
-        const list = raw ? JSON.parse(raw) : [];
-        return Array.isArray(list) && list.includes(profileId);
-    } catch {
-        return false;
-    }
-};
-
-export const markHomeTourSeen = (profileId: string) => {
-    try {
-        const raw = localStorage.getItem(TOUR_KEY);
-        const list = raw ? JSON.parse(raw) : [];
-        const next = Array.isArray(list) ? list.filter((item) => typeof item === "string") : [];
-        if (!next.includes(profileId)) next.push(profileId);
-        localStorage.setItem(TOUR_KEY, JSON.stringify(next));
-    } catch {
-        // The tour can still close for this visit.
-    }
-};
 
 type HomeTourProps = {
     label: string;
@@ -102,10 +79,10 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         const fromScroll = scroller?.scrollLeft ?? 0;
         const endBox = { top: after.top, left: after.left - (desired - fromScroll), width: after.width, height: after.height };
         const fromBox = boxRef.current;
-        const mobile = window.matchMedia("(max-width: 639px)").matches;
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-        if (!mobile || reduce || !fromBox) {
+        const shouldAnimate = Boolean(scroller && scroller.scrollWidth > scroller.clientWidth + 4 && !reduce && fromBox);
+        if (!shouldAnimate || !fromBox) {
             animating.current = false;
             if (scroller) scroller.scrollLeft = desired;
             remember(readBox(target));

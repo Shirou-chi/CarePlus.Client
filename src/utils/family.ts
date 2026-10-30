@@ -1,4 +1,4 @@
-import { DUMMY_EMAIL, DUMMY_PASSWORD, dummyProfile, type Profile } from "./auth.ts";
+import { DUMMY_EMAIL, type Profile } from "./auth.ts";
 
 export type FamilyRelation = "parent" | "child" | "spouse" | "other";
 export type FamilyPermission = "parent" | "child";
@@ -12,18 +12,10 @@ export type FamilyMember = {
     status: "pending" | "active";
 };
 
-export type FamilyUseRequest = {
-    id: string;
-    fromId: string;
-    targetId: string;
-    status: "pending" | "approved";
-};
-
 export type FamilyGroup = {
     id: string;
     name: string;
     members: FamilyMember[];
-    useRequests?: FamilyUseRequest[];
 };
 
 export type FamilyReason = "not-owner" | "self" | "duplicate" | "need-transfer" | "missing" | "already" | "not-allowed";
@@ -77,29 +69,10 @@ const readFamilies = (): FamilyGroup[] => {
             .map((family) => ({
                 ...family,
                 members: family.members.filter(isMember),
-                useRequests: Array.isArray(family.useRequests) ? family.useRequests.filter(isUseRequest) : [],
             }));
     } catch {
         return seed();
     }
-};
-
-const isUseRequest = (value: unknown): value is FamilyUseRequest => {
-    if (!value || typeof value !== "object") return false;
-    const request = value as FamilyUseRequest;
-    return (
-        typeof request.id === "string" &&
-        typeof request.fromId === "string" &&
-        typeof request.targetId === "string" &&
-        (request.status === "pending" || request.status === "approved")
-    );
-};
-
-const requestsOf = (family: FamilyGroup) => family.useRequests ?? [];
-
-const pruneRequests = (family: FamilyGroup, members: FamilyMember[]) => {
-    const ids = new Set(members.map((member) => member.id));
-    return requestsOf(family).filter((request) => ids.has(request.fromId) && ids.has(request.targetId));
 };
 
 const writeFamilies = (families: FamilyGroup[]) => {
@@ -209,7 +182,7 @@ export const removeFamilyMember = (profile: Profile, memberId: string) => {
     const target = found?.family.members.find((member) => member.id === memberId);
     if (!found || !target || target.id === found.member.id) return { ok: false as const, reason: "not-owner" as const };
     const members = found.family.members.filter((member) => member.id !== memberId);
-    return { ok: true as const, family: replaceFamily({ ...found.family, members, useRequests: pruneRequests(found.family, members) }) };
+    return { ok: true as const, family: replaceFamily({ ...found.family, members }) };
 };
 
 export const leaveFamily = (profile: Profile, transferToId?: string) => {
@@ -222,7 +195,7 @@ export const leaveFamily = (profile: Profile, transferToId?: string) => {
     const otherParent = found.family.members.some((member) => member.id !== found.member.id && member.status === "active" && member.permission === "parent");
     if (found.member.permission !== "parent" || otherParent) {
         const members = found.family.members.filter((member) => member.id !== found.member.id);
-        const family = members.length ? replaceFamily({ ...found.family, members, useRequests: pruneRequests(found.family, members) }) : null;
+        const family = members.length ? replaceFamily({ ...found.family, members }) : null;
         if (!family) writeFamilies(readFamilies().filter((item) => item.id !== found.family.id));
         return { ok: true as const, family };
     }
@@ -231,7 +204,7 @@ export const leaveFamily = (profile: Profile, transferToId?: string) => {
     const members = found.family.members
         .filter((member) => member.id !== found.member.id)
         .map((member) => (member.id === nextParent.id ? { ...member, permission: "parent" as const } : member));
-    return { ok: true as const, family: replaceFamily({ ...found.family, members, useRequests: pruneRequests(found.family, members) }) };
+    return { ok: true as const, family: replaceFamily({ ...found.family, members }) };
 };
 
 export const deleteFamily = (profile: Profile) => {
@@ -264,88 +237,4 @@ export const bookingFamily = (profile: Profile) => {
             .filter((member) => member.status === "active" && emailOf(member.email) !== emailOf(profile.email))
             .map((member) => ({ id: member.id, name: member.name, relation: member.relation, isYou: false })),
     ];
-};
-
-const profileForMember = (member: FamilyMember): Profile => {
-    if (emailOf(member.email) === emailOf(DUMMY_EMAIL)) return { ...dummyProfile };
-    return {
-        id: member.id,
-        email: member.email,
-        fullName: member.name,
-        identityCard: null,
-        phone: null,
-        dateOfBirth: null,
-        address: null,
-        gender: null,
-        nationality: "Malaysian",
-        avatarUrl: null,
-    };
-};
-
-export const canUseFamilyAccount = (profile: Profile, targetId: string) => {
-    const found = findMembership(profile.email);
-    if (!found || found.member.status !== "active") return false;
-    const target = found.family.members.find((member) => member.id === targetId && member.status === "active");
-    if (!target || target.id === found.member.id) return false;
-    if (target.permission === "parent" && found.member.permission === "child") return false;
-    if (found.member.permission === "parent") return true;
-    return requestsOf(found.family).some((request) => request.fromId === found.member.id && request.targetId === targetId && request.status === "approved");
-};
-
-export const useRequestFor = (profile: Profile, targetId: string) => {
-    const found = findMembership(profile.email);
-    if (!found) return null;
-    return requestsOf(found.family).find((request) => request.fromId === found.member.id && request.targetId === targetId) ?? null;
-};
-
-export const pendingUseRequests = (profile: Profile) => {
-    const found = findMembership(profile.email);
-    if (!found || found.member.status !== "active") return [];
-    if (found.member.permission !== "parent") return [];
-    return requestsOf(found.family)
-        .filter((request) => request.status === "pending")
-        .flatMap((request) => {
-            const from = found.family.members.find((member) => member.id === request.fromId);
-            const target = found.family.members.find((member) => member.id === request.targetId);
-            if (!from || !target) return [];
-            return [{ request, from, target }];
-        });
-};
-
-export const requestUseAccount = (profile: Profile, targetId: string) => {
-    const found = findMembership(profile.email);
-    if (!found || found.member.status !== "active") return { ok: false as const, reason: "missing" as const };
-    if (found.member.permission === "parent") return { ok: false as const, reason: "already" as const };
-    const target = found.family.members.find((member) => member.id === targetId && member.status === "active");
-    if (!target || target.id === found.member.id) return { ok: false as const, reason: "self" as const };
-    if (target.permission === "parent") return { ok: false as const, reason: "not-allowed" as const };
-    if (useRequestFor(profile, targetId)) return { ok: false as const, reason: "already" as const };
-    const request: FamilyUseRequest = { id: `use-${crypto.randomUUID()}`, fromId: found.member.id, targetId, status: "pending" };
-    return { ok: true as const, family: replaceFamily({ ...found.family, useRequests: [...requestsOf(found.family), request] }) };
-};
-
-export const decideUseRequest = (profile: Profile, requestId: string, accept: boolean) => {
-    const found = findMembership(profile.email);
-    if (!found || found.member.status !== "active") return { ok: false as const, reason: "missing" as const };
-    if (found.member.permission !== "parent") return { ok: false as const, reason: "not-allowed" as const };
-    const current = requestsOf(found.family).find((request) => request.id === requestId && request.status === "pending");
-    if (!current) return { ok: false as const, reason: "missing" as const };
-    const useRequests = accept
-        ? requestsOf(found.family).map((request) => (request.id === requestId ? { ...request, status: "approved" as const } : request))
-        : requestsOf(found.family).filter((request) => request.id !== requestId);
-    return { ok: true as const, family: replaceFamily({ ...found.family, useRequests }) };
-};
-
-export const useFamilyAccount = (profile: Profile, targetId: string): Profile | null => {
-    const found = findMembership(profile.email);
-    if (!found || !canUseFamilyAccount(profile, targetId)) return null;
-    const target = found.family.members.find((member) => member.id === targetId && member.status === "active");
-    return target ? profileForMember(target) : null;
-};
-
-export const familyLogin = (email: string, password: string): Profile | null => {
-    if (password !== DUMMY_PASSWORD || emailOf(email) === emailOf(DUMMY_EMAIL)) return null;
-    const found = findMembership(email);
-    if (!found) return null;
-    return profileForMember(found.member);
 };

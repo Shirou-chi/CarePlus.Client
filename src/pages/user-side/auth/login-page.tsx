@@ -40,6 +40,7 @@ export const LoginPage = () => {
                         "Incorrect username/email or password.": t.loginWrongPassword,
                         "This account is not active.": t.loginInactive,
                         "This account is not a patient account.": t.loginNotPatient,
+                        "Please verify your email address before logging in.": t.emailVerificationRequired,
                     };
                     setError(known[raw] ?? t.authFailed);
                 } finally {

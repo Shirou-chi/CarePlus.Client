@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type PointerEvent as ReactPointerEvent, type SVGProps } from "react";
-import { HOME_TOUR_EVENT, HomeTour, homeTourSeen, markHomeTourSeen, takeHomeTourRequest } from "@/components/marketing/home/home-tour";
+import { HOME_TOUR_EVENT, HomeTour, takeHomeTourRequest } from "@/components/marketing/home/home-tour";
 import { peekItemWidth } from "@/components/marketing/home/service-nav-layout";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
@@ -15,22 +15,22 @@ export type ServiceNavItem = {
 
 export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
     const { t } = useI18n();
-    const { profile } = useAuth();
+    const { profile, hasCompletedTutorial, completeTutorial } = useAuth();
     const frame = useRef<HTMLElement>(null);
     const scroller = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
-    const drag = useRef<{ x: number; left: number } | null>(null);
+    const drag = useRef<{ x: number; left: number; pointerId: number; captured: boolean } | null>(null);
     const blockClick = useRef(false);
     const [canScroll, setCanScroll] = useState(false);
     const [tourStep, setTourStep] = useState<number | null>(null);
 
     useEffect(() => {
-        if (!profile?.id) {
+        if (!profile?.id || hasCompletedTutorial === null) {
             setTourStep(null);
             return;
         }
-        if (takeHomeTourRequest() || !homeTourSeen(profile.id)) setTourStep(0);
-    }, [profile?.id]);
+        if (takeHomeTourRequest() || !hasCompletedTutorial) setTourStep(0);
+    }, [hasCompletedTutorial, profile?.id]);
 
     useEffect(() => {
         const open = () => {
@@ -42,9 +42,11 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
     }, []);
 
     const closeTour = useCallback(() => {
-        if (profile?.id) markHomeTourSeen(profile.id);
+        if (profile?.id && !hasCompletedTutorial) {
+            void completeTutorial().catch(() => undefined);
+        }
         setTourStep(null);
-    }, [profile?.id]);
+    }, [completeTutorial, hasCompletedTutorial, profile?.id]);
 
     useEffect(() => {
         const frameEl = frame.current;
@@ -80,6 +82,10 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
     useEffect(() => {
         const el = scroller.current;
         if (!el) return;
+        const preventNativeSelection = (event: Event) => event.preventDefault();
+        el.addEventListener("selectstart", preventNativeSelection);
+        el.addEventListener("dragstart", preventNativeSelection);
+
         const onWheel = (event: WheelEvent) => {
             if (el.scrollWidth <= el.clientWidth + 4) return;
             if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
@@ -91,26 +97,42 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
             event.preventDefault();
         };
         el.addEventListener("wheel", onWheel, { passive: false });
-        return () => el.removeEventListener("wheel", onWheel);
+        return () => {
+            el.removeEventListener("wheel", onWheel);
+            el.removeEventListener("selectstart", preventNativeSelection);
+            el.removeEventListener("dragstart", preventNativeSelection);
+        };
     }, []);
 
     const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
         if (tourStep !== null || event.button !== 0) return;
         const el = scroller.current;
         if (!el || el.scrollWidth <= el.clientWidth + 4) return;
-        drag.current = { x: event.clientX, left: el.scrollLeft };
+        if (event.pointerType === "mouse") {
+            event.preventDefault();
+            window.getSelection()?.removeAllRanges();
+        }
+        drag.current = { x: event.clientX, left: el.scrollLeft, pointerId: event.pointerId, captured: false };
         blockClick.current = false;
-        el.setPointerCapture(event.pointerId);
     };
 
     const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
         if (!drag.current || !scroller.current) return;
         const dx = event.clientX - drag.current.x;
-        if (Math.abs(dx) > 6) blockClick.current = true;
+        if (Math.abs(dx) <= 8) return;
+        if (!drag.current.captured) {
+            scroller.current.setPointerCapture(drag.current.pointerId);
+            drag.current.captured = true;
+        }
+        window.getSelection()?.removeAllRanges();
+        blockClick.current = true;
         scroller.current.scrollLeft = drag.current.left - dx;
     };
 
     const onPointerUp = () => {
+        if (drag.current?.captured && scroller.current?.hasPointerCapture(drag.current.pointerId)) {
+            scroller.current.releasePointerCapture(drag.current.pointerId);
+        }
         drag.current = null;
     };
 
@@ -123,13 +145,18 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
                 ref={scroller}
                 data-service-row=""
                 className={cx(
-                    "mt-5 flex min-w-0 touch-pan-x gap-7 overflow-x-auto [scrollbar-width:none] md:gap-8 [&::-webkit-scrollbar]:hidden",
+                    "mt-5 flex min-w-0 touch-pan-x select-none gap-7 overflow-x-auto [scrollbar-width:none] md:gap-8 [&::-webkit-scrollbar]:hidden",
                     canScroll && "cursor-grab active:cursor-grabbing",
                 )}
+                style={{ userSelect: "none", WebkitUserSelect: "none" }}
+                onMouseDown={(event) => {
+                    if (canScroll) event.preventDefault();
+                }}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
+                onDragStart={(event) => event.preventDefault()}
                 onClickCapture={(event) => {
                     if (!blockClick.current) return;
                     event.preventDefault();
@@ -141,15 +168,16 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
                     <a
                         key={item.label}
                         href={item.href}
+                        draggable={false}
                         ref={(node) => {
                             itemRefs.current[index] = node;
                         }}
                         className="flex w-[calc((100%-5.25rem)/3.5)] min-w-[calc((100%-5.25rem)/3.5)] shrink-0 flex-col items-center gap-2.5 outline-focus-ring focus-visible:outline-2 sm:w-20 sm:min-w-20 md:w-[5.5rem] md:min-w-[5.5rem]"
                     >
-                        <span className={cx("flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
-                            <item.Icon className="size-7" />
+                        <span className={cx("pointer-events-none flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
+                            <item.Icon className="pointer-events-none size-7" />
                         </span>
-                        <span className="text-center text-xs font-medium text-tertiary md:text-sm">{item.label}</span>
+                        <span className="pointer-events-none text-center text-xs font-medium text-tertiary md:text-sm">{item.label}</span>
                     </a>
                 ))}
             </div>
