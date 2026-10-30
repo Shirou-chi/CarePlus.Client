@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { File06 } from "@untitledui/icons";
 import { Navigate } from "react-router";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { FormStatus } from "@/components/application/form-status";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
 import { SelectItem } from "@/components/base/select/select-item";
@@ -11,15 +12,16 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
-import { getClinicRecords, type ClinicRecord } from "@/utils/clinic-records";
+import { useClinicRecords } from "@/hooks/use-clinic-records";
+import type { ClinicRecord } from "@/utils/clinic-records";
 
 export const ConsultationNotesPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const [doctor, setDoctor] = useState("all");
     const [openId, setOpenId] = useState<string | null>(null);
+    const { records: notes, loading, error } = useClinicRecords();
 
-    const notes = useMemo(() => getClinicRecords(locale), [locale]);
     const doctorOptions = useMemo(() => {
         const seen = new Map<string, string>();
         notes.forEach((note) => seen.set(note.doctorId, note.doctorName));
@@ -67,13 +69,15 @@ export const ConsultationNotesPage = () => {
                     </div>
                 </div>
 
-                {filtered.length === 0 ? (
+                {error ? <FormStatus error={error} className="mt-6" /> : null}
+                {loading ? <p role="status" className="mt-6 rounded-2xl bg-primary px-6 py-8 text-sm text-tertiary ring-1 ring-secondary">{t.clinicRecordsLoading}</p> : null}
+                {!loading && !error && filtered.length === 0 ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
                         <FeaturedIcon icon={File06} color="gray" theme="light" size="lg" />
                         <h2 className="mt-4 text-lg font-semibold text-primary">{notes.length === 0 ? t.notesEmptyTitle : t.notesNoMatch}</h2>
                         <p className="mt-2 text-sm text-tertiary">{notes.length === 0 ? t.notesEmptyBody : t.historyNoMatchBody}</p>
                     </div>
-                ) : (
+                ) : !loading && !error ? (
                     <ul className="mt-6 grid gap-3 lg:grid-cols-2">
                         {filtered.map((note) => (
                             <li key={note.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5">
@@ -90,7 +94,7 @@ export const ConsultationNotesPage = () => {
                             </li>
                         ))}
                     </ul>
-                )}
+                ) : null}
             </main>
             <LandingFooter />
             {openNote ? <NoteDetail note={openNote} formatDate={formatDate} onClose={() => setOpenId(null)} /> : null}

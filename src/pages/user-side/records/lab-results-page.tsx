@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { File06 } from "@untitledui/icons";
 import { Navigate } from "react-router";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { FormStatus } from "@/components/application/form-status";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
@@ -12,15 +13,17 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
-import { getClinicRecords, listLabReports, type LabFlag, type LabMarker } from "@/utils/clinic-records";
+import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { listLabReports, type LabFlag, type LabMarker } from "@/utils/clinic-records";
 
 export const LabResultsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const [doctor, setDoctor] = useState("all");
     const [openId, setOpenId] = useState<string | null>(null);
+    const { records, loading, error } = useClinicRecords();
 
-    const reports = useMemo(() => listLabReports(getClinicRecords(locale)), [locale]);
+    const reports = useMemo(() => listLabReports(records), [records]);
     const doctorOptions = useMemo(() => {
         const seen = new Map<string, string>();
         reports.forEach((report) => seen.set(report.record.doctorId, report.record.doctorName));
@@ -81,13 +84,15 @@ export const LabResultsPage = () => {
                     </div>
                 </div>
 
-                {filtered.length === 0 ? (
+                {error ? <FormStatus error={error} className="mt-6" /> : null}
+                {loading ? <p role="status" className="mt-6 rounded-2xl bg-primary px-6 py-8 text-sm text-tertiary ring-1 ring-secondary">{t.clinicRecordsLoading}</p> : null}
+                {!loading && !error && filtered.length === 0 ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
                         <FeaturedIcon icon={File06} color="gray" theme="light" size="lg" />
                         <h2 className="mt-4 text-lg font-semibold text-primary">{reports.length === 0 ? t.labsEmptyTitle : t.labsNoMatch}</h2>
                         <p className="mt-2 text-sm text-tertiary">{reports.length === 0 ? t.labsEmptyBody : t.historyNoMatchBody}</p>
                     </div>
-                ) : (
+                ) : !loading && !error ? (
                     <ul className="mt-6 grid gap-3 lg:grid-cols-2">
                         {filtered.map((report) => {
                             const markers = report.line.markers ?? [];
@@ -127,7 +132,7 @@ export const LabResultsPage = () => {
                             );
                         })}
                     </ul>
-                )}
+                ) : null}
             </main>
             <LandingFooter />
             {openReport ? (

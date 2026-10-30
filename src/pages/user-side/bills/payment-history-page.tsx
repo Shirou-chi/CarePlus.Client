@@ -12,7 +12,8 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
-import { clinicChargeCategoryLabel, getClinicRecordById, getClinicRecordTotals } from "@/utils/clinic-records";
+import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { clinicChargeCategoryLabel, getClinicRecordTotals, type ClinicRecord } from "@/utils/clinic-records";
 import { printHtmlDocument } from "@/utils/document-download";
 import { type PaidInvoice } from "@/utils/invoices";
 import { paymentApi } from "@/services/paymentApi";
@@ -27,8 +28,7 @@ type HistoryEntry =
 
 const escapeHtml = (value: string) => value.replace(/[&<>]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[char] ?? char);
 
-const downloadReceipt = (payment: PaidInvoice, locale: "en" | "zh", t: Copy, formatDate: (iso: string) => string) => {
-    const record = getClinicRecordById(locale, payment.recordId);
+const downloadReceipt = (payment: PaidInvoice, record: ClinicRecord | null, locale: "en" | "zh", t: Copy, formatDate: (iso: string) => string) => {
     const rows = (record?.charges ?? [])
         .map(
             (line) =>
@@ -73,6 +73,7 @@ const downloadMedicineReceipt = (order: MedicineOrder, t: Copy, formatDate: (iso
 export const PaymentHistoryPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
+    const { records } = useClinicRecords();
     const [order, setOrder] = useState<PaidOrder>("latest");
     const [openId, setOpenId] = useState<string | null>(null);
     const [medicineOrders, setMedicineOrders] = useState<MedicineOrder[]>([]);
@@ -212,7 +213,7 @@ export const PaymentHistoryPage = () => {
                                             iconLeading={Download01}
                                             onClick={() =>
                                                 entry.kind === "clinic"
-                                                    ? downloadReceipt(entry.invoice, locale, t, formatDate)
+                                                    ? downloadReceipt(entry.invoice, records.find((record) => record.id === entry.invoice.recordId) ?? null, locale, t, formatDate)
                                                     : downloadMedicineReceipt(entry.order, t, formatDate)
                                             }
                                         >
@@ -226,7 +227,7 @@ export const PaymentHistoryPage = () => {
                 )}
             </main>
             {openEntry?.kind === "clinic" ? (
-                <PaymentDetail payment={openEntry.invoice} locale={locale} formatDate={formatDate} onClose={() => setOpenId(null)} />
+                <PaymentDetail payment={openEntry.invoice} record={records.find((record) => record.id === openEntry.invoice.recordId) ?? null} locale={locale} formatDate={formatDate} onClose={() => setOpenId(null)} />
             ) : null}
             {openEntry?.kind === "medicine" ? (
                 <MedicinePaymentDetail order={openEntry.order} formatDate={formatDate} onClose={() => setOpenId(null)} />
@@ -238,17 +239,18 @@ export const PaymentHistoryPage = () => {
 
 const PaymentDetail = ({
     payment,
+    record,
     locale,
     formatDate,
     onClose,
 }: {
     payment: PaidInvoice;
+    record: ClinicRecord | null;
     locale: "en" | "zh";
     formatDate: (iso: string) => string;
     onClose: () => void;
 }) => {
     const { t } = useI18n();
-    const record = getClinicRecordById(locale, payment.recordId);
     if (!record) return null;
     const totals = getClinicRecordTotals(record);
     const sstLabel = t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100));
@@ -313,7 +315,7 @@ const PaymentDetail = ({
                         <Button href={`/clinic-records?record=${payment.recordId}&from=payments`} color="secondary" size="md" className="w-full sm:w-auto">
                             {t.invoicesViewVisit}
                         </Button>
-                        <Button color="primary" size="md" className="w-full sm:w-auto" iconLeading={Download01} onClick={() => downloadReceipt(payment, locale, t, formatDate)}>
+                        <Button color="primary" size="md" className="w-full sm:w-auto" iconLeading={Download01} onClick={() => downloadReceipt(payment, record, locale, t, formatDate)}>
                             {t.paymentsDownloadReceipt}
                         </Button>
                     </footer>

@@ -13,7 +13,8 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useI18n } from "@/providers/locale-provider";
-import { clinicChargeCategoryLabel, getClinicRecordById, getClinicRecordTotals } from "@/utils/clinic-records";
+import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { clinicChargeCategoryLabel, getClinicRecordTotals, type ClinicRecord } from "@/utils/clinic-records";
 import type { InvoiceStatus, OutstandingInvoice } from "@/utils/invoices";
 import { formatRm } from "@/utils/prescribed-medicine";
 
@@ -24,6 +25,7 @@ export const OutstandingInvoicesPage = () => {
     const { profile, isReady } = useAuth();
     const { invoices, ready } = useOutstandingInvoices();
     const { t, locale } = useI18n();
+    const { records } = useClinicRecords();
     const [status, setStatus] = useState<StatusFilter>("all");
     const [order, setOrder] = useState<DueOrder>("oldest");
     const [openId, setOpenId] = useState<string | null>(null);
@@ -157,6 +159,7 @@ export const OutstandingInvoicesPage = () => {
             {openInvoice ? (
                 <InvoiceDetail
                     invoice={openInvoice}
+                    record={records.find((record) => record.id === openInvoice.recordId) ?? null}
                     locale={locale}
                     formatDate={formatDate}
                     onClose={() => setOpenId(null)}
@@ -169,17 +172,18 @@ export const OutstandingInvoicesPage = () => {
 
 const InvoiceDetail = ({
     invoice,
+    record,
     locale,
     formatDate,
     onClose,
 }: {
     invoice: OutstandingInvoice;
+    record: ClinicRecord | null;
     locale: "en" | "zh";
     formatDate: (iso: string) => string;
     onClose: () => void;
 }) => {
     const { t } = useI18n();
-    const record = getClinicRecordById(locale, invoice.recordId);
     if (!record) return null;
     const totals = getClinicRecordTotals(record);
     const sstLabel = t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100));

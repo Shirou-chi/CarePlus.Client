@@ -148,7 +148,7 @@ export const listOutstandingInvoices = (records: ClinicRecord[], now = Date.now(
             return [
                 {
                     ...seed,
-                    status: daysOverdue > 0 ? "overdue" : "due",
+                    status: (daysOverdue > 0 ? "overdue" : "due") as InvoiceStatus,
                     doctorId: record.doctorId,
                     doctorName: record.doctorName,
                     visitType: record.visitType,
