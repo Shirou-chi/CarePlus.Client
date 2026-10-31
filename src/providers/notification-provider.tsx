@@ -135,7 +135,26 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const markRead = useCallback((id: string) => void update(() => notificationApi.markRead(id)), [update]);
     const markReadMany = useCallback((ids: string[]) => void update(() => notificationApi.markManyRead(ids)), [update]);
     const markAllRead = useCallback(() => void update(() => notificationApi.markAllRead()), [update]);
-    const remove = useCallback((ids: string[]) => void update(() => notificationApi.remove(ids)), [update]);
+    const remove = useCallback(
+        (ids: string[]) => {
+            const removedIds = new Set(ids);
+            if (removedIds.size === 0) return;
+
+            // Update the list immediately so deletion does not wait for the API round trip.
+            setItems((current) => current.filter((item) => !removedIds.has(item.id)));
+            void notificationApi
+                .remove(ids)
+                .then((raw) => apply(raw))
+                .catch(async (cause) => {
+                    try {
+                        apply(await notificationApi.list());
+                    } catch {
+                        setError(cause instanceof Error ? cause.message : "Unable to update notifications.");
+                    }
+                });
+        },
+        [apply],
+    );
     const unread = useMemo(() => items.filter((item) => item.unread), [items]);
 
     const value = useMemo<NoticeContextValue>(
