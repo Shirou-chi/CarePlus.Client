@@ -302,6 +302,12 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
         onSelectionChange(next);
     };
 
+    // React Aria may reuse/mutate its Set instance. Clone it so React receives
+    // a new reference and row actions update immediately after a selection.
+    const handleTableSelectionChange = (next: Selection) => {
+        onSelectionChange(next === "all" ? "all" : new Set(next));
+    };
+
     if (rows.length === 0) {
         return (
             <EmptyState size="sm" className="py-12">
@@ -368,19 +374,37 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                 </Button>
                             ) : null}
                         </div>
+                        {rowIsSelected(selected, item.id) ? (
+                            <Button
+                                color="secondary-destructive"
+                                size="md"
+                                iconLeading={Trash01}
+                                aria-label={`${t.notifDelete}: ${noticeMessage(item, t)}`}
+                                className="mt-2 shrink-0"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    onDelete();
+                                }}
+                            />
+                        ) : null}
                     </li>
                 ))}
             </ul>
 
             <TableCard.Root className="hidden md:block">
-                <Table aria-label={t.notifPageTitle} selectionMode="multiple" selectedKeys={selected} onSelectionChange={onSelectionChange}>
+                <Table
+                    aria-label={t.notifPageTitle}
+                    selectionMode="multiple"
+                    selectedKeys={selected}
+                    onSelectionChange={handleTableSelectionChange}
+                >
                     <Table.Header>
                         <Table.Head label={t.notifColNotice} isRowHeader />
                         <Table.Head label={t.notifColCategory} />
                         <Table.Head label={t.notifColWhen} />
                         <Table.Head label={t.notifColStatus} />
                     </Table.Header>
-                    <Table.Body items={rows}>
+                    <Table.Body items={rows} dependencies={[selected]}>
                         {(item) => (
                             <Table.Row id={item.id}>
                                 <Table.Cell onPointerDown={leaveCheckbox}
@@ -421,14 +445,27 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                         ) : (
                                             <span className="text-sm text-tertiary">{t.notifReadLabel}</span>
                                         )}
-                                        {item.unread ? (
-                                            <span onClick={(event) => event.stopPropagation()} onPointerDown={leaveCheckbox}
-                                    onPointerUp={leaveCheckbox}>
+                                        <span
+                                            className="ml-auto flex items-center gap-2"
+                                            onClick={(event) => event.stopPropagation()}
+                                            onPointerDown={leaveCheckbox}
+                                            onPointerUp={leaveCheckbox}
+                                        >
+                                            {item.unread ? (
                                                 <Button color="secondary" size="sm" onClick={() => onOpen(item.id)}>
                                                     {t.notifMarkRead}
                                                 </Button>
-                                            </span>
-                                        ) : null}
+                                            ) : null}
+                                            {rowIsSelected(selected, item.id) ? (
+                                                <Button
+                                                    color="secondary-destructive"
+                                                    size="sm"
+                                                    iconLeading={Trash01}
+                                                    aria-label={`${t.notifDelete}: ${noticeMessage(item, t)}`}
+                                                    onClick={onDelete}
+                                                />
+                                            ) : null}
+                                        </span>
                                     </div>
                                 </Table.Cell>
                             </Table.Row>
