@@ -67,7 +67,7 @@ export const HeaderNotifications = () => {
                                                 onOpen={() => markRead(item.id)}
                                             />
                                             <div className="flex justify-end px-2 pb-2">
-                                                <Button color="secondary" size="sm" onPress={() => markRead(item.id)}>
+                                                    <Button color="secondary" size="sm" onClick={() => markRead(item.id)}>
                                                     {t.notifMarkRead}
                                                 </Button>
                                             </div>
@@ -78,7 +78,7 @@ export const HeaderNotifications = () => {
                                     <Button color="primary" size="sm" className="min-w-0 flex-1 careplus-ink" href="/notifications">
                                         {t.notifViewAll}
                                     </Button>
-                                    <Button color="secondary" size="sm" className="min-w-0 flex-1" onPress={markAllRead}>
+                                    <Button color="secondary" size="sm" className="min-w-0 flex-1" onClick={markAllRead}>
                                         {t.notifClearAll}
                                     </Button>
                                 </div>

@@ -3,7 +3,6 @@ import { nextTrail, type TrailAction } from "@/components/marketing/header-navig
 import { useAuth } from "@/providers/auth-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy, type Locale } from "@/providers/locale-provider";
-import { getDoctorById, isDoctorId } from "@/utils/doctors";
 import { getMedicineCatalog, isMedicineId } from "@/utils/prescribed-medicine";
 
 type Crumb = {
@@ -57,12 +56,9 @@ const crumbLabel = (pathname: string, t: Copy, locale: Locale) => {
         "/account": t.account,
         "/book": t.bookTitle,
         "/visits": t.upcomingVisits,
-        "/history": t.visitHistory,
         "/invoices": t.invoices,
         "/payments": t.payments,
         "/records": t.phrTitle,
-        "/notes": t.notes,
-        "/labs": t.labs,
         "/family": t.familyProfiles,
         "/medicine": t.medTitle,
         "/cart": t.cart,
@@ -78,10 +74,7 @@ const crumbLabel = (pathname: string, t: Copy, locale: Locale) => {
     if (page[pathname]) return page[pathname];
 
     const doctorId = pathname.match(/^\/doctors\/([^/]+)$/)?.[1];
-    if (doctorId) {
-        const doctor = isDoctorId(doctorId) ? getDoctorById(locale, doctorId) : null;
-        return doctor?.name ?? t.homeNavDoctors;
-    }
+    if (doctorId) return t.doctorDetails;
 
     const medicineId = pathname.match(/^\/medicine\/([^/]+)$/)?.[1];
     if (medicineId) {
@@ -114,12 +107,9 @@ export const buildCrumbs = (pathname: string, id: string | undefined, t: Copy, l
         "/account": t.account,
         "/book": t.bookTitle,
         "/visits": t.upcomingVisits,
-        "/history": t.visitHistory,
         "/invoices": t.invoices,
         "/payments": t.payments,
         "/records": t.phrTitle,
-        "/notes": t.notes,
-        "/labs": t.labs,
         "/family": t.familyProfiles,
         "/medicine": t.medTitle,
         "/cart": t.cart,
@@ -137,10 +127,6 @@ export const buildCrumbs = (pathname: string, id: string | undefined, t: Copy, l
         return [home, { label: t.invoices, href: "/invoices" }, { label: t.invoicesPayTitle }];
     }
 
-    if (pathname === "/clinic-records" && from === "history") {
-        return [home, { label: t.visitHistory, href: "/history" }, { label: t.clinicRecordsTitle }];
-    }
-
     if (pathname === "/clinic-records" && from === "invoices") {
         return [home, { label: t.invoices, href: "/invoices" }, { label: t.clinicRecordsTitle }];
     }
@@ -149,21 +135,10 @@ export const buildCrumbs = (pathname: string, id: string | undefined, t: Copy, l
         return [home, { label: t.payments, href: "/payments" }, { label: t.clinicRecordsTitle }];
     }
 
-    if (pathname === "/clinic-records" && from === "notes") {
-        return [home, { label: t.notes, href: "/notes" }, { label: t.clinicRecordsTitle }];
-    }
-
-    if (pathname === "/clinic-records" && from === "labs") {
-        return [home, { label: t.labs, href: "/labs" }, { label: t.clinicRecordsTitle }];
-    }
-
     if (page[pathname]) return [home, { label: page[pathname] }];
 
     if (pathname.startsWith("/doctors/")) {
-        const doctor = isDoctorId(id) ? getDoctorById(locale, id) : null;
-        return doctor
-            ? [home, { label: t.homeNavDoctors, href: "/doctors" }, { label: doctor.name }]
-            : [home, { label: t.homeNavDoctors }];
+        return [home, { label: t.homeNavDoctors, href: "/doctors" }, { label: t.doctorDetails }];
     }
 
     if (pathname.startsWith("/medicine/")) {

@@ -17,22 +17,53 @@ type SignupPayload = {
     username: string;
     phone: string;
     password: string;
+    emailCode: string;
 };
 
+type SignupField = "username" | "ic" | "email" | "emailCode" | "phone";
+type SignupFieldErrors = Partial<Record<SignupField, string>>;
+
 type SignupCardCombinedProps = {
+    initialEmail?: string;
     error?: string | null;
     isLoading?: boolean;
+    usernameAvailability?: "idle" | "checking" | "available" | "taken" | "error";
+    emailVerificationStatus?: "idle" | "code" | "verified";
+    emailVerificationError?: string | null;
+    emailVerificationSuccess?: string | null;
+    emailVerificationLoading?: boolean;
+    fieldErrors?: SignupFieldErrors;
+    onUsernameChange?: (username: string) => void;
+    onEmailChange?: (email: string) => void;
+    onFieldChange?: (field: SignupField) => void;
+    onSendEmailCode?: (email: string) => void;
     onSubmit: (payload: SignupPayload) => void;
 };
 
 const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCombinedProps) => {
+export const SignupCardCombined = ({
+    initialEmail = "",
+    error,
+    isLoading,
+    usernameAvailability = "idle",
+    emailVerificationStatus = "idle",
+    emailVerificationError,
+    emailVerificationSuccess,
+    emailVerificationLoading = false,
+    fieldErrors = {},
+    onUsernameChange,
+    onEmailChange,
+    onFieldChange,
+    onSendEmailCode,
+    onSubmit,
+}: SignupCardCombinedProps) => {
     const { t } = useI18n();
     const [fullName, setFullName] = useState("");
     const [ic, setIc] = useState("");
     const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
+    const [email, setEmail] = useState(initialEmail);
+    const [emailCode, setEmailCode] = useState("");
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
@@ -61,11 +92,30 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                 ? t.icDate
                 : undefined;
     const phoneHint = phone.trim() && !composePhone(phone.trim()) ? t.phoneFormat : undefined;
+    const usernameValidationHint =
+        fieldErrors.username ?? (usernameAvailability === "checking"
+            ? t.usernameChecking
+            : usernameAvailability === "taken"
+              ? t.usernameTaken
+              : usernameAvailability === "available"
+                ? t.usernameAvailable
+                : usernameAvailability === "error"
+                  ? t.usernameCheckFailed
+                  : submitted && !username.trim()
+                    ? t.usernameRequired
+                    : undefined);
+    const displayedCardHint = fieldErrors.ic ?? cardHint;
+    const emailHint = fieldErrors.email ?? ((submitted || email.trim()) && !emailOk(email.trim()) ? t.settingsInvalidEmail : undefined);
+    const emailCodeHint = emailVerificationError ?? fieldErrors.emailCode ?? (submitted && emailCode.length !== 6 ? t.emailVerificationCodeRequired : undefined);
+    const displayedPhoneHint = fieldErrors.phone ?? phoneHint;
     const issues = [
         fullName.trim().length < 3 ? t.nameTooShort : "",
         !username.trim() ? t.usernameRequired : "",
+        usernameAvailability === "taken" ? t.usernameTaken : "",
         cardIssue === "empty" ? t.icRequired : cardIssue === "length" ? t.icLength : cardIssue === "date" ? t.icDate : "",
         !emailOk(email.trim()) ? t.settingsInvalidEmail : "",
+        emailVerificationStatus === "idle" ? t.emailVerificationBeforeSignup : "",
+        emailVerificationStatus === "code" && emailCode.length !== 6 ? t.emailVerificationCodeRequired : "",
         phoneHint ?? "",
         passwordHint ?? (passwordProblems.length ? t.settingsInvalidPassword : ""),
         password !== confirm ? t.passwordsMismatch : "",
@@ -83,10 +133,10 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                     const phoneValue = phone.trim();
                     const phoneNumber = phoneValue ? composePhone(phoneValue) : "";
                     setSubmitted(true);
-                    if (fullName.trim().length < 3 || !usernameValue || identityCardIssue(icValue) || !emailOk(emailValue) || (phoneValue && !phoneNumber) || passwordGaps(password).length > 0 || password !== confirm) {
+                    if (fullName.trim().length < 3 || !usernameValue || identityCardIssue(icValue) || !emailOk(emailValue) || emailVerificationStatus === "idle" || (emailVerificationStatus === "code" && emailCode.length !== 6) || (phoneValue && !phoneNumber) || passwordGaps(password).length > 0 || password !== confirm) {
                         return;
                     }
-                    onSubmit({ fullName: name, username: usernameValue, ic: icValue, email: emailValue, phone: phoneNumber || "", password });
+                    onSubmit({ fullName: name, username: usernameValue, ic: icValue, email: emailValue, phone: phoneNumber || "", password, emailCode });
                 }}
                 className="flex flex-col gap-7 [&_input]:min-h-12"
             >
@@ -109,11 +159,16 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                         label={t.username}
                         name="username"
                         value={username}
-                        onChange={setUsername}
+                        onChange={(value) => {
+                            setUsername(value);
+                            onFieldChange?.("username");
+                            onUsernameChange?.(value);
+                        }}
                         placeholder={t.usernamePlaceholder}
+                        tooltip={t.usernameHint}
                         size="lg"
-                        hint={submitted && !username.trim() ? t.usernameRequired : undefined}
-                        isInvalid={submitted && !username.trim()}
+                        hint={usernameValidationHint}
+                        isInvalid={Boolean(fieldErrors.username) || usernameAvailability === "taken" || (submitted && !username.trim())}
                         autoComplete="username"
                     />
                     <Input
@@ -121,35 +176,86 @@ export const SignupCardCombined = ({ error, isLoading, onSubmit }: SignupCardCom
                         label={t.ic}
                         name="ic"
                         value={ic}
-                        onChange={setIc}
+                        onChange={(value) => {
+                            setIc(value);
+                            onFieldChange?.("ic");
+                        }}
                         placeholder={t.icPlaceholder}
-                        hint={cardHint}
+                        hint={displayedCardHint}
                         size="lg"
-                        isInvalid={Boolean(cardHint)}
+                        isInvalid={Boolean(displayedCardHint)}
                         autoComplete="off"
                     />
-                    <Input
-                        isRequired
-                        label={t.email}
-                        type="email"
-                        name="email"
-                        value={email}
-                        onChange={setEmail}
-                        placeholder={t.emailPlaceholder}
-                        hint={(submitted || email.trim()) && !emailOk(email.trim()) ? t.settingsInvalidEmail : undefined}
-                        size="lg"
-                        isInvalid={(submitted || Boolean(email.trim())) && !emailOk(email.trim())}
-                        autoComplete="email"
-                    />
+                    <div className="flex flex-col gap-3">
+                        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                            <Input
+                                isRequired
+                                label={t.email}
+                                type="email"
+                                name="email"
+                                value={email}
+                                onChange={(value) => {
+                                    setEmail(value);
+                                    setEmailCode("");
+                                    onFieldChange?.("email");
+                                    onFieldChange?.("emailCode");
+                                    onEmailChange?.(value);
+                                }}
+                                placeholder={t.emailPlaceholder}
+                                hint={emailHint}
+                                size="lg"
+                                isDisabled={emailVerificationStatus === "verified"}
+                                isInvalid={Boolean(fieldErrors.email) || ((submitted || Boolean(email.trim())) && !emailOk(email.trim()))}
+                                autoComplete="email"
+                            />
+                            <Button
+                                type="button"
+                                color="secondary"
+                                size="lg"
+                                className="min-h-12 whitespace-nowrap sm:mt-[26px]"
+                                isLoading={emailVerificationLoading && emailVerificationStatus !== "verified"}
+                                isDisabled={!emailOk(email.trim()) || emailVerificationLoading || emailVerificationStatus === "verified"}
+                                onClick={() => onSendEmailCode?.(email.trim())}
+                            >
+                                {emailVerificationStatus === "code" ? t.resendVerificationCode : t.forgotSendCode}
+                            </Button>
+                        </div>
+
+                        {emailVerificationStatus !== "idle" ? (
+                            <Input
+                                isRequired
+                                label={t.emailVerificationCode}
+                                name="emailVerificationCode"
+                                value={emailCode}
+                                onChange={(value) => {
+                                    setEmailCode(value.replace(/\D/g, "").slice(0, 6));
+                                    onFieldChange?.("emailCode");
+                                }}
+                                placeholder={t.emailVerificationCodePlaceholder}
+                                hint={emailCodeHint}
+                                inputMode="numeric"
+                                maxLength={6}
+                                autoComplete="one-time-code"
+                                isDisabled={emailVerificationStatus === "verified"}
+                                isInvalid={Boolean(emailCodeHint)}
+                                size="lg"
+                            />
+                        ) : null}
+
+                        <FormStatus error={emailVerificationStatus === "idle" ? emailVerificationError : null} success={emailVerificationSuccess} />
+                    </div>
                     <Input
                         label={`${t.phone} ${t.optional}`}
                         type="tel"
                         name="phone"
                         value={phone}
-                        onChange={setPhone}
+                        onChange={(value) => {
+                            setPhone(value);
+                            onFieldChange?.("phone");
+                        }}
                         placeholder={t.phonePlaceholder}
-                        hint={phoneHint}
-                        isInvalid={Boolean(phoneHint)}
+                        hint={displayedPhoneHint}
+                        isInvalid={Boolean(displayedPhoneHint)}
                         size="lg"
                         autoComplete="tel"
                     />

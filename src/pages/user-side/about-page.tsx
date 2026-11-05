@@ -124,13 +124,13 @@ export const AboutPage = () => {
                             {portalModules.map((item) => (
                                 <article
                                     key={item.title}
-                                    className="rounded-2xl border border-primary/15 bg-secondary_subtle p-6 ring-1 ring-primary/10"
+                                    className="rounded-2xl border border-secondary bg-primary p-6 ring-1 ring-secondary"
                                 >
                                     <FeaturedIcon icon={item.icon} color="brand" theme="light" size="md" />
                                     <h3 className="mt-4 text-lg font-semibold text-primary">{item.title}</h3>
                                     <p className="mt-2 text-md text-tertiary">{item.body}</p>
-                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
-                                        <div className="careplus-ink h-full rounded-full" style={{ width: `${item.share}%` }} />
+                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#d5e5eb] dark:bg-[#335775]">
+                                        <div className="h-full rounded-full bg-[#0b2036] dark:bg-[#72e6f0]" style={{ width: `${item.share}%` }} />
                                     </div>
                                 </article>
                             ))}
@@ -158,8 +158,8 @@ export const AboutPage = () => {
                                         <span className="font-medium text-primary">{item.label}</span>
                                         <span className="text-tertiary">{item.pct}%</span>
                                     </div>
-                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
-                                        <div className="h-full rounded-full bg-brand-solid" style={{ width: `${item.pct}%` }} />
+                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#d5e5eb] dark:bg-[#335775]">
+                                        <div className="h-full rounded-full bg-[#0b2036] dark:bg-[#72e6f0]" style={{ width: `${item.pct}%` }} />
                                     </div>
                                 </li>
                             ))}
@@ -179,7 +179,7 @@ export const AboutPage = () => {
                         {clinicPhotos.map((photo) => (
                             <figure key={photo.src} className="overflow-hidden rounded-2xl ring-1 ring-primary/15">
                                 <img src={photo.src} alt={t[photo.altKey]} className="aspect-[4/5] size-full object-cover" />
-                                <figcaption className="border-t border-primary/10 bg-secondary_subtle px-3 py-2 text-xs font-medium text-secondary">
+                                <figcaption className="border-t border-secondary bg-secondary px-3 py-2 text-xs font-medium text-secondary">
                                     {t[photo.altKey]}
                                 </figcaption>
                             </figure>
@@ -188,7 +188,7 @@ export const AboutPage = () => {
                 </section>
 
                 <section className="px-4 pb-16 md:px-8 md:pb-24">
-                    <div className="careplus-ink mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14">
+                    <div className="careplus-ink mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14 dark:bg-[#173b5d] dark:ring-1 dark:ring-[#3b668c] dark:[background-image:none]">
                         <div className="max-w-xl">
                             <FeaturedIcon icon={HeartHand} color="gray" theme="dark" size="lg" />
                             <h2 className="mt-4 text-display-xs font-semibold text-white md:text-display-sm">{t.aboutCtaTitle}</h2>

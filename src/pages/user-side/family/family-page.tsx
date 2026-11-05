@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Navigate } from "react-router";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { FormStatus } from "@/components/application/form-status";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -13,30 +13,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
-import {
-    acceptInvite,
-    canUseFamilyAccount,
-    cancelInvite,
-    createFamily,
-    decideUseRequest,
-    declineInvite,
-    deleteFamily,
-    incomingInvites,
-    inviteMember,
-    leaveFamily,
-    pendingUseRequests,
-    readFamily,
-    removeFamilyMember,
-    renameFamily,
-    requestUseAccount,
-    setPermission,
-    useFamilyAccount,
-    useRequestFor,
-    type FamilyMember,
-    type FamilyPermission,
-    type FamilyReason,
-    type FamilyRelation,
-} from "@/utils/family";
+import { familyApi, type FamilyMember, type FamilyOverview, type FamilyPermission, type FamilyRelation } from "@/services/familyApi";
 
 const relations: FamilyRelation[] = ["parent", "child"];
 const grantPermissions: FamilyPermission[] = ["parent", "child"];
@@ -51,15 +28,6 @@ const relationLabel = (t: Copy, relation: FamilyRelation | "you" | string) => {
 
 const permissionLabel = (t: Copy, permission: FamilyPermission) => (permission === "parent" ? t.familyRelationParent : t.familyRelationChild);
 
-const reasonText = (t: Copy, reason: FamilyReason) => {
-    if (reason === "duplicate") return t.familyDuplicate;
-    if (reason === "self") return t.familySelf;
-    if (reason === "need-transfer") return t.familyNeedTransfer;
-    if (reason === "already") return t.familyUseAlready;
-    if (reason === "not-allowed") return t.familyChildBlocked;
-    return t.familyNameRequired;
-};
-
 const initials = (name: string) =>
     name
         .split(" ")
@@ -73,28 +41,85 @@ const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 const dialogClass = "flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-5 ring-1 ring-secondary outline-hidden sm:p-6";
 
 export const FamilyPage = () => {
-    const { profile, isReady, switchProfile } = useAuth();
+    const { profile, isReady } = useAuth();
     const { t } = useI18n();
-    const navigate = useNavigate();
-    const [tick, setTick] = useState(0);
+    const [overview, setOverview] = useState<FamilyOverview | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [openId, setOpenId] = useState<string | null>(null);
     const [adding, setAdding] = useState(false);
     const [renaming, setRenaming] = useState(false);
+    const [renamingSelf, setRenamingSelf] = useState(false);
     const [creating, setCreating] = useState(false);
     const [leaving, setLeaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
-    const family = useMemo(() => (profile ? readFamily(profile) : null), [profile, tick]);
-    const invites = useMemo(() => (profile ? incomingInvites(profile.email) : []), [profile, tick]);
-    const accessRequests = useMemo(() => (profile ? pendingUseRequests(profile) : []), [profile, tick]);
-    const refresh = () => setTick((value) => value + 1);
+
+    useEffect(() => {
+        let cancelled = false;
+        let requestInFlight = false;
+
+        if (!profile) {
+            setOverview(null);
+            setLoading(false);
+            return;
+        }
+
+        const loadOverview = async (silent = false) => {
+            if (requestInFlight) return;
+
+            requestInFlight = true;
+            if (!silent) {
+                setLoading(true);
+                setLoadError(null);
+            }
+
+            try {
+                const next = await familyApi.overview();
+                if (!cancelled) {
+                    setOverview(next);
+                }
+            } catch (cause) {
+                if (!cancelled && !silent) {
+                    setLoadError(cause instanceof Error ? cause.message : t.authFailed);
+                }
+            } finally {
+                requestInFlight = false;
+                if (!cancelled && !silent) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        void loadOverview();
+        const refreshInterval = window.setInterval(() => {
+            if (document.visibilityState === "visible") {
+                void loadOverview(true);
+            }
+        }, 2_000);
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                void loadOverview(true);
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(refreshInterval);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
+    }, [profile?.id, t.authFailed]);
+
+    const family = overview?.family ?? null;
+    const invites = overview?.invites ?? [];
 
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
 
-    const mine = family?.members.find((member) => member.email.toLowerCase() === profile.email.toLowerCase()) ?? null;
+    const currentPatientId = overview?.currentPatientId || profile.id;
+    const mine = family?.members.find((member) => member.id === currentPatientId) ?? null;
     const isParent = mine?.permission === "parent";
     const active = family?.members.filter((member) => member.status === "active") ?? [];
-    const onlyParent = Boolean(isParent && active.filter((member) => member.permission === "parent").length === 1);
     const pending = family?.members.filter((member) => member.status === "pending") ?? [];
     const openPerson = family?.members.find((member) => member.id === openId) ?? null;
 
@@ -107,6 +132,8 @@ export const FamilyPage = () => {
                     <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.familyProfiles}</h1>
                     <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.familyBody}</p>
                 </div>
+                {loadError ? <p role="alert" className="mt-5 rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">{loadError}</p> : null}
+                {loading && !overview ? <p className="mt-5 rounded-xl bg-primary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.phrLoading}</p> : null}
 
                 {invites.length > 0 && !family ? (
                     <ul className="mt-6 flex flex-col gap-3">
@@ -121,20 +148,14 @@ export const FamilyPage = () => {
                                     <Button
                                         color="primary"
                                         size="sm"
-                                        onClick={() => {
-                                            acceptInvite(profile, invite.member.id);
-                                            refresh();
-                                        }}
+                                        onClick={() => void familyApi.acceptInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed))}
                                     >
                                         {t.familyAccept}
                                     </Button>
                                     <Button
                                         color="secondary"
                                         size="sm"
-                                        onClick={() => {
-                                            declineInvite(profile, invite.member.id);
-                                            refresh();
-                                        }}
+                                        onClick={() => void familyApi.declineInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed))}
                                     >
                                         {t.familyDecline}
                                     </Button>
@@ -160,7 +181,7 @@ export const FamilyPage = () => {
                                     <p className="text-sm text-tertiary">{t.familyName}</p>
                                     <p className="mt-1 text-md font-semibold text-primary">{family.name}</p>
                                 </div>
-                                {isParent ? (
+                                {mine?.isOwner ? (
                                     <Button color="secondary" size="sm" onClick={() => setRenaming(true)}>
                                         {t.familyChange}
                                     </Button>
@@ -170,7 +191,7 @@ export const FamilyPage = () => {
                                 <Button color="secondary" size="sm" onClick={() => setLeaving(true)}>
                                     {t.familyLeave}
                                 </Button>
-                                {isParent ? (
+                                {mine?.isOwner ? (
                                     <Button color="secondary-destructive" size="sm" onClick={() => setDeleting(true)}>
                                         {t.familyDelete}
                                     </Button>
@@ -183,7 +204,7 @@ export const FamilyPage = () => {
                                 <h2 className="text-lg font-semibold text-primary">{t.familyMembers}</h2>
                                 <p className="mt-1 text-sm text-tertiary">{t.familyMemberCount.replace("{count}", String(active.length))}</p>
                             </div>
-                            {isParent ? (
+                            {mine?.isOwner ? (
                                 <Button color="primary" size="sm" onClick={() => setAdding(true)}>
                                     {t.familyAdd}
                                 </Button>
@@ -192,46 +213,9 @@ export const FamilyPage = () => {
 
                         <ul className="mt-4 divide-y divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
                             {active.map((person) => (
-                                <MemberRow key={person.id} person={{ ...person, name: person.email.toLowerCase() === profile.email.toLowerCase() ? profile.fullName : person.name }} onOpen={() => setOpenId(person.id)} />
+                                <MemberRow key={person.id} person={person} isSelf={person.id === currentPatientId} onOpen={() => setOpenId(person.id)} />
                             ))}
                         </ul>
-
-                        {isParent && accessRequests.length > 0 ? (
-                            <>
-                                <h2 className="mt-8 text-lg font-semibold text-primary">{t.familyUseRequests}</h2>
-                                <ul className="mt-4 divide-y divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
-                                    {accessRequests.map(({ request, from, target }) => (
-                                        <li key={request.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
-                                            <p className="text-sm text-secondary">
-                                                {t.familyUseRequestBody.replace("{name}", from.name).replace("{target}", target.name)}
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                                <Button
-                                                    color="primary"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        decideUseRequest(profile, request.id, true);
-                                                        refresh();
-                                                    }}
-                                                >
-                                                    {t.familyUseApprove}
-                                                </Button>
-                                                <Button
-                                                    color="secondary"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        decideUseRequest(profile, request.id, false);
-                                                        refresh();
-                                                    }}
-                                                >
-                                                    {t.familyUseDecline}
-                                                </Button>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </>
-                        ) : null}
 
                         {isParent && pending.length > 0 ? (
                             <>
@@ -239,7 +223,7 @@ export const FamilyPage = () => {
                                 <p className="mt-1 max-w-2xl text-sm text-tertiary">{t.familyPendingHint}</p>
                                 <ul className="mt-4 divide-y divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
                                     {pending.map((person) => (
-                                        <MemberRow key={person.id} person={person} pending onOpen={() => setOpenId(person.id)} />
+                                        <MemberRow key={person.id} person={person} pending isSelf={false} onOpen={() => setOpenId(person.id)} />
                                     ))}
                                 </ul>
                             </>
@@ -254,8 +238,7 @@ export const FamilyPage = () => {
                     current={family.name}
                     onClose={() => setRenaming(false)}
                     onSave={(name) => {
-                        renameFamily(profile, name);
-                        refresh();
+                        void familyApi.rename(name).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                         setRenaming(false);
                     }}
                 />
@@ -266,8 +249,7 @@ export const FamilyPage = () => {
                     title={t.familyCreate}
                     onClose={() => setCreating(false)}
                     onSave={(name) => {
-                        createFamily(profile, name);
-                        refresh();
+                        void familyApi.create(name).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                         setCreating(false);
                     }}
                 />
@@ -276,46 +258,43 @@ export const FamilyPage = () => {
                 <AddDialog
                     onClose={() => setAdding(false)}
                     onSave={(person) => {
-                        const result = inviteMember(profile, person);
-                        if (!result.ok) return reasonText(t, result.reason);
-                        refresh();
+                        void familyApi.invite(person.email, person.relation).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                         setAdding(false);
                         return null;
+                    }}
+                />
+            ) : null}
+            {renamingSelf && mine ? (
+                <RenameDialog
+                    current={mine.name}
+                    title={t.familyDisplayNameChange}
+                    label={t.familyDisplayName}
+                    requiredMessage={t.familyDisplayNameRequired}
+                    onClose={() => setRenamingSelf(false)}
+                    onSave={(name) => {
+                        void familyApi.renameSelf(name).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                        setRenamingSelf(false);
                     }}
                 />
             ) : null}
             {openPerson ? (
                 <MemberDialog
                     person={openPerson}
-                    isParent={Boolean(isParent)}
-                    isSelf={openPerson.email.toLowerCase() === profile.email.toLowerCase()}
-                    canUse={openPerson.status === "active" && canUseFamilyAccount(profile, openPerson.id)}
-                    useRequest={openPerson.status === "active" ? useRequestFor(profile, openPerson.id) : null}
+                    isParent={Boolean(mine?.isOwner)}
+                    isSelf={openPerson.id === currentPatientId}
                     onClose={() => setOpenId(null)}
-                    onPermission={(permission) => {
-                        setPermission(profile, openPerson.id, permission);
-                        refresh();
-                    }}
-                    onRequestUse={() => {
-                        const result = requestUseAccount(profile, openPerson.id);
-                        if (!result.ok) return reasonText(t, result.reason);
-                        refresh();
-                        return null;
-                    }}
-                    onUseAccount={() => {
-                        const next = useFamilyAccount(profile, openPerson.id);
-                        if (!next) return;
-                        switchProfile(next);
+                    onRenameSelf={() => {
                         setOpenId(null);
-                        navigate("/family");
+                        setRenamingSelf(true);
                     }}
-                    blocked={!isParent && openPerson.permission === "parent"}
+                    onPermission={(permission) => {
+                        void familyApi.updateAccess(openPerson.familyMemberId, permission).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                    }}
                     onRemove={
-                        isParent && openPerson.email.toLowerCase() !== profile.email.toLowerCase()
+                        mine?.isOwner && openPerson.id !== currentPatientId
                             ? () => {
-                                  if (openPerson.status === "pending") cancelInvite(profile, openPerson.id);
-                                  else removeFamilyMember(profile, openPerson.id);
-                                  refresh();
+                                  const operation = openPerson.status === "pending" ? familyApi.cancelInvite(openPerson.familyMemberId) : familyApi.removeMember(openPerson.familyMemberId);
+                                  void operation.then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                                   setOpenId(null);
                               }
                             : undefined
@@ -324,13 +303,12 @@ export const FamilyPage = () => {
             ) : null}
             {leaving && family ? (
                 <LeaveDialog
-                    people={active.filter((member) => member.email.toLowerCase() !== profile.email.toLowerCase())}
-                    mustTransfer={onlyParent && active.some((member) => member.email.toLowerCase() !== profile.email.toLowerCase())}
+                    people={active.filter((member) => member.id !== currentPatientId)}
+                    mustTransfer={Boolean(mine?.isOwner && active.length > 1)}
                     onClose={() => setLeaving(false)}
                     onLeave={(transferToId) => {
-                        const result = leaveFamily(profile, transferToId);
-                        if (!result.ok) return reasonText(t, result.reason);
-                        refresh();
+                        const transferMember = active.find((member) => member.id === transferToId);
+                        void familyApi.leave(transferMember?.familyMemberId).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                         setLeaving(false);
                         return null;
                     }}
@@ -343,8 +321,7 @@ export const FamilyPage = () => {
                     confirm={t.familyDelete}
                     onClose={() => setDeleting(false)}
                     onConfirm={() => {
-                        deleteFamily(profile);
-                        refresh();
+                        void familyApi.delete().then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                         setDeleting(false);
                     }}
                 />
@@ -353,14 +330,17 @@ export const FamilyPage = () => {
     );
 };
 
-const MemberRow = ({ person, pending = false, onOpen }: { person: FamilyMember; pending?: boolean; onOpen: () => void }) => {
+const MemberRow = ({ person, pending = false, isSelf, onOpen }: { person: FamilyMember; pending?: boolean; isSelf: boolean; onOpen: () => void }) => {
     const { t } = useI18n();
     return (
         <li>
             <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left outline-focus-ring hover:bg-quaternary sm:px-5" onClick={onOpen}>
                 <Avatar size="md" initials={initials(person.name)} alt={person.name} />
                 <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-primary">{person.name}</span>
+                    <span className="block truncate text-sm font-semibold text-primary">
+                        {person.name}
+                        {isSelf ? <span className="ml-1 font-medium text-brand-secondary">({t.familyMyself})</span> : null}
+                    </span>
                     <span className="mt-0.5 block truncate text-sm text-tertiary">{person.email}</span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1">
@@ -378,7 +358,7 @@ const MemberRow = ({ person, pending = false, onOpen }: { person: FamilyMember; 
     );
 };
 
-const RenameDialog = ({ current, title, onClose, onSave }: { current: string; title?: string; onClose: () => void; onSave: (name: string) => void }) => {
+const RenameDialog = ({ current, title, label, requiredMessage, onClose, onSave }: { current: string; title?: string; label?: string; requiredMessage?: string; onClose: () => void; onSave: (name: string) => void }) => {
     const { t } = useI18n();
     const [name, setName] = useState(current);
     const [error, setError] = useState<string | null>(null);
@@ -392,14 +372,14 @@ const RenameDialog = ({ current, title, onClose, onSave }: { current: string; ti
                         className="mt-4"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            if (!name.trim()) {
-                                setError(t.familyNameRequired);
+                            if (name.trim().length < 2 || name.trim().length > 100) {
+                                setError(requiredMessage ?? t.familyNameRequired);
                                 return;
                             }
                             onSave(name);
                         }}
                     >
-                        <Input label={t.familyName} value={name} onChange={setName} />
+                        <Input label={label ?? t.familyName} value={name} onChange={setName} maxLength={100} />
                         <FormStatus error={error} />
                         <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                             <Button type="button" color="tertiary" size="md" onClick={onClose}>
@@ -416,14 +396,12 @@ const RenameDialog = ({ current, title, onClose, onSave }: { current: string; ti
     );
 };
 
-const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: { name: string; email: string; relation: FamilyRelation; permission: FamilyPermission }) => string | null }) => {
+const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: { email: string; relation: FamilyRelation }) => string | null }) => {
     const { t } = useI18n();
-    const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [relation, setRelation] = useState<FamilyRelation>("child");
-    const [fieldError, setFieldError] = useState<{ field: "name" | "email"; message: string } | null>(null);
+    const [fieldError, setFieldError] = useState<string | null>(null);
     const relationOptions = relations.map((id) => ({ id, label: relationLabel(t, id) }));
-    const permission: FamilyPermission = relation === "parent" ? "parent" : "child";
 
     return (
         <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
@@ -434,38 +412,24 @@ const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: 
                         className="mt-4 flex flex-col gap-4"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            if (!name.trim()) {
-                                setFieldError({ field: "name", message: t.familyNameRequired });
-                                return;
-                            }
                             if (!emailOk(email.trim())) {
-                                setFieldError({ field: "email", message: t.familyEmailInvalid });
+                                setFieldError(t.familyEmailInvalid);
                                 return;
                             }
-                            const message = onSave({ name, email, relation, permission });
-                            if (message) setFieldError({ field: "email", message });
+                            const message = onSave({ email, relation });
+                            if (message) setFieldError(message);
                         }}
                     >
-                        <Input
-                            label={t.familyPersonName}
-                            value={name}
-                            onChange={(value) => {
-                                setName(value);
-                                if (fieldError?.field === "name") setFieldError(null);
-                            }}
-                            isInvalid={fieldError?.field === "name"}
-                            hint={fieldError?.field === "name" ? fieldError.message : undefined}
-                        />
                         <Input
                             label={t.email}
                             type="email"
                             value={email}
                             onChange={(value) => {
                                 setEmail(value);
-                                if (fieldError?.field === "email") setFieldError(null);
+                                if (fieldError) setFieldError(null);
                             }}
-                            isInvalid={fieldError?.field === "email"}
-                            hint={fieldError?.field === "email" ? fieldError.message : undefined}
+                            isInvalid={Boolean(fieldError)}
+                            hint={fieldError ?? undefined}
                         />
                         <Select label={t.familyRelation} selectedKey={relation} onSelectionChange={(key) => key && setRelation(String(key) as FamilyRelation)} items={relationOptions}>
                             {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
@@ -489,33 +453,23 @@ const MemberDialog = ({
     person,
     isParent,
     isSelf,
-    canUse,
-    useRequest,
-    blocked,
     onClose,
     onPermission,
-    onRequestUse,
-    onUseAccount,
     onRemove,
+    onRenameSelf,
 }: {
     person: FamilyMember;
     isParent: boolean;
     isSelf: boolean;
-    canUse: boolean;
-    useRequest: { status: "pending" | "approved" } | null;
-    blocked: boolean;
     onClose: () => void;
     onPermission: (permission: FamilyPermission) => void;
-    onRequestUse: () => string | null;
-    onUseAccount: () => void;
     onRemove?: () => void;
+    onRenameSelf: () => void;
 }) => {
     const { t } = useI18n();
     const [permission, setGrant] = useState<FamilyPermission>(person.permission);
-    const [confirming, setConfirming] = useState<"use" | "request" | "remove" | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [confirming, setConfirming] = useState<"remove" | null>(null);
     const options = grantPermissions.map((id) => ({ id, label: permissionLabel(t, id) }));
-    const showAccountActions = !isSelf && person.status === "active";
 
     if (confirming === "remove") {
         return (
@@ -538,60 +492,6 @@ const MemberDialog = ({
         );
     }
 
-    if (confirming === "use") {
-        return (
-            <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
-                <Modal className="w-full max-w-md">
-                    <Dialog className={dialogClass}>
-                        <h2 className="text-lg font-semibold text-primary">{t.familyUseAccount}</h2>
-                        <p className="mt-2 text-sm text-tertiary">{t.familyUseAccountAsk.replace("{name}", person.name)}</p>
-                        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <Button color="tertiary" size="md" onClick={() => setConfirming(null)}>
-                                {t.notifCancel}
-                            </Button>
-                            <Button color="primary" size="md" onClick={onUseAccount}>
-                                {t.familyUseAccount}
-                            </Button>
-                        </div>
-                    </Dialog>
-                </Modal>
-            </ModalOverlay>
-        );
-    }
-
-    if (confirming === "request") {
-        return (
-            <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
-                <Modal className="w-full max-w-md">
-                    <Dialog className={dialogClass}>
-                        <h2 className="text-lg font-semibold text-primary">{t.familyRequestPermission}</h2>
-                        <p className="mt-2 text-sm text-tertiary">{t.familyRequestPermissionBody.replace("{name}", person.name)}</p>
-                        <FormStatus error={error} />
-                        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <Button color="tertiary" size="md" onClick={() => setConfirming(null)}>
-                                {t.notifCancel}
-                            </Button>
-                            <Button
-                                color="primary"
-                                size="md"
-                                onClick={() => {
-                                    const next = onRequestUse();
-                                    if (next) {
-                                        setError(next);
-                                        return;
-                                    }
-                                    setConfirming(null);
-                                }}
-                            >
-                                {t.familyRequestPermission}
-                            </Button>
-                        </div>
-                    </Dialog>
-                </Modal>
-            </ModalOverlay>
-        );
-    }
-
     return (
         <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
             <Modal className="w-full max-w-md">
@@ -599,7 +499,10 @@ const MemberDialog = ({
                     <div className="flex items-center gap-3">
                         <Avatar size="lg" initials={initials(person.name)} alt={person.name} />
                         <div className="min-w-0">
-                            <h2 className="truncate text-lg font-semibold text-primary">{person.name}</h2>
+                            <h2 className="truncate text-lg font-semibold text-primary">
+                                {person.name}
+                                {isSelf ? <span className="ml-1 text-md font-medium text-brand-secondary">({t.familyMyself})</span> : null}
+                            </h2>
                             <Badge color={person.permission === "parent" ? "brand" : "gray"} size="sm" className="mt-1">
                                 {permissionLabel(t, person.permission)}
                             </Badge>
@@ -615,10 +518,6 @@ const MemberDialog = ({
                             <dd className="mt-0.5 font-medium text-primary">{relationLabel(t, person.relation)}</dd>
                         </div>
                     </dl>
-                    {showAccountActions && blocked ? <p className="mt-4 text-sm text-tertiary">{t.familyChildBlocked}</p> : null}
-                    {showAccountActions && useRequest?.status === "pending" ? (
-                        <p className="mt-4 text-sm text-warning-primary">{t.familyRequestWaiting}</p>
-                    ) : null}
                     {isParent && !isSelf ? (
                         <div className="mt-4">
                             <Select label={t.familyPermission} selectedKey={permission} onSelectionChange={(key) => key && setGrant(String(key) as FamilyPermission)} items={options}>
@@ -627,19 +526,14 @@ const MemberDialog = ({
                         </div>
                     ) : null}
                     <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                        {isSelf ? (
+                            <Button color="secondary" size="md" onClick={onRenameSelf}>
+                                {t.familyDisplayNameChange}
+                            </Button>
+                        ) : null}
                         {onRemove ? (
                             <Button color="secondary-destructive" size="md" onClick={() => (person.status === "pending" ? onRemove?.() : setConfirming("remove"))}>
                                 {person.status === "pending" ? t.familyCancelInvite : t.familyRemove}
-                            </Button>
-                        ) : null}
-                        {showAccountActions && canUse ? (
-                            <Button color="secondary" size="md" onClick={() => setConfirming("use")}>
-                                {t.familyUseAccount}
-                            </Button>
-                        ) : null}
-                        {showAccountActions && !canUse && !useRequest && !blocked ? (
-                            <Button color="secondary" size="md" onClick={() => setConfirming("request")}>
-                                {t.familyRequestPermission}
                             </Button>
                         ) : null}
                         {isParent && !isSelf && permission !== person.permission ? (
