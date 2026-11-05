@@ -114,7 +114,7 @@ export const profileFromUser = (user: CurrentUserResponse): Profile => ({
     fullName: user.name,
     identityCard: user.identityCardNumber || null,
     phone: user.phone || null,
-    dateOfBirth: null,
+    dateOfBirth: user.dateOfBirth || null,
     address: user.address || null,
     gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
     nationality: "Malaysian",

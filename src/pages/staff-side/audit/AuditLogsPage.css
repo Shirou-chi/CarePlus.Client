@@ -338,8 +338,7 @@
 :root[data-theme='dark'] .audit-entry-icon--violet { background: rgba(139, 122, 244, 0.14); }
 :root[data-theme='dark'] .audit-entry-icon--red { background: rgba(209, 100, 100, 0.14); }
 
-.audit-action,
-.audit-severity {
+.audit-action {
   display: inline-flex;
   gap: 5px;
   align-items: center;
@@ -356,25 +355,6 @@
 .audit-action--updated { background: #e9f0fc; color: #4f83d2; }
 .audit-action--deleted { background: #fee8e8; color: #bf5b5b; }
 .audit-action--exported { background: #efebff; color: #7465d7; }
-
-.audit-severity {
-  padding: 0;
-  background: transparent;
-}
-
-.audit-severity i {
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.audit-severity--routine { color: var(--staff-muted); }
-.audit-severity--routine i { background: #8ca1b2; }
-.audit-severity--important { color: #b9791b; }
-.audit-severity--important i { background: #e5a54b; }
-.audit-severity--critical { color: #c25656; }
-.audit-severity--critical i { background: #db6b6b; }
 
 .audit-row-action {
   display: grid;
@@ -619,8 +599,7 @@
   font-size: 0.64rem;
 }
 
-.audit-action,
-.audit-severity {
+.audit-action {
   font-size: 0.61rem;
 }
 

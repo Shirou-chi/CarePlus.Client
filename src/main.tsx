@@ -9,9 +9,13 @@ import { AuditLogsPage } from "@/pages/staff-side/audit/AuditLogsPage";
 import { LeavePage } from "@/pages/staff-side/leave/LeavePage";
 import { NotificationsPage as StaffNotificationsPage } from "@/pages/staff-side/notifications/NotificationsPage";
 import { PatientsPage } from "@/pages/staff-side/patients/PatientsPage";
+import { ClinicRoomsPage } from "@/pages/staff-side/rooms/ClinicRoomsPage";
+import { MedicinePage } from "@/pages/staff-side/medicine/MedicinePage";
+import { MedicineBatchPage } from "@/pages/staff-side/medicine-batches/MedicineBatchPage";
 import { SchedulePage } from "@/pages/staff-side/schedule/SchedulePage";
 import { StaffManagementPage } from "@/pages/staff-side/staff/StaffManagementPage";
 import { SettingsPage } from "@/pages/staff-side/settings/SettingsPage";
+import { MedicalRecordsPage } from "@/pages/staff-side/medical-records/MedicalRecordsPage";
 import { AccountPage } from "@/pages/user-side/account/account-page";
 import { AboutPage } from "@/pages/user-side/about-page";
 import { InvoicePaymentPage } from "@/pages/user-side/bills/invoice-payment-page";
@@ -105,7 +109,7 @@ const AppRoutes = () => {
     const { profile, isReady } = useAuth();
     const { overdue, ready: invoicesReady } = useOutstandingInvoices();
     const bookStickyBar = location.pathname === "/book";
-    const isStaffRoute = location.pathname.startsWith("/staff");
+    const isStaffRoute = location.pathname.toLowerCase().startsWith("/staff");
 
     useLayoutEffect(() => {
         const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
@@ -158,12 +162,20 @@ const AppRoutes = () => {
                         <Route path="/staff/appointments" element={<StaffAppointmentsPage />} />
                         <Route path="/staff/schedules" element={<SchedulePage />} />
                         <Route path="/staff/leave" element={<LeavePage />} />
+                        <Route element={<StaffRouteGuard roles={["Pharmacist"]} />}>
+                            <Route path="/staff/medicine" element={<MedicinePage />} />
+                            <Route path="/staff/medicine-batches" element={<MedicineBatchPage />} />
+                        </Route>
                         <Route path="/staff/notifications" element={<StaffNotificationsPage />} />
                         <Route path="/staff/settings" element={<SettingsPage />} />
+                    </Route>
+                    <Route element={<StaffRouteGuard roles={["Doctor"]} />}>
+                        <Route path="/staff/medical-records" element={<MedicalRecordsPage />} />
                     </Route>
                     <Route element={<StaffRouteGuard roles={["Admin"]} />}>
                         <Route path="/staff/staff" element={<StaffManagementPage />} />
                         <Route path="/staff/patients" element={<PatientsPage />} />
+                        <Route path="/staff/rooms" element={<ClinicRoomsPage />} />
                         <Route path="/staff/audit-logs" element={<AuditLogsPage />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />

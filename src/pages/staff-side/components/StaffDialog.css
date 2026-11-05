@@ -6,6 +6,8 @@
   place-items: center;
   padding: 20px;
   background: rgba(14, 35, 50, 0.46);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 .staff-dialog {
@@ -77,6 +79,52 @@
 
 .staff-dialog__header button:hover {
   color: var(--staff-ink);
+}
+
+.staff-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.staff-detail-grid > div {
+  display: grid;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 8px;
+  background: var(--staff-card);
+}
+
+.staff-detail-grid__wide {
+  grid-column: 1 / -1;
+}
+
+.staff-detail-grid dt {
+  color: var(--staff-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.staff-detail-grid dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--staff-ink);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .staff-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-detail-grid__wide {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 520px) {
