@@ -28,13 +28,31 @@ export type ChatTurn = {
   content: string
 }
 
+export type StoredChatMessage = {
+  id: string
+  role: 'user' | 'assistant'
+  text: string
+  at: number
+  disclaimer?: string | null
+  sources?: ChatResponse['sources'] | null
+}
+
+export type StoredChatThread = {
+  id: string
+  title: string
+  updatedAt: number
+  messages: StoredChatMessage[]
+}
+
 export class ApiRequestError extends Error {
   status: number
+  code?: string
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message)
     this.name = 'ApiRequestError'
     this.status = status
+    this.code = code
   }
 }
 
@@ -60,7 +78,7 @@ export function messageFromBody(body: unknown, fallback: string) {
     return fallback
   }
 
-  const record = body as { respMessage?: string; data?: unknown }
+  const record = body as { message?: string; respMessage?: string; data?: unknown }
   if (Array.isArray(record.data)) {
     const lines = record.data.filter((item): item is string => typeof item === "string" && item.length > 0)
     if (lines.length > 0) {
@@ -68,7 +86,7 @@ export function messageFromBody(body: unknown, fallback: string) {
     }
   }
 
-  return record.respMessage || fallback
+  return record.message || record.respMessage || fallback
 }
 
 export async function request<T>(
@@ -100,7 +118,10 @@ export async function request<T>(
   const body = await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new ApiRequestError(messageFromBody(body, `Request failed with status ${response.status}`), response.status)
+    const code = body && typeof body === 'object' && 'reason' in body && typeof body.reason === 'string'
+      ? body.reason
+      : undefined
+    throw new ApiRequestError(messageFromBody(body, `Request failed with status ${response.status}`), response.status, code)
   }
 
   return body as T
@@ -122,6 +143,24 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message, history }),
     })
+  },
+
+  async getChatThreads(): Promise<StoredChatThread[]> {
+    return request<StoredChatThread[]>('/api/chat/threads', {}, true)
+  },
+
+  async sendStoredChat(message: string, threadId?: string): Promise<StoredChatThread> {
+    return request<StoredChatThread>('/api/chat/threads/messages', {
+      method: 'POST',
+      body: JSON.stringify({ message, threadId }),
+    }, true)
+  },
+
+  async deleteChatThreads(threadIds: string[]): Promise<{ deleted: number }> {
+    return request<{ deleted: number }>('/api/chat/threads', {
+      method: 'DELETE',
+      body: JSON.stringify({ threadIds }),
+    }, true)
   },
 
   async getWithAuth<T>(path: string): Promise<T> {
