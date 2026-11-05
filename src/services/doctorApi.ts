@@ -1,4 +1,5 @@
 import { request, type ApiResponse } from "@/services/api";
+import type { DoctorReview } from "@/utils/clinic-records";
 
 export type DoctorSchedule = {
     workingDate: string;
@@ -13,6 +14,7 @@ export type DoctorRecord = {
     qualification: string;
     yearsOfExperience: number;
     schedules: DoctorSchedule[];
+    reviews: DoctorReview[];
 };
 
 const unwrap = async <T>(path: string): Promise<T> => {

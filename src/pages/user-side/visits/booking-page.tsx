@@ -358,7 +358,7 @@ export const BookingPage = () => {
                                 <h2 className="text-lg font-semibold text-primary">{t.bookTypeTitle}</h2>
                                 <RadioGroup value={visitType} onChange={setVisitType} size="md" className="gap-3" aria-label={t.bookTypeTitle}>
                                     {(catalog?.types ?? []).map((item) => (
-                                        <div key={item.id} className={cx("rounded-xl px-4 py-3 ring-1", visitType === item.id ? "ring-2 ring-brand-solid" : "ring-secondary")}>
+                                        <div key={item.id} className={cx("rounded-xl px-4 py-3 ring-1", visitType === item.id ? "bg-primary ring-2 ring-brand-solid" : "bg-secondary ring-secondary")}>
                                             <RadioButton value={item.id} label={typeLabel(item.id)} hint={item.id === "VT01" ? t.visitGeneralHint : item.id === "VT03" ? t.visitMentalHint : t.visitScreeningHint} size="md" />
                                         </div>
                                     ))}

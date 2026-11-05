@@ -244,6 +244,8 @@ export interface InputProps
             | "iconClassName"
             | "tooltipClassName"
         > {
+    /** Native maximum value for date, time, and number inputs. */
+    max?: string | number;
     /** Label text for the input */
     label?: string;
     /** Helper text displayed below the input */
@@ -268,6 +270,7 @@ export const Input = ({
     inputClassName,
     wrapperClassName,
     tooltipClassName,
+    max,
     type = "text",
     ...props
 }: InputProps) => {
@@ -294,6 +297,7 @@ export const Input = ({
                             wrapperClassName,
                             tooltipClassName,
                             tooltip,
+                            max,
                             type,
                         }}
                     />

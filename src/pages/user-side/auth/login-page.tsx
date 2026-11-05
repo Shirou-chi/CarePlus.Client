@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router";
 import { LoginCardCombined } from "@/components/login/login-card-combined";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { passwordLockoutMessage } from "@/utils/password-lockout";
 
 export const LoginPage = () => {
     const { login, profile, isReady } = useAuth();
@@ -42,7 +43,7 @@ export const LoginPage = () => {
                         "This account is not a patient account.": t.loginNotPatient,
                         "Please verify your email address before logging in.": t.emailVerificationRequired,
                     };
-                    setError(known[raw] ?? t.authFailed);
+                    setError(passwordLockoutMessage(raw, t.accountLocked) ?? known[raw] ?? t.authFailed);
                 } finally {
                     setIsLoading(false);
                 }

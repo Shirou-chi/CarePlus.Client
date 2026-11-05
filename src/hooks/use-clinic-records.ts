@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/providers/locale-provider";
 import { clinicRecordApi } from "@/services/clinicRecordApi";
-import type { ClinicRecord } from "@/utils/clinic-records";
+import type { ClinicRecord, DoctorReview } from "@/utils/clinic-records";
 
 export const useClinicRecords = () => {
     const { locale } = useI18n();
@@ -32,5 +32,9 @@ export const useClinicRecords = () => {
         };
     }, [locale]);
 
-    return { records, loading, error };
+    const updateReview = (recordId: string, review: DoctorReview) => {
+        setRecords((current) => current.map((record) => record.id === recordId ? { ...record, review } : record));
+    };
+
+    return { records, loading, error, updateReview };
 };

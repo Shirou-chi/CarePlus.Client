@@ -56,12 +56,9 @@ const crumbLabel = (pathname: string, t: Copy, locale: Locale) => {
         "/account": t.account,
         "/book": t.bookTitle,
         "/visits": t.upcomingVisits,
-        "/history": t.visitHistory,
         "/invoices": t.invoices,
         "/payments": t.payments,
         "/records": t.phrTitle,
-        "/notes": t.notes,
-        "/labs": t.labs,
         "/family": t.familyProfiles,
         "/medicine": t.medTitle,
         "/cart": t.cart,
@@ -110,12 +107,9 @@ export const buildCrumbs = (pathname: string, id: string | undefined, t: Copy, l
         "/account": t.account,
         "/book": t.bookTitle,
         "/visits": t.upcomingVisits,
-        "/history": t.visitHistory,
         "/invoices": t.invoices,
         "/payments": t.payments,
         "/records": t.phrTitle,
-        "/notes": t.notes,
-        "/labs": t.labs,
         "/family": t.familyProfiles,
         "/medicine": t.medTitle,
         "/cart": t.cart,
@@ -133,24 +127,12 @@ export const buildCrumbs = (pathname: string, id: string | undefined, t: Copy, l
         return [home, { label: t.invoices, href: "/invoices" }, { label: t.invoicesPayTitle }];
     }
 
-    if (pathname === "/clinic-records" && from === "history") {
-        return [home, { label: t.visitHistory, href: "/history" }, { label: t.clinicRecordsTitle }];
-    }
-
     if (pathname === "/clinic-records" && from === "invoices") {
         return [home, { label: t.invoices, href: "/invoices" }, { label: t.clinicRecordsTitle }];
     }
 
     if (pathname === "/clinic-records" && from === "payments") {
         return [home, { label: t.payments, href: "/payments" }, { label: t.clinicRecordsTitle }];
-    }
-
-    if (pathname === "/clinic-records" && from === "notes") {
-        return [home, { label: t.notes, href: "/notes" }, { label: t.clinicRecordsTitle }];
-    }
-
-    if (pathname === "/clinic-records" && from === "labs") {
-        return [home, { label: t.labs, href: "/labs" }, { label: t.clinicRecordsTitle }];
     }
 
     if (page[pathname]) return [home, { label: page[pathname] }];

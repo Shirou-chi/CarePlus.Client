@@ -19,12 +19,9 @@ import { OutstandingInvoicesPage } from "@/pages/user-side/bills/outstanding-inv
 import { PaymentHistoryPage } from "@/pages/user-side/bills/payment-history-page";
 import { BookingPage } from "@/pages/user-side/visits/booking-page";
 import { UpcomingVisitsPage } from "@/pages/user-side/visits/upcoming-visits-page";
-import { VisitHistoryPage } from "@/pages/user-side/visits/visit-history-page";
 import { ForgotPasswordPage } from "@/pages/user-side/auth/forgot-password-page";
 import { FamilyPage } from "@/pages/user-side/family/family-page";
-import { ConsultationNotesPage } from "@/pages/user-side/records/consultation-notes-page";
 import { HealthRecordsPage } from "@/pages/user-side/records/health-records-page";
-import { LabResultsPage } from "@/pages/user-side/records/lab-results-page";
 import { HomePage } from "@/pages/user-side/home-page";
 import { LandingPage } from "@/pages/user-side/landing-page";
 import { LoginPage } from "@/pages/user-side/auth/login-page";
@@ -99,7 +96,7 @@ function StaffLoginRoute() {
 }
 
 const featurePath = (pathname: string) =>
-    ["/home", "/book", "/visits", "/history", "/payments", "/records", "/notes", "/labs", "/family", "/medicine", "/cart", "/checkout", "/orders", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
+    ["/home", "/book", "/visits", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
         (path) => pathname === path || pathname.startsWith(`${path}/`),
     );
 
@@ -138,13 +135,10 @@ const AppRoutes = () => {
                     <Route path="/account" element={<AccountPage />} />
                     <Route path="/book" element={<BookingPage />} />
                     <Route path="/visits" element={<UpcomingVisitsPage />} />
-                    <Route path="/history" element={<VisitHistoryPage />} />
                     <Route path="/invoices" element={<OutstandingInvoicesPage />} />
                     <Route path="/invoices/:id/pay" element={<InvoicePaymentPage />} />
                     <Route path="/payments" element={<PaymentHistoryPage />} />
                     <Route path="/records" element={<HealthRecordsPage />} />
-                    <Route path="/notes" element={<ConsultationNotesPage />} />
-                    <Route path="/labs" element={<LabResultsPage />} />
                     <Route path="/family" element={<FamilyPage />} />
                     <Route path="/medicine" element={<PrescribedMedicineBrowsePage />} />
                     <Route path="/medicine/:id" element={<PrescribedMedicinePage />} />

@@ -95,11 +95,11 @@ export const DoctorDetailPage = () => {
                                 </p>
 
                                 <dl className="mt-8 grid gap-4 sm:grid-cols-2">
-                                    <div className="rounded-xl border border-primary/15 bg-secondary_subtle p-4 ring-1 ring-primary/20">
+                                    <div className="rounded-xl border border-secondary bg-primary p-4 ring-1 ring-secondary">
                                         <dt className="text-xs font-semibold text-quaternary">{t.doctorsQualification}</dt>
                                         <dd className="mt-1 text-md text-primary">{doctor.qualification}</dd>
                                     </div>
-                                    <div className="rounded-xl border border-primary/15 bg-secondary_subtle p-4 ring-1 ring-primary/20">
+                                    <div className="rounded-xl border border-secondary bg-primary p-4 ring-1 ring-secondary">
                                         <dt className="text-xs font-semibold text-quaternary">{t.doctorsExperience}</dt>
                                         <dd className="mt-1 text-md text-primary">{t.doctorsYears.replace("{count}", String(doctor.yearsOfExperience))}</dd>
                                     </div>
@@ -114,7 +114,7 @@ export const DoctorDetailPage = () => {
                                             ))}
                                         </ul>
                                     ) : (
-                                        <p className="mt-3 rounded-xl bg-secondary_subtle px-4 py-3 text-sm text-tertiary ring-1 ring-primary/15">{t.doctorsHoursUnavailable}</p>
+                                        <p className="mt-3 rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.doctorsHoursUnavailable}</p>
                                     )}
                                 </div>
 
@@ -127,9 +127,28 @@ export const DoctorDetailPage = () => {
                         <section className="mt-16">
                             <h2 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)]">{t.doctorReviewsTitle}</h2>
                             <p className="mt-2 text-md text-tertiary">{t.doctorReviewsBody}</p>
-                            <div className="mt-8 rounded-2xl bg-primary p-6 text-sm text-tertiary ring-1 ring-secondary">
-                                {t.doctorNoReviews}
-                            </div>
+                            {doctor.reviews?.length ? (
+                                <div className="mt-6 space-y-3">
+                                    <p className="text-sm font-semibold text-primary">
+                                        {(doctor.reviews.reduce((sum, review) => sum + review.rating, 0) / doctor.reviews.length).toFixed(1)} / 5
+                                        <span className="ml-2 font-normal text-tertiary">{t.doctorsReviewCount.replace("{count}", String(doctor.reviews.length))}</span>
+                                    </p>
+                                    {doctor.reviews.map((review, index) => (
+                                        <article key={`${review.createdAt}-${index}`} className="rounded-2xl bg-primary p-5 ring-1 ring-secondary">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <p className="text-sm font-semibold text-primary">{review.isAnonymous ? t.doctorReviewAnonymous : (review.authorName || t.doctorReviewAuthor)}</p>
+                                                <time className="text-xs text-tertiary" dateTime={review.createdAt}>
+                                                    {new Date(review.createdAt).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", { day: "numeric", month: "short", year: "numeric" })}
+                                                </time>
+                                            </div>
+                                            <p className="mt-2 text-lg text-warning-primary" aria-label={`${review.rating} / 5`}>{"★".repeat(review.rating)}<span className="text-quaternary">{"☆".repeat(5 - review.rating)}</span></p>
+                                            {review.description ? <p className="mt-2 whitespace-pre-wrap text-sm text-secondary">{review.description}</p> : null}
+                                        </article>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mt-8 rounded-2xl bg-primary p-6 text-sm text-tertiary ring-1 ring-secondary">{t.doctorNoReviews}</div>
+                            )}
                         </section>
                     </>
                 ) : null}

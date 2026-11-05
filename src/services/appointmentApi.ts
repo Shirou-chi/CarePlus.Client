@@ -50,7 +50,6 @@ export const appointmentApi = {
     slots: (date: string, doctorId: string) =>
         unwrap<BookingSlots>(`/api/Appointment/Slots?date=${encodeURIComponent(date)}&doctorId=${encodeURIComponent(doctorId)}`),
     upcoming: () => unwrap<Appointment[]>("/api/Appointment/Upcoming"),
-    history: () => unwrap<Appointment[]>("/api/Appointment/History"),
     book: (body: { doctorId: string; startAt: string; type: string; forName: string; notes?: string }) =>
         unwrap<Appointment>("/api/Appointment", { method: "POST", body: JSON.stringify(body) }),
     cancel: (id: string) => unwrap<Appointment>(`/api/Appointment/${encodeURIComponent(id)}/Cancel`, { method: "POST" }),

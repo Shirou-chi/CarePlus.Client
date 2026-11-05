@@ -207,7 +207,7 @@ export const OrderHistoryPage = () => {
                                 </div>
 
                                 {open ? (
-                                    <div className="border-t border-secondary bg-secondary_subtle px-4 py-4 md:px-5">
+                                    <div className="border-t border-secondary bg-secondary px-4 py-4 md:px-5">
                                         <ul className="space-y-3">
                                             {order.lines.map((line) => (
                                                 <li key={line.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-primary p-3 ring-1 ring-secondary">
@@ -351,7 +351,7 @@ const OrderTrackingDialog = ({
                     </div>
 
                     <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)]">
-                        <section className="rounded-xl p-4 ring-1 ring-secondary">
+                        <section className="rounded-xl bg-secondary p-4 ring-1 ring-secondary">
                             <p className="text-xs font-medium text-tertiary">{t.ordersOrderNumber}</p>
                             <p className="mt-1 text-lg font-semibold text-primary">{order.id}</p>
                             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -421,7 +421,7 @@ const OrderTrackingDialog = ({
                             ) : null}
                         </section>
 
-                        <section className="rounded-xl p-4 ring-1 ring-secondary">
+                        <section className="rounded-xl bg-secondary p-4 ring-1 ring-secondary">
                             <OrderMap order={order} title={t.ordersTrackTitle} />
                             <p className="mt-2 text-[11px] text-quaternary">{t.contactMapAttribution}</p>
                             <p className="mt-1 text-xs text-tertiary">{medicineAtClinic(order) ? CLINIC_ADDRESS : order.address || CLINIC_ADDRESS}</p>

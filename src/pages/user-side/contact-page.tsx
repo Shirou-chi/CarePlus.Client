@@ -70,7 +70,7 @@ export const ContactPage = () => {
                             ))}
                         </ul>
 
-                        <div className="rounded-2xl bg-secondary_subtle p-5 ring-1 ring-secondary">
+                        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#b7d9df] dark:bg-[#17435a] dark:ring-[#4c7d88]">
                             <p className="text-sm font-semibold text-primary">{t.contactHours}</p>
                             <p className="mt-1 text-md text-secondary">{t.contactHoursValue}</p>
                             <p className="mt-2 text-sm text-tertiary">{t.contactHoursNote}</p>

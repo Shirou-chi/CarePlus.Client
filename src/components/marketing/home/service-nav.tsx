@@ -62,7 +62,9 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
             if (!mobile) {
                 const natural = links[0]?.getBoundingClientRect().width ?? 0;
                 const gap = Number.parseFloat(getComputedStyle(el).columnGap) || 0;
-                const width = peekItemWidth(el.clientWidth, natural, gap, links.length);
+                const desktop = window.matchMedia("(min-width: 1024px)").matches;
+                const fitWidth = desktop ? (el.clientWidth - gap * (links.length - 1)) / links.length : 0;
+                const width = fitWidth >= 68 ? fitWidth : peekItemWidth(el.clientWidth, natural, gap, links.length);
                 if (width) {
                     const px = `${width}px`;
                     links.forEach((link) => {

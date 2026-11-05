@@ -5,7 +5,8 @@ import {
     GUEST_CHAT_KEY,
     newThread,
     readThreads,
-    sendInThread,
+    appendAssistantMessage,
+    appendUserMessage,
     upsertThread,
     userChatKey,
     validateChatSend,
@@ -13,6 +14,7 @@ import {
     type ChatSendBlockReason,
     type ChatThread,
 } from "@/utils/chat";
+import { ApiRequestError, api } from "@/services/api";
 
 type ChatContextValue = {
     threads: ChatThread[];
@@ -20,11 +22,12 @@ type ChatContextValue = {
     isGuest: boolean;
     query: string;
     sendError: ChatSendBlockReason | null;
+    isSending: boolean;
     setQuery: (query: string) => void;
     filtered: ChatThread[];
     select: (id: string) => void;
     startNew: () => void;
-    send: (text: string) => boolean;
+    send: (text: string) => Promise<boolean>;
     clearSendError: () => void;
 };
 
@@ -37,6 +40,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [query, setQuery] = useState("");
     const [sendError, setSendError] = useState<ChatSendBlockReason | null>(null);
+    const [isSending, setIsSending] = useState(false);
     const [storeKey, setStoreKey] = useState(key);
 
     if (storeKey !== key) {
@@ -46,6 +50,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setActiveId(null);
         setQuery("");
         setSendError(null);
+        setIsSending(false);
     }
 
     const persist = useCallback(
@@ -75,7 +80,10 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     }, [persist, threads]);
 
     const send = useCallback(
-        (text: string) => {
+        async (text: string) => {
+            if (isSending) {
+                return false;
+            }
             const check = validateChatSend(threads, text);
             if (!check.ok) {
                 if (check.reason !== "empty") {
@@ -85,12 +93,30 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             }
             setSendError(null);
             const base = active ?? threads.find((item) => item.messages.length === 0) ?? newThread();
-            const next = sendInThread(base, check.text);
-            persist(upsertThread(threads, next));
-            setActiveId(next.id);
-            return true;
+            const withUser = appendUserMessage(base, check.text);
+            persist(upsertThread(threads, withUser));
+            setActiveId(withUser.id);
+            setIsSending(true);
+
+            try {
+                const history = base.messages.slice(-6).map((message) => ({ role: message.role, content: message.text }));
+                const response = await api.sendChat(check.text, history);
+                const completed = appendAssistantMessage(withUser, response.reply, {
+                    disclaimer: response.disclaimer,
+                    sources: response.sources,
+                });
+                persist(upsertThread(threads, completed));
+                return true;
+            } catch (error) {
+                persist(threads);
+                setActiveId(active?.id ?? null);
+                setSendError(error instanceof ApiRequestError && error.status === 429 ? "rate_limit" : "service_unavailable");
+                return false;
+            } finally {
+                setIsSending(false);
+            }
         },
-        [active, persist, threads],
+        [active, isSending, persist, threads],
     );
 
     const clearSendError = useCallback(() => setSendError(null), []);
@@ -102,6 +128,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             isGuest: !profile,
             query,
             sendError,
+            isSending,
             setQuery,
             filtered,
             select,
@@ -109,7 +136,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             send,
             clearSendError,
         }),
-        [active, clearSendError, filtered, profile, query, send, sendError, select, startNew, threads],
+        [active, clearSendError, filtered, isSending, profile, query, send, sendError, select, startNew, threads],
     );
 
     return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
