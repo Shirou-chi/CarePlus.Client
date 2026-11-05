@@ -27,9 +27,11 @@ export const userChatKey = (patientId: string) => `careplus-chats:${patientId}`;
 
 export const MAX_CHAT_MESSAGE_CHARS = 2000;
 export const MAX_CHAT_MESSAGES_PER_HOUR = 15;
+export const MIN_CHAT_MESSAGE_INTERVAL_MS = 3_000;
+export const DUPLICATE_CHAT_WINDOW_MS = 60_000;
 const HOUR_MS = 60 * 60 * 1000;
 
-export type ChatSendBlockReason = "empty" | "too_long" | "rate_limit" | "service_unavailable";
+export type ChatSendBlockReason = "empty" | "too_long" | "cooldown" | "duplicate" | "rate_limit" | "service_unavailable";
 
 export const clampChatText = (text: string) => text.slice(0, MAX_CHAT_MESSAGE_CHARS);
 
@@ -45,6 +47,23 @@ export const validateChatSend = (threads: ChatThread[], text: string, now = Date
     }
     if (line.length > MAX_CHAT_MESSAGE_CHARS) {
         return { ok: false as const, reason: "too_long" as const };
+    }
+    const recentUserMessages = threads
+        .flatMap((thread) => thread.messages)
+        .filter((message) => message.role === "user")
+        .sort((a, b) => b.at - a.at);
+    const normalized = line.replace(/\s+/g, " ").toLocaleLowerCase();
+    if (
+        recentUserMessages.some(
+            (message) =>
+                message.at >= now - DUPLICATE_CHAT_WINDOW_MS &&
+                message.text.trim().replace(/\s+/g, " ").toLocaleLowerCase() === normalized,
+        )
+    ) {
+        return { ok: false as const, reason: "duplicate" as const };
+    }
+    if (recentUserMessages[0]?.at >= now - MIN_CHAT_MESSAGE_INTERVAL_MS) {
+        return { ok: false as const, reason: "cooldown" as const };
     }
     if (userMessagesInLastHour(threads, now) >= MAX_CHAT_MESSAGES_PER_HOUR) {
         return { ok: false as const, reason: "rate_limit" as const };

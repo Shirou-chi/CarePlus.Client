@@ -79,11 +79,15 @@ export const ChatPage = () => {
     const composerError =
         sendError === "too_long"
             ? t.chatErrorTooLong.replace("{max}", String(MAX_CHAT_MESSAGE_CHARS))
+            : sendError === "duplicate"
+              ? t.chatErrorDuplicate
+              : sendError === "cooldown"
+                ? t.chatErrorCooldown
             : sendError === "rate_limit"
               ? t.chatErrorRateLimit.replace("{limit}", String(MAX_CHAT_MESSAGES_PER_HOUR))
               : sendError === "service_unavailable"
                 ? t.chatErrorUnavailable
-              : null;
+                : null;
 
     return (
         <div className="careplus-landing flex min-h-dvh flex-col overflow-x-hidden pt-[4.5rem] md:pt-22">
@@ -91,7 +95,7 @@ export const ChatPage = () => {
             <main className="mx-auto flex h-[calc(100dvh-4.5rem)] w-full max-w-container flex-col overflow-hidden px-4 py-4 md:h-[calc(100dvh-5.5rem)] md:px-8 md:py-6">
                 <PageBreadcrumb contained={false} />
                 <div className="flex shrink-0 items-center gap-2">
-                    <Button color="secondary" size="sm" iconLeading={Plus} onPress={startNew}>
+                    <Button color="secondary" size="sm" iconLeading={Plus} onClick={startNew}>
                         {t.chatNew}
                     </Button>
                     <div className="ml-auto">
@@ -116,7 +120,7 @@ export const ChatPage = () => {
                                             <item.Icon className="size-5 text-fg-brand-primary" />
                                             <h2 className="mt-4 text-md font-semibold text-primary">{item.title}</h2>
                                             <p className="mt-2 flex-1 text-sm text-tertiary">{item.body}</p>
-                                            <Button color="secondary" size="sm" className="mt-5 w-full rounded-full" isDisabled={isSending} onPress={() => void send(item.prompt)}>
+                                            <Button color="secondary" size="sm" className="mt-5 w-full rounded-full" isDisabled={isSending} onClick={() => void send(item.prompt)}>
                                                 {item.cta}
                                             </Button>
                                         </li>
