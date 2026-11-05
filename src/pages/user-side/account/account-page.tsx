@@ -38,6 +38,7 @@ import { profileApi, profilePictureUrl, type DeliveryAddressResponse, type TwoFa
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { DUMMY_PASSWORD, type Profile } from "@/utils/auth";
+import { passwordLockoutMessage } from "@/utils/password-lockout";
 import {
     cardBrandFromDigits,
     dobFromIdentityCard,
@@ -321,6 +322,8 @@ export const AccountPage = () => {
             return null;
         } catch (error) {
             const message = error instanceof Error ? error.message : "";
+            const lockoutMessage = passwordLockoutMessage(message, t.accountLocked);
+            if (lockoutMessage) return lockoutMessage;
             if (message === "Current password is incorrect.") return t.settingsCurrentPasswordWrong;
             if (message === "Transfer family ownership before deleting your account.") return t.settingsDeleteAccountOwnerBlocked;
             return message || t.settingsDeleteAccountFailed;
@@ -339,6 +342,7 @@ export const AccountPage = () => {
     const profileError = (error: unknown) => {
         const message = error instanceof Error ? error.message : "";
         if (message === "Email already exists") return t.emailTaken;
+        if (message === "Phone number already exists") return t.phoneTaken;
         if (message === "Invalid phone number.") return t.settingsInvalidPhone;
         if (message.startsWith("Use a JPG")) return t.settingsInvalidPhoto;
         return t.authFailed;

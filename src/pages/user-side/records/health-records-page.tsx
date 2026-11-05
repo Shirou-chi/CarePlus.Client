@@ -1,12 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Edit01, Plus, Trash01 } from "@untitledui/icons";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Plus, Trash01 } from "@untitledui/icons";
 import { Navigate } from "react-router";
 import { FormStatus } from "@/components/application/form-status";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Table, TableCard } from "@/components/application/table/table";
 import { Tabs } from "@/components/application/tabs/tabs";
 import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Input } from "@/components/base/input/input";
 import { Tag, TagGroup, TagList } from "@/components/base/tags/tags";
 import { TextArea } from "@/components/base/textarea/textarea";
@@ -17,17 +16,12 @@ import { BpLineChart } from "@/components/marketing/health/bp-line-chart";
 import { HealthScoreCard } from "@/components/marketing/health/health-score-card";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
+import { personalHealthRecordApi, type PersonalRecord } from "@/services/personalHealthRecordApi";
 import {
-    dummyHistory,
-    dummyItems,
-    dummyReadings,
-    isValidBloodPressure,
-    newRecordId,
     scoreHealth,
     type BloodPressureReading,
     type HealthItem,
     type HealthItemKind,
-    type MedicalHistoryEntry,
 } from "@/utils/health-records";
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -35,28 +29,67 @@ const pad = (value: number) => String(value).padStart(2, "0");
 const localDateTimeValue = (date = new Date()) =>
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
-const localDateValue = (iso?: string) => {
-    const date = iso ? new Date(iso) : new Date();
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-};
-
 const fromLocalInput = (value: string) => new Date(value).toISOString();
 
 type DialogState =
     | { type: "bp"; item?: BloodPressureReading }
     | { type: "item"; kind: HealthItemKind; item?: HealthItem }
-    | { type: "history"; item?: MedicalHistoryEntry }
     | { type: "delete"; target: "bp" | "item" | "history"; id: string; label: string };
 
 export const HealthRecordsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
-    const [readings, setReadings] = useState(dummyReadings);
-    const [items, setItems] = useState(dummyItems);
-    const [history, setHistory] = useState(dummyHistory);
+    const [readings, setReadings] = useState<BloodPressureReading[]>([]);
+    const [items, setItems] = useState<HealthItem[]>([]);
+    const [history, setHistory] = useState<PersonalRecord[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const fileInput = useRef<HTMLInputElement>(null);
     const [error, setError] = useState<string | null>(null);
     const [dialog, setDialog] = useState<DialogState | null>(null);
     const [tab, setTab] = useState<HealthItemKind>("allergy");
+
+    const load = async () => {
+        const records = await personalHealthRecordApi.list();
+        setReadings(records.filter((r) => r.type === "bp" && r.systolic != null && r.diastolic != null).map((r) => ({
+            id: r.id, systolic: r.systolic!, diastolic: r.diastolic!, recordedAt: r.recordedAt, notes: r.notes,
+        })));
+        setItems(records.filter((r) => r.type === "allergy" || r.type === "condition" || r.type === "history").map((r) => ({
+            id: r.id, kind: r.type as HealthItemKind, label: r.label ?? "", notes: r.notes,
+        })));
+        setHistory(records.filter((r) => r.type === "medical"));
+    };
+
+    useEffect(() => {
+        if (!profile) return;
+        let active = true;
+        personalHealthRecordApi.list().then((records) => {
+            if (!active) return;
+            setReadings(records.filter((r) => r.type === "bp" && r.systolic != null && r.diastolic != null).map((r) => ({
+                id: r.id, systolic: r.systolic!, diastolic: r.diastolic!, recordedAt: r.recordedAt, notes: r.notes,
+            })));
+            setItems(records.filter((r) => r.type === "allergy" || r.type === "condition" || r.type === "history").map((r) => ({
+                id: r.id, kind: r.type as HealthItemKind, label: r.label ?? "", notes: r.notes,
+            })));
+            setHistory(records.filter((r) => r.type === "medical"));
+        }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Unable to load health records."); })
+            .finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [profile?.patientId]);
+
+    const save = async (action: () => Promise<unknown>) => {
+        setSaving(true);
+        setError(null);
+        try {
+            await action();
+            await load();
+            closeDialog();
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : "Unable to save health record.");
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const score = useMemo(() => scoreHealth(readings, items), [items, readings]);
 
@@ -111,7 +144,8 @@ export const HealthRecordsPage = () => {
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
                 <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.phrTitle}</h1>
                 <p className="mt-2 max-w-2xl text-md text-tertiary">{t.phrBody}</p>
-                <FormStatus error={error} />
+                <FormStatus error={dialog ? null : error} />
+                {loading ? <p className="mt-4 text-sm text-tertiary">{locale === "zh" ? "正在加载健康记录…" : "Loading health records…"}</p> : null}
 
                 <div className="mt-8 grid items-stretch gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2">
@@ -189,46 +223,48 @@ export const HealthRecordsPage = () => {
                         description={t.phrTableHint}
                         badge={history.length}
                         contentTrailing={
-                            <Button color="primary" size="sm" iconLeading={Plus} onClick={() => setDialog({ type: "history" })}>
+                            <Button color="primary" size="sm" iconLeading={Plus} onClick={() => fileInput.current?.click()} isDisabled={saving}>
                                 {t.phrAddRecord}
                             </Button>
                         }
                     />
+                    <input ref={fileInput} className="sr-only" type="file" accept="application/pdf,.pdf" aria-label={t.phrAddRecord}
+                        onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = "";
+                            if (!file) return;
+                            if (file.size > 10 * 1024 * 1024 || (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf")) {
+                                setError(locale === "zh" ? "请选择小于 10 MB 的 PDF 文件。" : "Choose a PDF smaller than 10 MB.");
+                                return;
+                            }
+                            void save(() => personalHealthRecordApi.uploadPdf(file));
+                        }} />
                     <Table aria-label={t.phrTableTitle}>
                         <Table.Header>
-                            <Table.Head label={t.phrTreatment} isRowHeader />
-                            <Table.Head label={t.phrFacility} />
-                            <Table.Head label={t.phrDate} />
-                            <Table.Head label={t.phrNotes} />
-                            <Table.Head className="w-16" />
+                            <Table.Head label={locale === "zh" ? "PDF 文件" : "PDF document"} isRowHeader />
+                            <Table.Head label={locale === "zh" ? "上传日期" : "Uploaded"} />
+                            <Table.Head label="" />
                         </Table.Header>
                         <Table.Body
                             items={history}
-                            renderEmptyState={() => <p className="px-6 py-8 text-sm text-tertiary">{t.phrTableEmpty}</p>}
+                            renderEmptyState={() => <p className="px-6 py-8 text-sm text-tertiary">{loading ? "…" : locale === "zh" ? "尚未上传 PDF 病历。" : "No PDF medical records uploaded yet."}</p>}
                         >
                             {(item) => (
                                 <Table.Row id={item.id}>
-                                    <Table.Cell className="font-medium text-primary">{item.treatment}</Table.Cell>
-                                    <Table.Cell>{item.facility}</Table.Cell>
-                                    <Table.Cell>{formatDay(item.treatedAt)}</Table.Cell>
-                                    <Table.Cell>{item.notes || "—"}</Table.Cell>
+                                    <Table.Cell className="font-medium text-primary">{item.pdfFileName}</Table.Cell>
+                                    <Table.Cell>{formatDay(item.recordedAt)}</Table.Cell>
                                     <Table.Cell>
-                                        <Dropdown.Root>
-                                            <Dropdown.DotsButton />
-                                            <Dropdown.Popover className="w-min">
-                                                <Dropdown.Menu>
-                                                    <Dropdown.Item icon={Edit01} onAction={() => setDialog({ type: "history", item })}>
-                                                        <span className="pr-4">{t.phrEdit}</span>
-                                                    </Dropdown.Item>
-                                                    <Dropdown.Item
-                                                        icon={Trash01}
-                                                        onAction={() => setDialog({ type: "delete", target: "history", id: item.id, label: item.treatment })}
-                                                    >
-                                                        <span className="pr-4">{t.phrDelete}</span>
-                                                    </Dropdown.Item>
-                                                </Dropdown.Menu>
-                                            </Dropdown.Popover>
-                                        </Dropdown.Root>
+                                        <div className="flex justify-end gap-2">
+                                            <Button color="secondary" size="sm" onClick={async () => {
+                                                const newTab = window.open("", "_blank");
+                                                try {
+                                                    const url = await personalHealthRecordApi.viewPdf(item.id);
+                                                    if (!newTab) { URL.revokeObjectURL(url); setError("Allow pop-ups to view this PDF."); }
+                                                    else { newTab.location.href = url; window.setTimeout(() => URL.revokeObjectURL(url), 60_000); }
+                                                } catch (cause) { newTab?.close(); setError(cause instanceof Error ? cause.message : "Unable to open this PDF."); }
+                                            }}>{locale === "zh" ? "查看" : "View"}</Button>
+                                            <Button color="primary-destructive" size="sm" onClick={() => setDialog({ type: "delete", target: "history", id: item.id, label: item.pdfFileName ?? "PDF" })}>{t.phrDelete}</Button>
+                                        </div>
                                     </Table.Cell>
                                 </Table.Row>
                             )}
@@ -245,23 +281,7 @@ export const HealthRecordsPage = () => {
                     item={dialog.item}
                     onClose={closeDialog}
                     onSave={(payload) => {
-                        if (!isValidBloodPressure(payload.systolic, payload.diastolic)) {
-                            setError("Systolic must be higher than diastolic, in a realistic range.");
-                            return;
-                        }
-                        const next: BloodPressureReading = {
-                            id: dialog.item?.id ?? newRecordId(),
-                            systolic: payload.systolic,
-                            diastolic: payload.diastolic,
-                            recordedAt: payload.recordedAt,
-                            notes: payload.notes ?? null,
-                        };
-                        setReadings((list) =>
-                            [...(dialog.item ? list.filter((item) => item.id !== dialog.item!.id) : list), next].sort((left, right) =>
-                                left.recordedAt.localeCompare(right.recordedAt),
-                            ),
-                        );
-                        closeDialog();
+                        void save(() => personalHealthRecordApi.save({ type: "bp", ...payload }, dialog.item?.id));
                     }}
                     onDelete={
                         dialog.item
@@ -291,41 +311,7 @@ export const HealthRecordsPage = () => {
                             setError("That item is already on your list.");
                             return;
                         }
-                        const next: HealthItem = {
-                            id: dialog.item?.id ?? newRecordId(),
-                            kind: payload.kind,
-                            label,
-                            notes: payload.notes ?? null,
-                        };
-                        setItems((list) => (dialog.item ? list.map((item) => (item.id === dialog.item!.id ? next : item)) : [...list, next]));
-                        closeDialog();
-                    }}
-                />
-            ) : null}
-
-            {dialog?.type === "history" ? (
-                <HistoryDialog
-                    t={t}
-                    error={error}
-                    item={dialog.item}
-                    onClose={closeDialog}
-                    onSave={(payload) => {
-                        if (!payload.treatment.trim() || !payload.facility.trim() || !payload.treatedAt) {
-                            setError("Fill in the treatment, clinic, and date.");
-                            return;
-                        }
-                        const next: MedicalHistoryEntry = {
-                            id: dialog.item?.id ?? newRecordId(),
-                            treatment: payload.treatment.trim(),
-                            facility: payload.facility.trim(),
-                            treatedAt: new Date(`${payload.treatedAt}T00:00:00`).toISOString(),
-                            notes: payload.notes ?? null,
-                        };
-                        setHistory((list) => {
-                            const without = dialog.item ? list.filter((item) => item.id !== dialog.item!.id) : list;
-                            return [...without, next].sort((left, right) => right.treatedAt.localeCompare(left.treatedAt));
-                        });
-                        closeDialog();
+                        void save(() => personalHealthRecordApi.save({ type: payload.kind, label, notes: payload.notes }, dialog.item?.id));
                     }}
                 />
             ) : null}
@@ -335,16 +321,7 @@ export const HealthRecordsPage = () => {
                     t={t}
                     label={dialog.label}
                     onClose={closeDialog}
-                    onConfirm={() => {
-                        if (dialog.target === "bp") {
-                            setReadings((list) => list.filter((item) => item.id !== dialog.id));
-                        } else if (dialog.target === "item") {
-                            setItems((list) => list.filter((item) => item.id !== dialog.id));
-                        } else {
-                            setHistory((list) => list.filter((item) => item.id !== dialog.id));
-                        }
-                        closeDialog();
-                    }}
+                    onConfirm={() => { void save(() => personalHealthRecordApi.remove(dialog.id)); }}
                 />
             ) : null}
         </div>
@@ -368,28 +345,125 @@ const BpDialog = ({
 }) => {
     const [systolic, setSystolic] = useState(item ? String(item.systolic) : "");
     const [diastolic, setDiastolic] = useState(item ? String(item.diastolic) : "");
+    const [readingErrors, setReadingErrors] = useState<{ systolic?: string; diastolic?: string }>({});
     const [recordedAt, setRecordedAt] = useState(item ? localDateTimeValue(new Date(item.recordedAt)) : localDateTimeValue());
+    const [currentTime, setCurrentTime] = useState(() => new Date());
+    const [timeError, setTimeError] = useState<string | null>(null);
     const [notes, setNotes] = useState(item?.notes ?? "");
+    useEffect(() => {
+        const timer = window.setInterval(() => setCurrentTime(new Date()), 30_000);
+        return () => window.clearInterval(timer);
+    }, []);
+    const today = localDateTimeValue(currentTime).slice(0, 10);
+    const selectedDate = recordedAt.slice(0, 10);
+    const selectedHour = Number(recordedAt.slice(11, 13));
+    const selectedMinute = Number(recordedAt.slice(14, 16));
+    const isToday = selectedDate === today;
+    const hourOptions = Array.from({ length: 24 }, (_, hour) => hour);
+    const minuteOptions = Array.from({ length: 60 }, (_, minute) => minute);
+
+    const changeDate = (value: string) => {
+        const now = new Date();
+        setCurrentTime(now);
+        const maxDate = localDateTimeValue(now).slice(0, 10);
+        if (value > maxDate) {
+            setTimeError(t.phrFutureTimeError);
+            return;
+        }
+        const next = `${value}T${recordedAt.slice(11, 16)}`;
+        setRecordedAt(value === maxDate && new Date(next).getTime() > now.getTime() ? localDateTimeValue(now) : next);
+        setTimeError(null);
+    };
+    const changeTime = (hour: number, minute: number) => {
+        const now = new Date();
+        setCurrentTime(now);
+        if (selectedDate === localDateTimeValue(now).slice(0, 10) && hour > now.getHours()) {
+            setTimeError(t.phrFutureTimeError);
+            return;
+        }
+        if (selectedDate === localDateTimeValue(now).slice(0, 10) && hour === now.getHours() && minute > now.getMinutes()) {
+            minute = now.getMinutes();
+        }
+        setRecordedAt(`${selectedDate}T${pad(hour)}:${pad(minute)}`);
+        setTimeError(null);
+    };
 
     return (
         <FormDialog title={item ? t.phrEditBp : t.phrAddBp} error={error} onClose={onClose}>
             <form
                 className="flex w-full min-w-0 flex-col gap-4"
+                noValidate
                 onSubmit={(event) => {
                     event.preventDefault();
+                    const nextErrors: { systolic?: string; diastolic?: string } = {};
+                    const systolicValue = Number(systolic);
+                    const diastolicValue = Number(diastolic);
+                    if (!systolic.trim()) nextErrors.systolic = t.phrSystolicRequired;
+                    else if (!Number.isInteger(systolicValue) || systolicValue < 70 || systolicValue > 250)
+                        nextErrors.systolic = t.phrSystolicRange;
+                    if (!diastolic.trim()) nextErrors.diastolic = t.phrDiastolicRequired;
+                    else if (!Number.isInteger(diastolicValue) || diastolicValue < 40 || diastolicValue > 150)
+                        nextErrors.diastolic = t.phrDiastolicRange;
+                    if (!nextErrors.systolic && !nextErrors.diastolic && systolicValue <= diastolicValue)
+                        nextErrors.systolic = t.phrSystolicAboveDiastolic;
+                    setReadingErrors(nextErrors);
+                    const selectedTime = new Date(recordedAt);
+                    if (!recordedAt || Number.isNaN(selectedTime.getTime()) || selectedTime.getTime() > Date.now()) {
+                        setTimeError(t.phrFutureTimeError);
+                        return;
+                    }
+                    if (Object.keys(nextErrors).length > 0) return;
+                    setTimeError(null);
                     onSave({
-                        systolic: Number(systolic),
-                        diastolic: Number(diastolic),
+                        systolic: systolicValue,
+                        diastolic: diastolicValue,
                         recordedAt: fromLocalInput(recordedAt),
                         notes: notes.trim() || undefined,
                     });
                 }}
             >
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Input className="w-full" label={t.phrSystolic} type="number" value={systolic} onChange={setSystolic} isRequired />
-                    <Input className="w-full" label={t.phrDiastolic} type="number" value={diastolic} onChange={setDiastolic} isRequired />
+                    <Input className="w-full" label={t.phrSystolic} type="number" value={systolic}
+                        onChange={(value) => { setSystolic(value); setReadingErrors({}); }} isRequired
+                        isInvalid={!!readingErrors.systolic} hint={readingErrors.systolic}
+                        wrapperClassName={readingErrors.systolic ? "ring-2 ring-error" : undefined} />
+                    <Input className="w-full" label={t.phrDiastolic} type="number" value={diastolic}
+                        onChange={(value) => { setDiastolic(value); setReadingErrors({}); }} isRequired
+                        isInvalid={!!readingErrors.diastolic} hint={readingErrors.diastolic}
+                        wrapperClassName={readingErrors.diastolic ? "ring-2 ring-error" : undefined} />
                 </div>
-                <Input className="w-full" label={t.phrRecordedAt} type="datetime-local" value={recordedAt} onChange={setRecordedAt} isRequired />
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <Input className="w-full" label={t.phrDate} type="date" value={selectedDate} max={today}
+                        onFocus={() => setCurrentTime(new Date())} onChange={changeDate} isRequired isInvalid={!!timeError} />
+                    <div className="min-w-0">
+                        <span className="mb-1.5 block text-sm font-medium text-secondary">{t.phrTime} *</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                            <select aria-label={t.phrHour} value={selectedHour} onFocus={() => setCurrentTime(new Date())}
+                                onChange={(event) => changeTime(Number(event.target.value), selectedMinute)}
+                                className="min-w-0 flex-1 rounded-lg bg-primary px-3 py-2 text-primary shadow-xs ring-1 ring-primary focus:outline-2 focus:outline-brand">
+                                {hourOptions.map((hour) => <option key={hour} value={hour} disabled={isToday && hour > currentTime.getHours()}>{pad(hour)}</option>)}
+                            </select>
+                            <span aria-hidden="true">:</span>
+                            <select aria-label={t.phrMinute} value={selectedMinute} onFocus={() => setCurrentTime(new Date())}
+                                onChange={(event) => changeTime(selectedHour, Number(event.target.value))}
+                                className="min-w-0 flex-1 rounded-lg bg-primary px-3 py-2 text-primary shadow-xs ring-1 ring-primary focus:outline-2 focus:outline-brand">
+                                {minuteOptions.map((minute) => <option key={minute} value={minute}
+                                    disabled={isToday && selectedHour === currentTime.getHours() && minute > currentTime.getMinutes()}>{pad(minute)}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p role={timeError ? "alert" : undefined} className={timeError ? "text-sm font-medium text-error-primary" : "text-sm text-tertiary"}>
+                        {timeError ?? t.phrFutureTimeHint}
+                    </p>
+                    <Button color="secondary" size="sm" type="button" onClick={() => {
+                        const now = new Date();
+                        setCurrentTime(now);
+                        setRecordedAt(localDateTimeValue(now));
+                        setTimeError(null);
+                    }}>{t.phrUseCurrentTime}</Button>
+                </div>
                 <TextArea className="w-full" label={t.phrNotes} value={notes} onChange={setNotes} rows={3} />
                 <div className="flex flex-wrap justify-end gap-3">
                     {onDelete ? (
@@ -438,50 +512,6 @@ const ItemDialog = ({
                 }}
             >
                 <Input className="w-full" label={t.phrItemName} value={label} onChange={setLabel} isRequired maxLength={80} />
-                <TextArea className="w-full" label={t.phrNotes} value={notes} onChange={setNotes} rows={3} />
-                <div className="flex justify-end gap-3">
-                    <Button color="secondary" type="button" onClick={onClose}>
-                        {t.phrCancel}
-                    </Button>
-                    <Button color="primary" type="submit">
-                        {t.phrSave}
-                    </Button>
-                </div>
-            </form>
-        </FormDialog>
-    );
-};
-
-const HistoryDialog = ({
-    t,
-    error,
-    item,
-    onClose,
-    onSave,
-}: {
-    t: Copy;
-    error: string | null;
-    item?: MedicalHistoryEntry;
-    onClose: () => void;
-    onSave: (payload: { treatment: string; facility: string; treatedAt: string; notes?: string }) => void;
-}) => {
-    const [treatment, setTreatment] = useState(item?.treatment ?? "");
-    const [facility, setFacility] = useState(item?.facility ?? "");
-    const [treatedAt, setTreatedAt] = useState(localDateValue(item?.treatedAt));
-    const [notes, setNotes] = useState(item?.notes ?? "");
-
-    return (
-        <FormDialog title={item ? t.phrEditRecord : t.phrAddRecord} error={error} onClose={onClose}>
-            <form
-                className="flex w-full min-w-0 flex-col gap-4"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    onSave({ treatment, facility, treatedAt, notes: notes.trim() || undefined });
-                }}
-            >
-                <Input className="w-full" label={t.phrTreatment} value={treatment} onChange={setTreatment} isRequired maxLength={120} />
-                <Input className="w-full" label={t.phrFacility} value={facility} onChange={setFacility} isRequired maxLength={120} />
-                <Input className="w-full" label={t.phrDate} type="date" value={treatedAt} onChange={setTreatedAt} isRequired />
                 <TextArea className="w-full" label={t.phrNotes} value={notes} onChange={setNotes} rows={3} />
                 <div className="flex justify-end gap-3">
                     <Button color="secondary" type="button" onClick={onClose}>

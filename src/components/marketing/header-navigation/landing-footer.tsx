@@ -14,7 +14,6 @@ export const LandingFooter = () => {
                       { label: t.home, href: "/home" },
                       { label: t.bookVisit, href: "/book" },
                       { label: t.upcomingVisits, href: "/visits" },
-                      { label: t.visitHistory, href: "/history" },
                       { label: t.medTitle, href: "/medicine" },
                   ],
               },

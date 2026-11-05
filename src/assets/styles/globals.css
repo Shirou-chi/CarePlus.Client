@@ -198,11 +198,12 @@ html.dark-mode .careplus-landing {
     background-image: var(--careplus-ink);
     background-attachment: fixed;
     color-scheme: dark;
-    --color-bg-primary: rgb(11 32 54 / 0.72);
+    /* Keep card surfaces visibly separate from the dark clinic background. */
+    --color-bg-primary: rgb(18 43 75 / 0.96);
     --color-bg-primary_hover: rgb(33 76 89 / 0.42);
-    --color-bg-secondary: rgb(7 29 53 / 0.72);
-    --color-bg-secondary_alt: rgb(11 32 54 / 0.5);
-    --color-bg-primary_alt: rgb(11 32 54 / 0.62);
+    --color-bg-secondary: rgb(7 29 53 / 0.96);
+    --color-bg-secondary_alt: rgb(18 43 75 / 0.88);
+    --color-bg-primary_alt: rgb(18 43 75 / 0.92);
     --color-bg-tertiary: rgb(7 29 53 / 0.85);
     --background-color-primary: var(--color-bg-primary);
     --background-color-primary_hover: var(--color-bg-primary_hover);

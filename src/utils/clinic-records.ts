@@ -1,10 +1,6 @@
 import type { Locale } from "@/providers/locale-provider";
 
 export type ClinicChargeCategory = "consultation" | "medicine" | "procedure" | "lab" | "other";
-export type LabFlag = "normal" | "high" | "low";
-
-export type LabMarker = { name: string; value: string; unit: string; range: string; flag: LabFlag };
-
 export type ClinicChargeLine = {
     id: string;
     category: ClinicChargeCategory;
@@ -12,7 +8,6 @@ export type ClinicChargeLine = {
     detail: string;
     unitPrice: number;
     qty: number;
-    markers?: LabMarker[];
 };
 
 export type ClinicRecord = {
@@ -33,6 +28,15 @@ export type ClinicRecord = {
     ward: string;
     charges: ClinicChargeLine[];
     sstRate: number;
+    review: DoctorReview | null;
+};
+
+export type DoctorReview = {
+    rating: number;
+    description: string | null;
+    isAnonymous: boolean;
+    authorName: string | null;
+    createdAt: string;
 };
 
 export type ClinicRecordTotals = { subtotal: number; sst: number; total: number };
@@ -45,13 +49,6 @@ export const getClinicRecordTotals = (record: ClinicRecord): ClinicRecordTotals 
     const sst = Number((subtotal * record.sstRate).toFixed(2));
     return { subtotal, sst, total: Number((subtotal + sst).toFixed(2)) };
 };
-
-export const listLabReports = (records: ClinicRecord[]) =>
-    records.flatMap((record) =>
-        record.charges
-            .filter((line) => line.category === "lab" && line.markers && line.markers.length > 0)
-            .map((line) => ({ id: `${record.id}-${line.id}`, record, line })),
-    );
 
 export const clinicChargeCategoryLabel = (locale: Locale, category: ClinicChargeCategory) => {
     const en: Record<ClinicChargeCategory, string> = {

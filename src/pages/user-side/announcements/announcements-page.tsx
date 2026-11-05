@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { Bell01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -21,6 +22,7 @@ const postedLabel = (isoDate: string, locale: "en" | "zh") =>
 
 export const AnnouncementsPage = () => {
     const { t, locale } = useI18n();
+    const { hash } = useLocation();
     const { profile } = useAuth();
     const [items, setItems] = useState<ClinicAnnouncement[]>([]);
     const [loading, setLoading] = useState(true);
@@ -53,6 +55,12 @@ export const AnnouncementsPage = () => {
             active = false;
         };
     }, [locale]);
+
+    useEffect(() => {
+        if (!hash || loading || error) return;
+        const id = decodeURIComponent(hash.slice(1));
+        requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }, [hash, loading, error, items]);
 
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">

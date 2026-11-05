@@ -14,7 +14,7 @@ export const CarePlusLogo = ({
     const { t } = useI18n();
 
     return (
-        <AriaLink href={href} className={cx("flex w-max items-center gap-2.5 md:gap-3", className)}>
+        <AriaLink href={href} aria-label={t.clinicName} className={cx("flex w-max items-center gap-2.5 md:gap-3", className)}>
             <img src="/clinic-logo.png" alt="" className="size-11 shrink-0 rounded-[0.85rem] object-contain md:size-12" />
             {wordmark ? (
                 <span className="min-w-0 leading-tight">

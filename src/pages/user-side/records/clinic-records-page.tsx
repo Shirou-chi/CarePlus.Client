@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download01, Eye, SearchLg } from "@untitledui/icons";
+import { Download01, Eye, SearchLg, Star01 } from "@untitledui/icons";
 import { Navigate, useSearchParams } from "react-router";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -14,7 +14,8 @@ import { SectionDivider } from "@/components/section-divider";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { useClinicRecords } from "@/hooks/use-clinic-records";
-import { printHtmlDocument } from "@/utils/document-download";
+import { clinicRecordApi } from "@/services/clinicRecordApi";
+import { downloadPdfDocument } from "@/utils/document-download";
 import {
     clinicChargeCategoryLabel,
     getClinicRecordTotals,
@@ -26,10 +27,13 @@ export const ClinicRecordsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { records, loading, error } = useClinicRecords();
+    const { records, loading, error, updateReview } = useClinicRecords();
     const [query, setQuery] = useState("");
     const [picked, setPicked] = useState<ClinicRecord | null>(null);
-    const detail = picked ?? records.find((record) => record.id === searchParams.get("record")) ?? null;
+    const [reviewRecordId, setReviewRecordId] = useState<string | null>(null);
+    const [reviewSuccess, setReviewSuccess] = useState(false);
+    const detail = reviewRecordId ? null : records.find((record) => record.id === (picked?.id ?? searchParams.get("record"))) ?? null;
+    const reviewTarget = records.find((record) => record.id === reviewRecordId) ?? null;
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -53,32 +57,34 @@ export const ClinicRecordsPage = () => {
             timeZone: "Asia/Kuala_Lumpur",
         });
 
-    const recordPdfHtml = (record: ClinicRecord) => {
+    const downloadRecordPdf = (record: ClinicRecord) => {
         const totals = getClinicRecordTotals(record);
-        const chargeRows = record.charges
-            .map(
-                (line) =>
-                    `<tr><td>${clinicChargeCategoryLabel(locale, line.category)}</td><td>${line.item}<br/><span class="muted">${line.detail}</span></td><td>${formatRm(line.unitPrice)} × ${line.qty}</td><td>${formatRm(line.unitPrice * line.qty)}</td></tr>`,
-            )
-            .join("");
-        return `
-      <h1>${t.clinicRecordsPdfTitle}</h1>
-      <p class="muted">${t.clinicRecordsId}: ${record.id}</p>
-      <h2>${t.clinicRecordsPatient}</h2>
-      <p>${record.patientName}<br/><span class="muted">${record.patientMeta}</span></p>
-      <h2>${t.clinicRecordsDoctor}</h2>
-      <p>${record.doctorName}<br/><span class="muted">${record.specialty}</span></p>
-      <h2>${t.clinicRecordsVisit}</h2>
-      <p>${record.visitType}<br/><span class="muted">${formatWhen(record.visitedAt)} · ${record.ward}</span></p>
-      <h2>${t.clinicRecordsDiagnosis}</h2>
-      <p>${record.diagnosis}</p>
-      <h2>${t.clinicRecordsComment}</h2>
-      <p>${record.doctorComment}</p>
-      <h2>${t.clinicRecordsMedications}</h2>
-      <p>${record.medications.length ? record.medications.join("<br/>") : t.clinicRecordsNoMeds}</p>
-      <h2>${t.clinicRecordsChargesTitle}</h2>
-      <table><thead><tr><th>${t.clinicRecordsChargeCategory}</th><th>${t.clinicRecordsChargeItem}</th><th>${t.clinicRecordsChargeDetails}</th><th>${t.clinicRecordsChargeAmount}</th></tr></thead><tbody>${chargeRows}<tr><td colspan="3">${t.clinicRecordsSubtotal}</td><td>${formatRm(totals.subtotal)}</td></tr><tr><td colspan="3">${t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100))}</td><td>${formatRm(totals.sst)}</td></tr><tr><td colspan="3"><strong>${t.clinicRecordsTotal}</strong></td><td><strong>${formatRm(totals.total)}</strong></td></tr></tbody></table>
-    `;
+        downloadPdfDocument(`${t.clinicRecordsPdfTitle} · ${record.id}`, `${record.id}-clinic-record.pdf`, [
+            { heading: t.clinicRecordsId, lines: [record.id] },
+            { heading: t.clinicRecordsPatient, lines: [record.patientName, record.patientMeta] },
+            { heading: t.clinicRecordsDoctor, lines: [record.doctorName, record.specialty] },
+            { heading: t.clinicRecordsVisit, lines: [record.visitType, `${formatWhen(record.visitedAt)}${record.ward ? ` · ${record.ward}` : ""}`] },
+            { heading: t.clinicRecordsDiagnosis, lines: [record.diagnosis] },
+            { heading: t.clinicRecordsComment, lines: [record.doctorComment] },
+            { heading: t.clinicRecordsMedications, lines: record.medications.length ? record.medications : [t.clinicRecordsNoMeds] },
+            {
+                heading: t.clinicRecordsChargesTitle,
+                table: {
+                    head: [t.clinicRecordsChargeCategory, t.clinicRecordsChargeItem, t.clinicRecordsChargeDetails, t.clinicRecordsChargeAmount],
+                    body: [
+                        ...record.charges.map((line) => [
+                            clinicChargeCategoryLabel(locale, line.category),
+                            line.item,
+                            `${line.detail || "—"} · ${formatRm(line.unitPrice)} × ${line.qty}`,
+                            formatRm(line.unitPrice * line.qty),
+                        ]),
+                        [t.clinicRecordsSubtotal, "", "", formatRm(totals.subtotal)],
+                        [t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100)), "", "", formatRm(totals.sst)],
+                        [t.clinicRecordsTotal, "", "", formatRm(totals.total)],
+                    ],
+                },
+            },
+        ]);
     };
 
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
@@ -98,6 +104,7 @@ export const ClinicRecordsPage = () => {
                 </div>
 
                 {error ? <FormStatus error={error} className="mt-8" /> : null}
+                {reviewSuccess ? <FormStatus success={t.clinicRecordsReviewSuccess} className="mt-8" /> : null}
                 {loading ? <p role="status" className="mt-8 rounded-2xl bg-primary px-6 py-8 text-sm text-tertiary ring-1 ring-secondary">{t.clinicRecordsLoading}</p> : null}
                 {!loading && !error && records.length === 0 ? (
                     <div className="mt-8 rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
@@ -140,14 +147,26 @@ export const ClinicRecordsPage = () => {
                                     <Table.Cell>{record.visitType}</Table.Cell>
                                     <Table.Cell>{formatWhen(record.visitedAt)}</Table.Cell>
                                     <Table.Cell>
-                                        <Badge color="success" size="md">{t.clinicRecordsCompleted}</Badge>
+                                        <div className="flex flex-col items-start gap-2">
+                                            <Badge color="success" size="md">{t.clinicRecordsCompleted}</Badge>
+                                            {record.review ? (
+                                                <Badge color="brand" size="sm">
+                                                    {t.clinicRecordsReviewed} · {"★".repeat(record.review.rating)}
+                                                </Badge>
+                                            ) : null}
+                                        </div>
                                     </Table.Cell>
                                     <Table.Cell>
-                                        <div className="flex flex-wrap gap-2">
-                                            <Button color="secondary" size="sm" iconLeading={Eye} onClick={() => setPicked(record)}>
+                                        <div className="flex min-w-36 flex-col items-start gap-2">
+                                            <Button color="secondary" size="sm" className="w-full justify-start" iconLeading={Eye} onClick={() => setPicked(record)}>
                                                 {t.clinicRecordsView}
                                             </Button>
-                                            <Button color="tertiary" size="sm" iconLeading={Download01} onClick={() => printHtmlDocument(record.id, recordPdfHtml(record))}>
+                                            {!record.review ? (
+                                                <Button color="secondary" size="sm" className="w-full justify-start" iconLeading={Star01} onClick={() => { setReviewSuccess(false); setReviewRecordId(record.id); }}>
+                                                    {t.clinicRecordsReview}
+                                                </Button>
+                                            ) : null}
+                                            <Button color="tertiary" size="sm" className="w-full justify-start" iconLeading={Download01} onClick={() => downloadRecordPdf(record)}>
                                                 {t.clinicRecordsDownloadPdf}
                                             </Button>
                                         </div>
@@ -173,10 +192,106 @@ export const ClinicRecordsPage = () => {
                         next.delete("record");
                         setSearchParams(next, { replace: true });
                     }}
-                    onDownload={() => printHtmlDocument(detail.id, recordPdfHtml(detail))}
+                    onDownload={() => downloadRecordPdf(detail)}
+                    onReview={() => { setPicked(null); setReviewSuccess(false); setReviewRecordId(detail.id); }}
+                />
+            ) : null}
+            {reviewTarget && !reviewTarget.review ? (
+                <DoctorReviewModal
+                    key={reviewTarget.id}
+                    record={reviewTarget}
+                    t={t}
+                    onClose={() => setReviewRecordId(null)}
+                    onSubmit={async (rating, description, isAnonymous) => {
+                        const review = await clinicRecordApi.review(reviewTarget.id, rating, description, isAnonymous);
+                        updateReview(reviewTarget.id, review);
+                        setReviewRecordId(null);
+                        setReviewSuccess(true);
+                    }}
                 />
             ) : null}
         </div>
+    );
+};
+
+const DoctorReviewModal = ({
+    record,
+    t,
+    onClose,
+    onSubmit,
+}: {
+    record: ClinicRecord;
+    t: ReturnType<typeof useI18n>["t"];
+    onClose: () => void;
+    onSubmit: (rating: number, description: string, isAnonymous: boolean) => Promise<void>;
+}) => {
+    const [rating, setRating] = useState(0);
+    const [description, setDescription] = useState("");
+    const [isAnonymous, setIsAnonymous] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+
+    return (
+        <ModalOverlay isDismissable={!submitting} isOpen onOpenChange={(open) => !open && !submitting && onClose()}>
+            <Modal className="w-full max-w-md">
+                <Dialog className="w-full rounded-2xl bg-primary p-5 ring-1 ring-secondary sm:p-6">
+                    <form
+                        className="w-full"
+                        onSubmit={async (event) => {
+                            event.preventDefault();
+                            if (rating < 1 || rating > 5) { setError(t.clinicRecordsReviewPickRating); return; }
+                            setSubmitting(true);
+                            setError(null);
+                            try { await onSubmit(rating, description, isAnonymous); }
+                            catch (cause) { setError(cause instanceof Error ? cause.message : t.clinicRecordsReviewPickRating); }
+                            finally { setSubmitting(false); }
+                        }}
+                    >
+                        <h2 className="text-xl font-semibold text-primary">{t.clinicRecordsReviewTitle}</h2>
+                        <p className="mt-1 text-sm text-tertiary">{record.doctorName} · #{record.id}</p>
+                        <p className="mt-4 text-sm text-secondary">{t.clinicRecordsReviewHint}</p>
+                        <fieldset className="mt-5">
+                            <legend className="text-sm font-semibold text-primary">{t.clinicRecordsReviewRating} *</legend>
+                            <div className="mt-2 flex gap-1" role="group">
+                                {[1, 2, 3, 4, 5].map((value) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        aria-label={`${value} / 5`}
+                                        aria-pressed={rating === value}
+                                        onClick={() => { setRating(value); setError(null); }}
+                                        className={`rounded-lg px-1 text-3xl transition-colors focus-visible:outline-2 focus-visible:outline-brand ${value <= rating ? "text-warning-primary" : "text-quaternary hover:text-warning-primary"}`}
+                                    >★</button>
+                                ))}
+                            </div>
+                        </fieldset>
+                        <label htmlFor="doctor-review-description" className="mt-5 block text-sm font-semibold text-primary">{t.clinicRecordsReviewDescription}</label>
+                        <textarea
+                            id="doctor-review-description"
+                            value={description}
+                            onChange={(event) => setDescription(event.target.value)}
+                            maxLength={1000}
+                            rows={4}
+                            className="mt-2 w-full resize-y rounded-lg border border-secondary bg-primary px-3 py-2 text-sm text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                        />
+                        <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm text-secondary">
+                            <input
+                                type="checkbox"
+                                checked={isAnonymous}
+                                onChange={(event) => setIsAnonymous(event.target.checked)}
+                                className="mt-0.5 size-4 accent-brand-secondary"
+                            />
+                            <span>{t.clinicRecordsReviewAnonymous}</span>
+                        </label>
+                        {error ? <FormStatus error={error} className="mt-4" /> : null}
+                        <div className="mt-6 flex justify-end gap-2">
+                            <Button type="button" color="tertiary" size="md" isDisabled={submitting} onClick={onClose}>{t.notifCancel}</Button>
+                            <Button type="submit" size="md" isDisabled={submitting}>{t.clinicRecordsReviewSubmit}</Button>
+                        </div>
+                    </form>
+                </Dialog>
+            </Modal>
+        </ModalOverlay>
     );
 };
 
@@ -187,6 +302,7 @@ const ClinicRecordDetailModal = ({
     formatWhen,
     onClose,
     onDownload,
+    onReview,
 }: {
     detail: ClinicRecord;
     locale: "en" | "zh";
@@ -194,6 +310,7 @@ const ClinicRecordDetailModal = ({
     formatWhen: (iso: string) => string;
     onClose: () => void;
     onDownload: () => void;
+    onReview: () => void;
 }) => {
     const totals = getClinicRecordTotals(detail);
     const sstLabel = t.clinicRecordsSst.replace("{rate}", String(detail.sstRate * 100));
@@ -216,6 +333,12 @@ const ClinicRecordDetailModal = ({
                                 <p className="text-sm text-tertiary">{detail.specialty}</p>
                             </div>
                         </div>
+                        {detail.review ? (
+                            <div className="mt-4 rounded-xl bg-secondary p-3 text-sm text-primary">
+                                <p className="font-semibold">{t.clinicRecordsReviewed} · {"★".repeat(detail.review.rating)}{"☆".repeat(5 - detail.review.rating)}</p>
+                                {detail.review.description ? <p className="mt-1 whitespace-pre-wrap">{detail.review.description}</p> : null}
+                            </div>
+                        ) : null}
                     </header>
 
                     <div className="min-h-0 max-h-[min(52dvh,420px)] flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
@@ -240,7 +363,7 @@ const ClinicRecordDetailModal = ({
                                 <dt className="text-xs font-semibold uppercase tracking-wide text-quaternary">{t.clinicRecordsDiagnosis}</dt>
                                 <dd className="mt-1 text-sm font-medium text-primary">{detail.diagnosis}</dd>
                             </div>
-                            <div className="sm:col-span-2 rounded-xl bg-secondary_subtle p-4 ring-1 ring-secondary">
+                            <div className="sm:col-span-2 rounded-xl bg-secondary p-4 ring-1 ring-secondary">
                                 <dt className="text-xs font-semibold uppercase tracking-wide text-quaternary">{t.clinicRecordsComment}</dt>
                                 <dd className="mt-2 text-sm leading-relaxed text-secondary">{detail.doctorComment}</dd>
                             </div>
@@ -308,7 +431,7 @@ const ClinicRecordDetailModal = ({
                                                 </td>
                                             </tr>
                                         ))}
-                                        <tr className="bg-secondary_subtle">
+                                        <tr className="bg-secondary">
                                             <td colSpan={3} className="px-3 py-2.5 text-tertiary">
                                                 {t.clinicRecordsSubtotal}
                                             </td>
@@ -316,7 +439,7 @@ const ClinicRecordDetailModal = ({
                                                 {formatRm(totals.subtotal)}
                                             </td>
                                         </tr>
-                                        <tr className="bg-secondary_subtle">
+                                        <tr className="bg-secondary">
                                             <td colSpan={3} className="px-3 py-2.5 text-tertiary">
                                                 {sstLabel}
                                             </td>
@@ -346,6 +469,7 @@ const ClinicRecordDetailModal = ({
                             <Button color="secondary" size="md" className="w-full sm:w-auto" iconLeading={Download01} onClick={onDownload}>
                                 {t.clinicRecordsDownloadPdf}
                             </Button>
+                            {!detail.review ? <Button size="md" className="w-full sm:w-auto" onClick={onReview}>{t.clinicRecordsReview}</Button> : null}
                         </div>
                     </footer>
                 </Dialog>
