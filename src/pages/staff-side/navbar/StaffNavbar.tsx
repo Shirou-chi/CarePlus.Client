@@ -7,7 +7,6 @@ import { Icon } from './StaffIcon'
 
 type StaffNavbarProps = {
   activeNav: string
-  announce: (message: string) => void
   notificationsOpen: boolean
   onOpenSidebar: () => void
   onSearchChange: (value: string) => void
@@ -18,7 +17,7 @@ type StaffNavbarProps = {
   toggleTheme: () => void
 }
 
-export function StaffNavbar({ activeNav, announce, notificationsOpen, onOpenSidebar, onSearchChange, onToggleNotifications, searchTerm, selectedRole, theme, toggleTheme }: StaffNavbarProps) {
+export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onSearchChange, onToggleNotifications, searchTerm, selectedRole, theme, toggleTheme }: StaffNavbarProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
   const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()

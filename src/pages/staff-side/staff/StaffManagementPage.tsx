@@ -5,8 +5,9 @@ import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
-import { StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
+import { getStaffRole, StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
+import { StaffListReset } from '../components/StaffListControls'
 import '../StaffHomePage.css'
 import './StaffManagementPage.css'
 
@@ -69,11 +70,11 @@ function roleTone(role: string) {
 
 export function StaffManagementPage() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [staff, setStaff] = useState<StaffRecord[]>([])
-  const [activeNav, setActiveNav] = useState('Staff')
-  const [selectedRole, setSelectedRole] = useState<StaffRole>('Admin')
+  const [activeNav] = useState('Staff')
+  const currentRole = getStaffRole(user?.role)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -121,60 +122,25 @@ export function StaffManagementPage() {
   const filteredStaff = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
-    return staff.filter((member) => {
+    const rows = staff.filter((member) => {
       const matchesQuery = !query || `${member.staffId} ${member.name} ${member.username} ${member.email} ${member.phone} ${member.role}`.toLowerCase().includes(query)
       const matchesRole = roleFilter === 'All roles' || member.role === roleFilter
       const matchesStatus = statusFilter === 'All statuses' || member.status === statusFilter
       return matchesQuery && matchesRole && matchesStatus
     })
+
+    return rows
   }, [roleFilter, searchTerm, staff, statusFilter])
+
+  const resetListControls = () => {
+    setSearchTerm('')
+    setRoleFilter('All roles')
+    setStatusFilter('All statuses')
+  }
 
   const activeCount = staff.filter((member) => member.status === 'Active').length
   const doctorCount = staff.filter((member) => member.role === 'Doctor').length
   const pharmacistCount = staff.filter((member) => member.role === 'Pharmacist').length
-
-  const handleRoleChange = (role: StaffRole) => {
-    if (role !== 'Admin') {
-      navigate('/staff')
-      return
-    }
-
-    setSelectedRole(role)
-    announce('Administrator staff management is now displayed.')
-  }
-
-  const handleNavigate = (label: string) => {
-    if (label === 'Overview') {
-      navigate('/staff')
-      return
-    }
-    if (label === 'Appointments') {
-      navigate('/staff/appointments')
-      return
-    }
-    if (label === 'Patients') {
-      navigate('/staff/patients')
-      return
-    }
-    if (label === 'Schedules & availability') {
-      navigate('/staff/schedules')
-      return
-    }
-    if (label === 'Leave') {
-      navigate('/staff/leave')
-      return
-    }
-    if (label === 'Audit & logs') {
-      navigate('/staff/audit-logs')
-      return
-    }
-    if (label === 'Notifications') {
-      navigate('/staff/notifications')
-      return
-    }
-
-    setActiveNav(label)
-  }
 
   const openCreate = () => {
     setEditingStaff(null)
@@ -279,22 +245,18 @@ export function StaffManagementPage() {
         activeNav={activeNav}
         announce={announce}
         onClose={() => setSidebarOpen(false)}
-        onNavigate={handleNavigate}
-        onRoleChange={handleRoleChange}
-        role={selectedRole}
         sidebarOpen={sidebarOpen}
       />
 
       <main className="staff-main">
         <StaffNavbar
           activeNav={activeNav}
-          announce={announce}
           notificationsOpen={notificationsOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
           onSearchChange={setSearchTerm}
           onToggleNotifications={() => setNotificationsOpen((current) => !current)}
           searchTerm={searchTerm}
-          selectedRole={selectedRole}
+          selectedRole={currentRole}
           theme={theme}
           toggleTheme={toggleTheme}
         />
@@ -325,6 +287,7 @@ export function StaffManagementPage() {
               <label className="staff-management-search"><Icon name="search" size={16} /><span className="sr-only">Search staff</span><input placeholder="Search name, ID, email, or role" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label>
               <label className="staff-management-select"><span className="sr-only">Filter by role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as StaffRoleFilter)}>{roleFilters.map((filter) => <option key={filter}>{filter}</option>)}</select><Icon name="chevronDown" size={14} /></label>
               <label className="staff-management-select"><span className="sr-only">Filter by status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StaffStatusFilter)}>{statusFilters.map((filter) => <option key={filter}>{filter}</option>)}</select><Icon name="chevronDown" size={14} /></label>
+              <StaffListReset onClick={resetListControls} />
               <span className="staff-management-result-count"><strong>{filteredStaff.length}</strong> shown</span>
             </div>
 
@@ -348,7 +311,7 @@ export function StaffManagementPage() {
                   </tbody>
                 </table>
               ) : null}
-              {!loading && filteredStaff.length === 0 ? <div className="staff-management-empty"><Icon name="staff" size={24} /><strong>{staff.length ? 'No staff found' : 'No staff records available'}</strong><span>{staff.length ? 'Try another search or filter.' : 'Create the first staff account to get started.'}</span>{staff.length ? <button type="button" onClick={() => { setSearchTerm(''); setRoleFilter('All roles'); setStatusFilter('All statuses') }}>Clear filters</button> : null}</div> : null}
+              {!loading && filteredStaff.length === 0 ? <div className="staff-management-empty"><Icon name="staff" size={24} /><strong>{staff.length ? 'No staff found' : 'No staff records available'}</strong><span>{staff.length ? 'Try another search or filter.' : 'Create the first staff account to get started.'}</span>{staff.length ? <button type="button" onClick={resetListControls}>Clear filters</button> : null}</div> : null}
             </div>
           </section>
         </div>
@@ -358,13 +321,14 @@ export function StaffManagementPage() {
         <StaffDialog
           className="staff-dialog--view"
           closeLabel="Close staff profile"
+          closeOnBackdropClick={false}
           eyebrow="Staff profile"
           onClose={() => setViewingStaff(null)}
           title={viewingStaff.name || viewingStaff.username}
           titleId="staff-management-view-title"
         >
             <div className="staff-management-profile-heading"><span className={`staff-management-avatar staff-management-avatar--${roleTone(viewingStaff.role)}`}>{getInitials(viewingStaff.name || viewingStaff.username)}</span><span><strong>{viewingStaff.role}</strong><small>{viewingStaff.status} account</small></span></div>
-            <dl className="staff-management-profile-details">
+            <dl className="staff-detail-grid">
               <div><dt>Staff ID</dt><dd>{viewingStaff.staffId}</dd></div>
               <div><dt>Username</dt><dd>@{viewingStaff.username}</dd></div>
               <div><dt>Email</dt><dd>{viewingStaff.email}</dd></div>

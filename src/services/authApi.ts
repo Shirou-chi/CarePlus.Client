@@ -32,6 +32,7 @@ export type CurrentUserResponse = {
   patientId?: string
   staffId?: string
   identityCardNumber?: string | null
+  dateOfBirth?: string | null
   gender?: string | null
   address?: string | null
   profilePicture?: string | null

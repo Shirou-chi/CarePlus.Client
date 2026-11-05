@@ -1,0 +1,114 @@
+.staff-list-sort {
+  position: relative;
+  display: flex;
+  min-width: 148px;
+  min-height: 36px;
+  align-items: center;
+  padding-right: 27px;
+  border: 1px solid var(--staff-line);
+  border-radius: 7px;
+  background: var(--staff-card);
+  color: var(--staff-muted);
+}
+
+.staff-list-sort select {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--staff-ink);
+  color-scheme: light;
+  font-family: var(--site-font-body);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.staff-list-sort select option {
+  background: var(--staff-card);
+  color: var(--staff-ink);
+}
+
+.staff-list-sort > .staff-icon {
+  position: absolute;
+  right: 8px;
+  pointer-events: none;
+}
+
+.staff-page .staff-list-reset {
+  display: inline-flex;
+  min-width: 79px;
+  min-height: 36px;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 8px;
+  background: var(--staff-card);
+  color: var(--staff-muted);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(22, 43, 66, 0.05);
+  transition: 160ms ease;
+}
+
+.staff-list-reset .staff-icon {
+  padding: 3px;
+  border-radius: 50%;
+  background: var(--staff-subtle);
+  transition: transform 180ms ease;
+}
+
+.staff-list-reset:hover {
+  border-color: color-mix(in srgb, var(--staff-muted) 42%, var(--staff-line));
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  box-shadow: 0 4px 10px rgba(22, 43, 66, 0.1);
+  transform: translateY(-1px);
+}
+
+.staff-list-reset:hover .staff-icon {
+  transform: rotate(-45deg);
+}
+
+.staff-list-reset:active {
+  transform: translateY(0);
+}
+
+.staff-list-reset:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--staff-teal) 42%, transparent);
+  outline-offset: 2px;
+}
+
+:root[data-theme='dark'] .staff-list-reset {
+  border-color: var(--staff-line);
+  background: var(--staff-card);
+  color: var(--staff-muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme='dark'] .staff-list-reset:hover {
+  border-color: color-mix(in srgb, var(--staff-muted) 44%, var(--staff-line));
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+}
+
+:root[data-theme='dark'] .staff-list-sort select {
+  color-scheme: dark;
+}
+
+@media (max-width: 640px) {
+  .staff-list-sort,
+  .staff-list-reset {
+    flex: 1;
+  }
+}
