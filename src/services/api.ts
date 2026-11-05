@@ -16,6 +16,26 @@ export type LoginResponse = {
 export type ChatResponse = {
   reply: string
   disclaimer: string
+  sources: Array<{
+    title: string
+    source: string
+    score: number
+  }>
+}
+
+export type ChatTurn = {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export class ApiRequestError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+  }
 }
 
 export function formatApiErrorDetails(data: unknown): string {
@@ -88,7 +108,7 @@ export async function request<T>(
   const body = await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new Error(messageFromBody(body, messageFromHttpStatus(response.status)))
+    throw new ApiRequestError(messageFromBody(body, `Request failed with status ${response.status}`), response.status)
   }
 
   return body as T
@@ -105,18 +125,11 @@ export const api = {
 
     return response.json() as Promise<{ status: string }>
   },
-  async sendChat(message: string): Promise<ChatResponse> {
-    const response = await fetch(`${baseUrl}/api/chat`, {
+  async sendChat(message: string, history: ChatTurn[] = []): Promise<ChatResponse> {
+    return request<ChatResponse>('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, history }),
     })
-
-    if (!response.ok) {
-      throw new Error('Health guide request failed')
-    }
-
-    return response.json() as Promise<ChatResponse>
   },
 
   async getWithAuth<T>(path: string): Promise<T> {

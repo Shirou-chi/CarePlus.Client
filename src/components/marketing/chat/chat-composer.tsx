@@ -12,11 +12,12 @@ type ChatComposerProps = {
     onHistory?: () => void;
     compact?: boolean;
     error?: string | null;
+    isSending?: boolean;
 };
 
-export const ChatComposer = ({ value, onChange, onSend, onHistory, compact, error }: ChatComposerProps) => {
+export const ChatComposer = ({ value, onChange, onSend, onHistory, compact, error, isSending }: ChatComposerProps) => {
     const { t } = useI18n();
-    const canSend = value.trim().length > 0;
+    const canSend = value.trim().length > 0 && !isSending;
     const nearLimit = value.length >= MAX_CHAT_MESSAGE_CHARS - 200;
 
     return (
@@ -46,6 +47,7 @@ export const ChatComposer = ({ value, onChange, onSend, onHistory, compact, erro
                     className="min-w-0 flex-1 bg-transparent text-md text-primary outline-hidden placeholder:text-placeholder"
                     aria-label={t.chatPlaceholder}
                     aria-invalid={error ? true : undefined}
+                    disabled={isSending}
                 />
                 <Button
                     color="primary"
@@ -53,6 +55,7 @@ export const ChatComposer = ({ value, onChange, onSend, onHistory, compact, erro
                     iconLeading={ArrowUp}
                     aria-label={t.chatSend}
                     isDisabled={!canSend}
+                    isLoading={isSending}
                     className="careplus-ink shrink-0 rounded-full"
                     onPress={onSend}
                 />

@@ -10,31 +10,32 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { useI18n } from "@/providers/locale-provider";
 import { PasswordStrengthBar } from "@/components/base/input/password-strength";
-import { DUMMY_EMAIL, savePassword } from "@/utils/auth";
 import { passwordIsValid } from "@/utils/password";
+import { authApi } from "@/services/authApi";
 
 type Step = "email" | "code" | "password" | "done";
 
 const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-const nextCode = () => String(Math.floor(100000 + Math.random() * 900000));
-
 export const Step1ForgotPassword = () => {
     const { t } = useI18n();
     const [step, setStep] = useState<Step>("email");
     const [email, setEmail] = useState("");
+    const [maskedEmail, setMaskedEmail] = useState("");
     const [code, setCode] = useState("");
-    const [sentCode, setSentCode] = useState("");
+    const [challengeId, setChallengeId] = useState("");
+    const [resetToken, setResetToken] = useState("");
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [asking, setAsking] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const passwordBad = !passwordIsValid(password);
     const mismatch = password !== confirm;
     const body = step === "code" ? t.forgotCodeBody : step === "password" ? t.forgotPasswordBody : t.forgotBody;
 
-    const submit = () => {
+    const submit = async () => {
         setError(null);
         if (step === "email") {
             const value = email.trim().toLowerCase();
@@ -42,22 +43,37 @@ export const Step1ForgotPassword = () => {
                 setError(t.settingsInvalidEmail);
                 return;
             }
-            if (value !== DUMMY_EMAIL) {
-                setError(t.forgotNoAccount);
-                return;
+            setIsLoading(true);
+            try {
+                const result = await authApi.requestPasswordReset(value);
+                setEmail(value);
+                setMaskedEmail(result.maskedEmail);
+                setChallengeId(result.challengeId);
+                setCode("");
+                setStep("code");
+            } catch (requestError) {
+                setError(requestError instanceof Error ? requestError.message : t.forgotNoAccount);
+            } finally {
+                setIsLoading(false);
             }
-            setEmail(value);
-            setSentCode(nextCode());
-            setCode("");
-            setStep("code");
             return;
         }
         if (step === "code") {
-            if (code.trim() !== sentCode) {
+            if (!/^\d{6}$/.test(code.trim())) {
                 setError(t.settingsEmailCodeMismatch);
                 return;
             }
-            setStep("password");
+            setIsLoading(true);
+            try {
+                const result = await authApi.verifyPasswordResetCode(challengeId, code.trim());
+                setChallengeId(result.challengeId);
+                setResetToken(result.resetToken);
+                setStep("password");
+            } catch (requestError) {
+                setError(requestError instanceof Error ? requestError.message : t.settingsEmailCodeMismatch);
+            } finally {
+                setIsLoading(false);
+            }
             return;
         }
         if (passwordBad) {
@@ -71,10 +87,23 @@ export const Step1ForgotPassword = () => {
         setAsking(true);
     };
 
-    const confirmReset = () => {
-        savePassword(password);
-        setAsking(false);
-        setStep("done");
+    const confirmReset = async () => {
+        setError(null);
+        setIsLoading(true);
+        try {
+            await authApi.completePasswordReset(challengeId, resetToken, password);
+            setAsking(false);
+            setStep("done");
+            setCode("");
+            setPassword("");
+            setConfirm("");
+            setResetToken("");
+        } catch (requestError) {
+            setAsking(false);
+            setError(requestError instanceof Error ? requestError.message : t.settingsInvalidPassword);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -95,7 +124,7 @@ export const Step1ForgotPassword = () => {
                     <Form
                         onSubmit={(event) => {
                             event.preventDefault();
-                            submit();
+                            void submit();
                         }}
                         className="flex flex-col gap-6"
                     >
@@ -157,8 +186,11 @@ export const Step1ForgotPassword = () => {
                                 ) : null}
                             </>
                         )}
-                        <FormStatus error={step === "password" ? null : error} success={step === "code" ? t.settingsCodeSent.replace("{email}", email).replace("{code}", sentCode) : null} />
-                        <Button type="submit" size="lg">
+                        <FormStatus
+                            error={error}
+                            success={step === "code" ? t.forgotCodeSent.replace("{email}", maskedEmail || email) : null}
+                        />
+                        <Button type="submit" size="lg" isLoading={isLoading} isDisabled={isLoading} showTextWhileLoading>
                             {step === "email" ? t.forgotSendCode : step === "code" ? t.forgotProceed : t.resetPassword}
                         </Button>
                     </Form>
@@ -181,7 +213,9 @@ export const Step1ForgotPassword = () => {
                                 <Button color="secondary" onPress={() => setAsking(false)}>
                                     {t.notifCancel}
                                 </Button>
-                                <Button onPress={confirmReset}>{t.resetPassword}</Button>
+                                <Button onPress={() => void confirmReset()} isLoading={isLoading} isDisabled={isLoading}>
+                                    {t.resetPassword}
+                                </Button>
                             </div>
                         </Dialog>
                     </Modal>

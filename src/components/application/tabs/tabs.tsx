@@ -197,12 +197,12 @@ export const Tab = ({ label, children, badge, icon: Icon, className, ...otherPro
                         {typeof children === "function" ? children(state) : children || label}
 
                         {/* Badge */}
-                        {badge && (
+                        {badge !== undefined && badge !== null && badge !== "" && (
                             <Badge
                                 size="sm"
                                 type={showPillColorBadge ? "pill-color" : "modern"}
                                 color={showPillColorBadge && (state.isHovered || state.isSelected) ? "brand" : "gray"}
-                                className={cx("hidden transition-inherit-all md:flex", size === "sm" && "-my-px")}
+                                className={cx("inline-flex transition-inherit-all", size === "sm" && "-my-px")}
                             >
                                 {badge}
                             </Badge>

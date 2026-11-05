@@ -5,6 +5,14 @@ export type ChatMessage = {
     role: ChatRole;
     text: string;
     at: number;
+    disclaimer?: string;
+    sources?: ChatSource[];
+};
+
+export type ChatSource = {
+    title: string;
+    source: string;
+    score: number;
 };
 
 export type ChatThread = {
@@ -21,7 +29,7 @@ export const MAX_CHAT_MESSAGE_CHARS = 2000;
 export const MAX_CHAT_MESSAGES_PER_HOUR = 15;
 const HOUR_MS = 60 * 60 * 1000;
 
-export type ChatSendBlockReason = "empty" | "too_long" | "rate_limit";
+export type ChatSendBlockReason = "empty" | "too_long" | "rate_limit" | "service_unavailable";
 
 export const clampChatText = (text: string) => text.slice(0, MAX_CHAT_MESSAGE_CHARS);
 
@@ -67,37 +75,40 @@ export const titleFromText = (text: string) => {
     return line.length > 42 ? `${line.slice(0, 39)}…` : line;
 };
 
-export const dummyReply = (text: string) => {
-    const q = text.toLowerCase();
-    if (/(book|visit|slot|doctor|appointment)/.test(q)) {
-        return "You can book from Appointments. Pick who the visit is for, a doctor or any doctor, then a 30-minute slot. Clinic hours run through the night.";
-    }
-    if (/(record|phr|blood|pressure|allerg)/.test(q)) {
-        return "Health records are under Records. Readings, tags, and past treatments stay on this device.";
-    }
-    if (/(medicine|prescription|pickup|deliver|cart|pharmacy)/.test(q)) {
-        return "Prescribed medicine is on the medicine page. Add units to the cart, then choose pickup or delivery at checkout.";
-    }
-    if (/(hour|open|24|night)/.test(q)) {
-        return "CarePlus Clinic is a 24-hour clinic. Morning slots run 6:00–17:30, night slots 18:00–05:30, Kuala Lumpur time.";
-    }
-    return "Ask about booking, records, or prescribed medicine, or open those pages from the header.";
-};
-
-export const sendInThread = (thread: ChatThread, text: string, now = Date.now()): ChatThread => {
+export const appendUserMessage = (thread: ChatThread, text: string, now = Date.now()): ChatThread => {
     const line = text.trim().slice(0, MAX_CHAT_MESSAGE_CHARS);
     if (!line) {
         return thread;
     }
     const user: ChatMessage = { id: `m-${now}-u`, role: "user", text: line, at: now };
-    const assistant: ChatMessage = { id: `m-${now}-a`, role: "assistant", text: dummyReply(line), at: now + 1 };
     return {
         ...thread,
         title: thread.title || titleFromText(line),
-        updatedAt: now + 1,
-        messages: [...thread.messages, user, assistant],
+        updatedAt: now,
+        messages: [...thread.messages, user],
     };
 };
+
+export const appendAssistantMessage = (
+    thread: ChatThread,
+    text: string,
+    details?: { disclaimer?: string; sources?: ChatSource[] },
+    now = Date.now(),
+): ChatThread => ({
+    ...thread,
+    updatedAt: now,
+    messages: [
+        ...thread.messages,
+        {
+            id: `m-${now}-a`,
+            role: "assistant",
+            text: text.trim(),
+            at: now,
+            disclaimer: details?.disclaimer,
+            sources: details?.sources,
+        },
+    ],
+});
 
 export const upsertThread = (threads: ChatThread[], next: ChatThread) => {
     const others = threads.filter((item) => item.id !== next.id);
@@ -107,7 +118,17 @@ export const upsertThread = (threads: ChatThread[], next: ChatThread) => {
 export const readThreads = (key: string): ChatThread[] => {
     try {
         const raw = (key === GUEST_CHAT_KEY ? sessionStorage : localStorage).getItem(key);
-        return raw ? (JSON.parse(raw) as ChatThread[]) : [];
+        if (!raw) {
+            return [];
+        }
+
+        return (JSON.parse(raw) as ChatThread[]).map((thread) => {
+            const messages = [...thread.messages];
+            while (messages.at(-1)?.role === "user") {
+                messages.pop();
+            }
+            return { ...thread, messages };
+        });
     } catch {
         return [];
     }

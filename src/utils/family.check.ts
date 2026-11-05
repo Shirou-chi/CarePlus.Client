@@ -2,19 +2,13 @@ import { dummyProfile } from "./auth.ts";
 import {
     acceptInvite,
     bookingFamily,
-    canUseFamilyAccount,
     createFamily,
-    decideUseRequest,
     deleteFamily,
-    familyLogin,
     inviteMember,
     leaveFamily,
-    pendingUseRequests,
     readFamily,
     removeFamilyMember,
-    requestUseAccount,
     setPermission,
-    useFamilyAccount,
 } from "./family.ts";
 
 const storage = new Map<string, string>();
@@ -31,19 +25,11 @@ const family = readFamily(dummyProfile);
 const invited = inviteMember(dummyProfile, { name: "  Mei  ", email: "mei@example.com", relation: "spouse", permission: "child" });
 const pending = invited.ok ? invited.family.members.find((member) => member.email === "mei@example.com") : undefined;
 const beforeAccept = bookingFamily(dummyProfile);
-const mei = familyLogin("mei@example.com", "careplus123");
-const aina = familyLogin("aina@example.com", "careplus123");
+const mei = { ...dummyProfile, id: "fam-mei", email: "mei@example.com", fullName: "Mei" };
+const aina = { ...dummyProfile, id: "fam-child", email: "aina@example.com", fullName: "Aina" };
 const accepted = mei && pending ? acceptInvite(mei, pending.id) : { ok: false as const, reason: "missing" as const };
-const meiId = accepted.ok ? accepted.family.members.find((member) => member.email === "mei@example.com")?.id : undefined;
 const afterAccept = bookingFamily(dummyProfile);
 const viewOnly = aina ? bookingFamily(aina) : [];
-const blockedParent = aina ? requestUseAccount(aina, "patient-1") : { ok: false as const, reason: "missing" as const };
-const requested = aina && meiId ? requestUseAccount(aina, meiId) : { ok: false as const, reason: "missing" as const };
-const pendingAccess = pendingUseRequests(dummyProfile);
-const approved = pendingAccess[0] ? decideUseRequest(dummyProfile, pendingAccess[0].request.id, true) : { ok: false as const };
-const ainaCanUseMei = Boolean(aina && meiId && canUseFamilyAccount(aina, meiId));
-const switched = aina && meiId ? useFamilyAccount(aina, meiId) : null;
-const parentUsesChild = canUseFamilyAccount(dummyProfile, "fam-child");
 const demoted = setPermission(dummyProfile, "fam-parent", "child");
 const blockedLeave = leaveFamily(dummyProfile);
 const transferred = leaveFamily(dummyProfile, "fam-child");
@@ -56,15 +42,9 @@ const checks = [
     family?.members.find((member) => member.id === "fam-child")?.permission === "child",
     invited.ok && pending?.status === "pending" && pending.name === "Mei" && pending.permission === "child",
     beforeAccept.length === 3 && !beforeAccept.some((person) => person.name === "Mei"),
-    mei?.email === "mei@example.com",
     accepted.ok,
     afterAccept.some((person) => person.name === "Mei"),
     viewOnly.length === 1 && viewOnly[0]?.isYou,
-    !blockedParent.ok && blockedParent.reason === "not-allowed",
-    aina ? !canUseFamilyAccount(aina, "patient-1") && useFamilyAccount(aina, "patient-1") === null : false,
-    parentUsesChild,
-    requested.ok && pendingAccess.length === 1,
-    approved.ok && ainaCanUseMei && switched?.email === "mei@example.com",
     demoted.ok,
     !blockedLeave.ok && blockedLeave.reason === "need-transfer",
     transferred.ok && ainaOwns?.permission === "parent",

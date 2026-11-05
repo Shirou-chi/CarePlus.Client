@@ -2,21 +2,23 @@ import { type FC, useState } from "react";
 import { useNavigate } from "react-router";
 import {
     CalendarCheck01,
+    Bell01,
     ShoppingCart01,
     ChevronDown,
     ChevronRight,
-    File06,
+    Globe01,
     Grid01,
     HelpCircle,
+    File06,
+    MedicalCross,
     Moon01,
     Receipt,
-    SearchMd,
     Sun,
     User01,
     Users01,
     Trash01,
 } from "@untitledui/icons";
-import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Link as AriaLink, Popover as AriaPopover } from "react-aria-components";
+import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
@@ -24,6 +26,7 @@ import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/but
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { NavMenuItemLink } from "@/components/marketing/header-navigation/base-components/nav-menu-item";
+import { SiteSearch } from "@/components/marketing/header-navigation/site-search";
 import { requestHomeTour } from "@/components/marketing/home/home-tour";
 import { HeaderNotifications } from "@/components/marketing/notifications/header-notifications";
 import { useAuth } from "@/providers/auth-provider";
@@ -53,17 +56,19 @@ const iconGhost =
     "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white";
 
 const useServiceGroups = (): ServiceGroup[] => {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { profile } = useAuth();
     const bookHref = profile ? "/book" : "/login";
     const visitsHref = profile ? "/visits" : "/login";
-    const historyHref = profile ? "/history" : "/login";
     const invoicesHref = profile ? "/invoices" : "/login";
     const paymentsHref = profile ? "/payments" : "/login";
     const ordersHref = profile ? "/orders" : "/login";
-    const notesHref = profile ? "/notes" : "/login";
-    const labsHref = profile ? "/labs" : "/login";
     const familyHref = profile ? "/family" : "/login";
+    const recordsHref = profile ? "/clinic-records" : "/login";
+    const healthRecordsHref = profile ? "/records" : "/login";
+    const medicineHref = profile ? "/medicine" : "/login";
+    const cartHref = profile ? "/cart" : "/login";
+    const notificationsHref = profile ? "/notifications" : "/login";
     return [
         {
             id: "visits",
@@ -73,7 +78,6 @@ const useServiceGroups = (): ServiceGroup[] => {
             links: [
                 { title: t.bookVisit, subtitle: t.bookVisitHint, href: bookHref },
                 { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: visitsHref },
-                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: historyHref },
             ],
         },
         {
@@ -82,8 +86,19 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.recordsHint,
             Icon: File06,
             links: [
-                { title: t.notes, subtitle: t.notesHint, href: notesHref },
-                { title: t.labs, subtitle: t.labsHint, href: labsHref },
+                { title: t.clinicRecordsTitle, subtitle: t.clinicRecordsNavHint, href: recordsHref },
+                { title: t.phrTitle, subtitle: t.phrNavHint, href: healthRecordsHref },
+            ],
+        },
+        {
+            id: "medicine",
+            title: t.homeNavMedicine,
+            subtitle: t.medSearch,
+            Icon: MedicalCross,
+            links: [
+                { title: t.medTitle, subtitle: t.medSearch, href: medicineHref },
+                { title: t.cart, subtitle: t.medCartEmptyHint, href: cartHref },
+                { title: t.ordersTitle, subtitle: t.ordersHint, href: ordersHref },
             ],
         },
         {
@@ -94,7 +109,6 @@ const useServiceGroups = (): ServiceGroup[] => {
             links: [
                 { title: t.invoices, subtitle: t.invoicesHint, href: invoicesHref },
                 { title: t.payments, subtitle: t.paymentsHint, href: paymentsHref },
-                { title: t.ordersTitle, subtitle: t.ordersHint, href: ordersHref },
             ],
         },
         {
@@ -103,6 +117,16 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.familyHint,
             Icon: Users01,
             links: [{ title: t.familyProfiles, subtitle: t.familyProfilesHint, href: familyHref }],
+        },
+        {
+            id: "announcements",
+            title: locale === "zh" ? "公告与通知" : "Announcements",
+            subtitle: t.announcementsHint,
+            Icon: Bell01,
+            links: [
+                { title: t.announcements, subtitle: t.announcementsHint, href: "/announcements" },
+                { title: t.notifications, subtitle: profile ? t.notifEmptyHint : t.notifGuestHint, href: notificationsHref },
+            ],
         },
     ];
 };
@@ -114,7 +138,8 @@ const useOverdueLock = () => {
 };
 
 export const LandingHeader = () => {
-    const { t } = useI18n();
+    const { t, locale, setLocale } = useI18n();
+    const { theme, setTheme } = useTheme();
     const { profile, logout } = useAuth();
     const navigate = useNavigate();
     const overdue = useOverdueLock();
@@ -127,7 +152,7 @@ export const LandingHeader = () => {
     return (
         <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/90 backdrop-blur-md dark:border-white/10 dark:bg-[#0b2036]/92">
             <div className="mx-auto flex h-[4.5rem] w-full max-w-container items-center justify-between gap-4 px-4 md:h-22 md:px-8">
-                <CarePlusLogo href={profile ? "/home" : "/"} />
+                <CarePlusLogo href={profile ? "/home" : "/"} className="max-[479px]:[&>span]:sr-only" />
 
                 <div className="hidden items-center lg:flex">
                     <ServicesMega />
@@ -158,6 +183,14 @@ export const LandingHeader = () => {
                                     <Dropdown.Item icon={User01} selectionIndicator="none" onAction={() => navigate("/account")}>
                                         {t.viewProfile}
                                     </Dropdown.Item>
+                                    <Dropdown.Separator />
+                                    <Dropdown.Item icon={theme === "dark" ? Sun : Moon01} selectionIndicator="none" onAction={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                                        {theme === "dark" ? t.themeToLight : t.themeToDark}
+                                    </Dropdown.Item>
+                                    <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none" onAction={() => setLocale(locale === "en" ? "zh" : "en")}>
+                                        {t.language}
+                                    </Dropdown.Item>
+                                    <Dropdown.Separator />
                                     <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
                                         {t.signOut}
                                     </Dropdown.Item>
@@ -176,6 +209,7 @@ export const LandingHeader = () => {
                 </div>
 
                 <div className="flex items-center gap-1 lg:hidden">
+                    <SiteSearch />
                     {overdue ? null : <HeaderNotifications />}
                     {overdue ? null : <HeaderCart />}
                     <MobileNav />
@@ -188,16 +222,11 @@ export const LandingHeader = () => {
 };
 
 const NavIcons = () => {
-    const { t } = useI18n();
     const overdue = useOverdueLock();
 
     return (
         <div className="ml-3 flex items-center gap-0.5">
-            <Tooltip title={t.search}>
-                <AriaLink aria-label={t.search} className={iconGhost} href="/#get-started">
-                    <SearchMd className="size-5" />
-                </AriaLink>
-            </Tooltip>
+            <SiteSearch />
             {overdue ? null : <HeaderNotifications />}
             {overdue ? null : <HeaderCart />}
         </div>
@@ -226,7 +255,12 @@ const HeaderCart = () => {
                     <div className="rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary_alt">
                         <p className="text-sm font-semibold text-primary">{t.cart}</p>
                         {lines.length === 0 ? (
-                            <p className="mt-2 text-sm text-tertiary">{t.medCartEmptyHint}</p>
+                            <>
+                                <p className="mt-2 text-sm text-tertiary">{t.medCartEmptyHint}</p>
+                                <Button color="secondary" size="sm" href="/medicine" className="mt-4 w-full">
+                                    {t.medCartBrowseMedicines}
+                                </Button>
+                            </>
                         ) : (
                             <>
                                 <ul className="mt-3 flex flex-col gap-3">
@@ -245,7 +279,7 @@ const HeaderCart = () => {
                                 <Button color="primary" size="sm" href="/cart" className="mt-4 w-full">
                                     {t.medCartView}
                                 </Button>
-                                <Button color="secondary" size="sm" iconLeading={Trash01} className="mt-2 w-full" onPress={clear}>
+                                <Button color="secondary" size="sm" iconLeading={Trash01} className="mt-2 w-full" onClick={clear}>
                                     {t.medClearCart}
                                 </Button>
                             </>
@@ -375,7 +409,8 @@ const TourButton = () => {
 };
 
 const MobileAccount = () => {
-    const { t } = useI18n();
+    const { t, locale, setLocale } = useI18n();
+    const { theme, setTheme } = useTheme();
     const { profile, logout } = useAuth();
     const navigate = useNavigate();
     if (!profile) return null;
@@ -394,6 +429,14 @@ const MobileAccount = () => {
                     <Dropdown.Item icon={User01} selectionIndicator="none" onAction={() => navigate("/account")}>
                         {t.viewProfile}
                     </Dropdown.Item>
+                    <Dropdown.Separator />
+                    <Dropdown.Item icon={theme === "dark" ? Sun : Moon01} selectionIndicator="none" onAction={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                        {theme === "dark" ? t.themeToLight : t.themeToDark}
+                    </Dropdown.Item>
+                    <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none" onAction={() => setLocale(locale === "en" ? "zh" : "en")}>
+                        {t.language}
+                    </Dropdown.Item>
+                    <Dropdown.Separator />
                     <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
                         {t.signOut}
                     </Dropdown.Item>
