@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '../../components/theme/useTheme'
 import { Icon, type IconName } from './navbar/StaffIcon'
-import { StaffSidebar, type StaffRole } from './navbar/StaffSidebar'
+import { getStaffRole, StaffSidebar, type StaffRole } from './navbar/StaffSidebar'
 import { StaffNavbar } from './navbar/StaffNavbar'
 import './StaffHomePage.css'
 
@@ -207,27 +206,19 @@ const roleOverviewData: Record<StaffRole, RoleOverview> = {
   },
 }
 
-function isStaffRole(value: string | undefined): value is StaffRole {
-  return value === 'Admin' || value === 'Doctor' || value === 'Pharmacist'
-}
-
 export function StaffHomePage() {
-  const navigate = useNavigate()
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const [activeNav, setActiveNav] = useState('Overview')
-  const [selectedRole, setSelectedRole] = useState<StaffRole>(
-    isStaffRole(user?.role) ? user.role : 'Admin',
-  )
+  const [activeNav] = useState('Overview')
+  const currentRole = getStaffRole(user?.role)
   const [selectedPeriod, setSelectedPeriod] = useState<OverviewPeriod>('This week')
   const [searchTerm, setSearchTerm] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notice, setNotice] = useState('')
-  const overview = roleOverviewData[selectedRole]
+  const overview = roleOverviewData[currentRole]
   const displayName = user?.name || 'Staff member'
 
-  console.log(user);
   const filteredActivity = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
     if (!query) return overview.activity
@@ -247,69 +238,24 @@ export function StaffHomePage() {
     window.setTimeout(() => setNotice(''), 3200)
   }
 
-  const handleRoleChange = (role: StaffRole) => {
-    setSelectedRole(role)
-    setActiveNav('Overview')
-    setSearchTerm('')
-    setSelectedPeriod('This week')
-    announce(`${role} overview and module access are now displayed.`)
-  }
-
-  const handleNavigate = (label: string) => {
-    if (label === 'Staff') {
-      navigate('/staff/staff')
-      return
-    }
-    if (label === 'Appointments') {
-      navigate('/staff/appointments')
-      return
-    }
-    if (label === 'Patients') {
-      navigate('/staff/patients')
-      return
-    }
-    if (label === 'Schedules & availability') {
-      navigate('/staff/schedules')
-      return
-    }
-    if (label === 'Leave') {
-      navigate('/staff/leave')
-      return
-    }
-    if (label === 'Audit & logs') {
-      navigate('/staff/audit-logs')
-      return
-    }
-    if (label === 'Notifications') {
-      navigate('/staff/notifications')
-      return
-    }
-    setActiveNav(label)
-    if (label !== 'Overview') announce(`${label} is ready to connect to your clinic workflow.`)
-  }
-
   return (
     <div className="staff-page">
       <StaffSidebar
         activeNav={activeNav}
         announce={announce}
         onClose={() => setSidebarOpen(false)}
-        onNavigate={handleNavigate}
-        onRoleChange={handleRoleChange}
-        role={selectedRole}
         sidebarOpen={sidebarOpen}
       />
 
       <main className="staff-main">
         <StaffNavbar
           activeNav={activeNav}
-          announce={announce}
           notificationsOpen={notificationsOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
           onSearchChange={setSearchTerm}
           onToggleNotifications={() => setNotificationsOpen((current) => !current)}
           searchTerm={searchTerm}
-          selectedRole={selectedRole}
+          selectedRole={currentRole}
           theme={theme}
           toggleTheme={toggleTheme}
         />
@@ -318,7 +264,7 @@ export function StaffHomePage() {
           <section className="staff-hero">
             <div>
               <p className="staff-eyebrow">
-                {overview.eyebrow} · {selectedRole}
+                {overview.eyebrow} · {currentRole}
                 {user?.staffId ? ` · ${user.staffId}` : ''}
               </p>
               <h1>Welcome back, {displayName}<span>.</span></h1>
@@ -340,7 +286,7 @@ export function StaffHomePage() {
           <div className="staff-primary-grid">
             <section aria-labelledby="appointments-overview" className="staff-card staff-chart-card">
               <div className="staff-card__header">
-                <div><p className="staff-card__eyebrow">{selectedRole} performance</p><h2 id="appointments-overview">{overview.chartTitle}</h2></div>
+                <div><p className="staff-card__eyebrow">{currentRole} performance</p><h2 id="appointments-overview">{overview.chartTitle}</h2></div>
                 <label className="staff-select"><span className="sr-only">Overview period</span><select value={selectedPeriod} onChange={(event) => setSelectedPeriod(event.target.value as OverviewPeriod)}><option>This week</option><option>Last week</option></select><Icon name="chevronDown" size={15} /></label>
               </div>
               <div className="staff-chart-summary"><strong>{overview.chartTotals[selectedPeriod]}</strong><span>{overview.chartTitle.toLowerCase()}</span><span className="staff-positive"><Icon name="arrowUpRight" size={14} /> {overview.chartChange}</span></div>

@@ -1,0 +1,306 @@
+.clinic-rooms-content {
+  padding-top: 34px;
+}
+
+.clinic-rooms-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 26px;
+  margin-bottom: 26px;
+}
+
+.clinic-rooms-hero h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-family: var(--site-font-display);
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.clinic-rooms-hero__copy {
+  max-width: 610px;
+  margin: 11px 0 0;
+  color: var(--staff-muted);
+  font-size: 0.94rem;
+}
+
+.clinic-rooms-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 17px;
+}
+
+.clinic-room-summary-card {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  min-height: 105px;
+  padding: 15px;
+  border: 1px solid var(--staff-line);
+  border-radius: 10px;
+  background: var(--staff-card);
+}
+
+.clinic-room-summary-card > span {
+  display: grid;
+  grid-row: span 3;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.clinic-room-summary-card--teal > span { background: rgba(49, 184, 173, 0.14); color: var(--staff-teal); }
+.clinic-room-summary-card--blue > span { background: rgba(73, 130, 216, 0.14); color: var(--staff-blue); }
+.clinic-room-summary-card--amber > span { background: rgba(229, 165, 75, 0.14); color: var(--staff-amber); }
+.clinic-room-summary-card--violet > span { background: rgba(126, 103, 235, 0.14); color: var(--staff-violet); }
+
+.clinic-room-summary-card small,
+.clinic-room-summary-card em {
+  color: var(--staff-muted);
+  font-size: 0.6rem;
+}
+
+.clinic-room-summary-card strong {
+  color: var(--staff-ink);
+  font-family: var(--site-font-display);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.clinic-room-summary-card em {
+  margin-top: 4px;
+  font-style: normal;
+}
+
+.clinic-rooms-list-card {
+  overflow: hidden;
+}
+
+.clinic-rooms-description {
+  display: block;
+  margin-top: 5px;
+  color: var(--staff-muted);
+  font-size: 0.72rem;
+}
+
+.clinic-rooms-count {
+  color: var(--staff-muted);
+  font-size: 0.65rem;
+}
+
+.clinic-rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+  padding: 18px;
+  border-top: 1px solid var(--staff-line);
+}
+
+.clinic-room-card {
+  padding: 16px;
+  border: 1px solid var(--staff-line);
+  border-radius: 10px;
+  background: var(--staff-subtle);
+}
+
+.clinic-room-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.clinic-room-icon {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border-radius: 9px;
+  background: rgba(49, 184, 173, 0.13);
+  color: var(--staff-brand);
+}
+
+.clinic-room-status {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 99px;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.clinic-room-status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.clinic-room-status--available { background: rgba(59, 193, 125, 0.13); color: #3bc17d; }
+.clinic-room-status--occupied { background: rgba(229, 165, 75, 0.14); color: #c48724; }
+.clinic-room-status--maintenance { background: rgba(211, 107, 114, 0.13); color: #d36b72; }
+.clinic-room-status--inactive { background: rgba(144, 160, 176, 0.14); color: var(--staff-muted); }
+
+.clinic-room-card h3 {
+  margin: 18px 0 5px;
+  color: var(--staff-ink);
+  font-family: var(--site-font-display);
+  font-size: 1rem;
+}
+
+.clinic-room-card p {
+  margin: 0;
+  color: var(--staff-muted);
+  font-size: 0.62rem;
+}
+
+.clinic-room-edit {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 7px 9px;
+  border: 1px solid var(--staff-line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--staff-ink);
+  font-size: 0.62rem;
+  cursor: pointer;
+}
+
+.clinic-room-edit:hover {
+  border-color: var(--staff-brand);
+  color: var(--staff-brand);
+}
+
+.clinic-rooms-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 54px 20px;
+  border-top: 1px solid var(--staff-line);
+  color: var(--staff-muted);
+  text-align: center;
+}
+
+.clinic-rooms-empty strong {
+  color: var(--staff-ink);
+  font-family: var(--site-font-display);
+  font-size: 0.9rem;
+}
+
+.clinic-rooms-empty span {
+  font-size: 0.66rem;
+}
+
+.clinic-rooms-error {
+  display: grid;
+  gap: 4px;
+  margin: 0 18px 18px;
+  padding: 11px 12px;
+  border: 1px solid rgba(211, 107, 114, 0.4);
+  border-radius: 8px;
+  background: rgba(211, 107, 114, 0.09);
+  color: #d36b72;
+  font-size: 0.65rem;
+}
+
+.clinic-rooms-error button {
+  justify-self: start;
+  margin-top: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--staff-brand);
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clinic-room-dialog {
+  width: min(460px, 100%);
+}
+
+.clinic-room-form {
+  display: grid;
+  gap: 14px;
+}
+
+.clinic-room-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--staff-ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.clinic-room-form input,
+.clinic-room-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid var(--staff-line);
+  border-radius: 7px;
+  outline: 0;
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.clinic-room-form-error {
+  padding: 10px 11px;
+  border: 1px solid rgba(211, 107, 114, 0.4);
+  border-radius: 7px;
+  background: rgba(211, 107, 114, 0.09);
+  color: #d36b72;
+  font-size: 0.65rem;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.clinic-room-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 3px;
+}
+
+@media (max-width: 900px) {
+  .clinic-rooms-summary,
+  .clinic-rooms-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .clinic-rooms-content {
+    padding-top: 28px;
+  }
+
+  .clinic-rooms-hero {
+    display: grid;
+    gap: 16px;
+  }
+
+  .clinic-rooms-hero h1 {
+    font-size: 2.25rem;
+  }
+
+  .clinic-rooms-summary,
+  .clinic-rooms-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clinic-room-dialog__actions {
+    flex-direction: column-reverse;
+  }
+
+  .clinic-room-dialog__actions .staff-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
