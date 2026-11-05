@@ -34,11 +34,15 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
     const composerError =
         sendError === "too_long"
             ? t.chatErrorTooLong.replace("{max}", String(MAX_CHAT_MESSAGE_CHARS))
+            : sendError === "duplicate"
+              ? t.chatErrorDuplicate
+              : sendError === "cooldown"
+                ? t.chatErrorCooldown
             : sendError === "rate_limit"
               ? t.chatErrorRateLimit.replace("{limit}", String(MAX_CHAT_MESSAGES_PER_HOUR))
               : sendError === "service_unavailable"
                 ? t.chatErrorUnavailable
-              : null;
+                : null;
 
     return (
         <div
@@ -72,7 +76,7 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
                             onSend={sendDraft}
                             isSending={isSending}
                         />
-                        <Button color="link-color" size="sm" className="mt-2" onPress={startNew}>
+                        <Button color="link-color" size="sm" className="mt-2" onClick={startNew}>
                             {t.chatNew}
                         </Button>
                     </div>
