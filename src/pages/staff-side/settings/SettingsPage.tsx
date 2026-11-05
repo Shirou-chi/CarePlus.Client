@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '@/providers/theme-provider'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
-import { StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
+import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import '../StaffHomePage.css'
 import './SettingsPage.css'
 
@@ -40,12 +39,10 @@ function readSettings(): StaffSettings {
 }
 
 export function SettingsPage() {
-  const navigate = useNavigate()
   const { updateStaffProfile, user } = useAuth()
   const { theme, setTheme } = useTheme()
   const selectedTheme: ThemeChoice = theme === 'dark' || (theme === 'system' && document.documentElement.dataset.theme === 'dark') ? 'dark' : 'light'
-  const initialRole: StaffRole = user?.role === 'Doctor' || user?.role === 'Pharmacist' ? user.role : 'Admin'
-  const [selectedRole, setSelectedRole] = useState<StaffRole>(initialRole)
+  const currentRole = getStaffRole(user?.role)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -101,28 +98,6 @@ export function SettingsPage() {
 
     return () => { cancelled = true }
   }, [user?.role, user?.staffId])
-
-  const handleNavigate = (label: string) => {
-    const routes: Record<string, string> = {
-      Overview: '/staff',
-      Appointments: '/staff/appointments',
-      Patients: '/staff/patients',
-      Staff: '/staff/staff',
-      'Schedules & availability': '/staff/schedules',
-      Leave: '/staff/leave',
-      Notifications: '/staff/notifications',
-      'Audit & logs': '/staff/audit-logs',
-      Settings: '/staff/settings',
-    }
-
-    const route = routes[label]
-    if (route) {
-      navigate(route)
-      return
-    }
-
-    announce(`${label} is ready to connect to your clinic workflow.`)
-  }
 
   const updateSetting = <K extends keyof StaffSettings>(key: K, value: StaffSettings[K]) => {
     setSettings((current) => ({ ...current, [key]: value }))
@@ -201,9 +176,9 @@ export function SettingsPage() {
 
   return (
     <div className="staff-page staff-settings-page">
-      <StaffSidebar activeNav="Settings" announce={announce} onClose={() => setSidebarOpen(false)} onNavigate={handleNavigate} onRoleChange={(role) => { setSelectedRole(role); announce(`${role} workspace selected.`) }} role={selectedRole} sidebarOpen={sidebarOpen} />
+      <StaffSidebar activeNav="Settings" announce={announce} onClose={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
       <main className="staff-main">
-        <StaffNavbar activeNav="Settings" announce={announce} notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setSearchTerm} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={searchTerm} selectedRole={selectedRole} theme={theme === 'dark' ? 'dark' : 'light'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+      <StaffNavbar activeNav="Settings" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setSearchTerm} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={searchTerm} selectedRole={currentRole} theme={theme === 'dark' ? 'dark' : 'light'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
 
         <div className="staff-content staff-settings-content">
           <section className="staff-card staff-settings-profile-card">

@@ -15,6 +15,7 @@
   --staff-amber: #e5a54b;
   --staff-blue: #5a92e8;
   --staff-capacity-track: #e8eef2;
+  --staff-picker-filter: invert(35%) sepia(18%) saturate(1059%) hue-rotate(139deg) brightness(87%) contrast(88%);
   display: grid;
   grid-template-columns: 252px minmax(0, 1fr);
   min-height: calc(100vh - 1px);
@@ -38,6 +39,7 @@ body:has(.staff-page) .site-back-to-top {
   --staff-brand: #6fe0d3;
   --staff-brand-deep: #abfff5;
   --staff-capacity-track: #203746;
+  --staff-picker-filter: brightness(0) invert(1);
   background: #081723;
 }
 
@@ -47,10 +49,71 @@ body:has(.staff-page) .site-back-to-top {
   box-sizing: border-box;
 }
 
+.staff-page,
+.staff-page * {
+  scrollbar-color: color-mix(in srgb, var(--staff-muted) 64%, var(--staff-subtle)) var(--staff-subtle);
+  scrollbar-width: thin;
+}
+
+.staff-page::-webkit-scrollbar,
+.staff-page *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.staff-page::-webkit-scrollbar-track,
+.staff-page *::-webkit-scrollbar-track {
+  background: var(--staff-subtle);
+}
+
+.staff-page::-webkit-scrollbar-thumb,
+.staff-page *::-webkit-scrollbar-thumb {
+  border: 2px solid var(--staff-subtle);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--staff-muted) 64%, var(--staff-subtle));
+}
+
+.staff-page::-webkit-scrollbar-thumb:hover,
+.staff-page *::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--staff-brand) 72%, var(--staff-subtle));
+}
+
 .staff-page button,
 .staff-page input,
 .staff-page select {
   font: inherit;
+}
+
+.staff-page select {
+  color-scheme: light;
+}
+
+.staff-page select option,
+.staff-page select optgroup {
+  background: var(--staff-card);
+  color: var(--staff-ink);
+}
+
+.staff-page .staff-date-input,
+.staff-page .staff-time-input {
+  accent-color: var(--staff-brand);
+  color-scheme: light;
+}
+
+.staff-page .staff-date-input::-webkit-calendar-picker-indicator,
+.staff-page .staff-time-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: var(--staff-picker-filter);
+  opacity: 0.9;
+}
+
+:root[data-theme='dark'] .staff-page .staff-date-input,
+:root[data-theme='dark'] .staff-page .staff-time-input {
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] .staff-page select {
+  color-scheme: dark;
 }
 
 .staff-page button {
@@ -116,200 +179,6 @@ body:has(.staff-page) .site-back-to-top {
   font-size: 0.56rem;
   font-weight: 800;
   letter-spacing: 0.14em;
-}
-
-.staff-role-preview {
-  position: relative;
-  margin-top: 28px;
-}
-
-.staff-role-preview__button {
-  display: grid;
-  grid-template-columns: 32px 1fr auto;
-  gap: 9px;
-  align-items: center;
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid var(--staff-line);
-  border-radius: 10px;
-  background: var(--staff-subtle);
-  text-align: left;
-  cursor: pointer;
-}
-
-.staff-role-preview__button:hover {
-  border-color: color-mix(in srgb, var(--staff-teal) 38%, var(--staff-line));
-  background: color-mix(in srgb, var(--staff-teal) 8%, var(--staff-subtle));
-}
-
-.staff-role-preview__avatar,
-.staff-role-option__avatar {
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  font-size: 0.57rem;
-  font-weight: 800;
-}
-
-.staff-role-preview__avatar {
-  width: 32px;
-  height: 32px;
-  background: #d9f2ee;
-  color: var(--staff-brand);
-}
-
-:root[data-theme='dark'] .staff-role-preview__avatar {
-  background: rgba(91, 219, 204, 0.14);
-}
-
-.staff-role-preview__button > span:nth-child(2),
-.staff-role-option > span:nth-child(2) {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-
-.staff-role-preview__button strong {
-  color: var(--staff-ink);
-  font-size: 0.72rem;
-}
-
-.staff-role-preview__button small,
-.staff-role-option small {
-  color: var(--staff-muted);
-  font-size: 0.58rem;
-}
-
-.staff-role-preview__button > .staff-icon {
-  color: var(--staff-muted);
-}
-
-.staff-role-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: -7px;
-  left: -7px;
-  z-index: 30;
-  padding: 11px;
-  border: 1px solid var(--staff-line);
-  border-radius: 11px;
-  background: var(--staff-card);
-  box-shadow: 0 18px 40px rgba(27, 48, 72, 0.16);
-}
-
-.staff-role-panel__heading {
-  display: grid;
-  gap: 3px;
-  padding: 3px 4px 9px;
-  border-bottom: 1px solid var(--staff-line);
-}
-
-.staff-role-panel__heading strong {
-  font-size: 0.7rem;
-}
-
-.staff-role-panel__heading small,
-.staff-role-panel__modules > small {
-  color: var(--staff-muted);
-  font-size: 0.57rem;
-}
-
-.staff-role-options {
-  display: grid;
-  gap: 3px;
-  padding: 7px 0;
-}
-
-.staff-role-option {
-  display: grid;
-  grid-template-columns: 27px minmax(0, 1fr) auto 15px;
-  gap: 7px;
-  align-items: center;
-  width: 100%;
-  padding: 7px 5px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-
-.staff-role-option:hover,
-.staff-role-option.is-selected {
-  border-color: rgba(49, 184, 173, 0.14);
-  background: #eaf7f5;
-}
-
-:root[data-theme='dark'] .staff-role-option:hover,
-:root[data-theme='dark'] .staff-role-option.is-selected {
-  background: rgba(49, 184, 173, 0.13);
-}
-
-.staff-role-option__avatar {
-  width: 27px;
-  height: 27px;
-}
-
-.staff-role-option__avatar--admin { background: #d9f2ee; color: #188b82; }
-.staff-role-option__avatar--doctor { background: #e8effc; color: #4f83d2; }
-.staff-role-option__avatar--pharmacist { background: #efebff; color: #7465d7; }
-.staff-role-option__avatar--staff { background: #fff0dc; color: #b9791b; }
-
-.staff-role-option strong {
-  overflow: hidden;
-  color: var(--staff-ink);
-  font-size: 0.64rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.staff-role-option__count {
-  white-space: nowrap;
-}
-
-.staff-role-option > .staff-icon {
-  color: var(--staff-brand);
-}
-
-.staff-role-panel__modules {
-  display: grid;
-  gap: 7px;
-  padding: 9px 4px 3px;
-  border-top: 1px solid var(--staff-line);
-}
-
-.staff-role-panel__modules > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.staff-role-panel__modules span {
-  padding: 4px 6px;
-  border-radius: 5px;
-  background: var(--staff-subtle);
-  color: var(--staff-muted);
-  font-size: 0.54rem;
-}
-
-.staff-role-access-note {
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  margin: 9px 10px 0;
-  color: var(--staff-muted);
-  font-size: 0.57rem;
-  line-height: 1.4;
-}
-
-.staff-role-access-note .staff-icon {
-  flex: 0 0 auto;
-  color: var(--staff-brand);
-}
-
-.staff-role-access-note strong {
-  color: var(--staff-ink);
-  font-weight: 700;
 }
 
 .staff-theme-toggle:hover,
