@@ -174,10 +174,6 @@ export function NotificationsPage() {
     }
   }
 
-  const appointmentCount = notificationItems.filter((item) => item.category === 'Appointments').length
-  const inventoryCount = notificationItems.filter((item) => item.category === 'Inventory').length
-  const leaveCount = notificationItems.filter((item) => item.category === 'Leave').length
-
   return (
     <div className="staff-page notifications-page">
       <StaffSidebar activeNav={activeNav} announce={announce} onClose={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
@@ -194,7 +190,6 @@ export function NotificationsPage() {
               <div className="notifications-list">{notificationsLoading ? <div className="notifications-empty"><Icon name="bell" size={25} /><strong>Loading notifications</strong><span>Checking your staff updates.</span></div> : null}{!notificationsLoading ? filteredNotifications.map((item) => { const isUnread = item.unread; return <article className={`notification-item${isUnread ? ' is-unread' : ''}`} key={item.id}><span className={`notification-item__icon notification-item__icon--${item.tone}`}><Icon name={item.icon} size={18} /></span><div className="notification-item__copy"><div><strong>{item.title}</strong>{isUnread ? <span className="notification-unread-dot" /> : null}</div><p>{item.message}</p><small>{item.category} · {item.time}</small></div><button aria-label={isUnread ? `Mark ${item.title} as read` : `Open ${item.title}`} className="notification-item__action" type="button" onClick={() => void markRead(item.id)} disabled={notificationActionLoading}>{isUnread ? <Icon name="check" size={16} /> : <Icon name="chevronRight" size={17} />}</button></article> }) : null}{!notificationsLoading && !filteredNotifications.length ? <div className="notifications-empty"><Icon name="bell" size={25} /><strong>No notifications found</strong><span>Try another search or category.</span></div> : null}</div>
               <div className="notifications-footer"><span>Showing <strong>{filteredNotifications.length}</strong> notifications</span><button type="button" onClick={() => announce('Older notifications are ready to load.')}>Load older notifications <Icon name="arrowUpRight" size={15} /></button></div>
             </div>
-            <aside className="notifications-side-column"><section className="staff-card notification-summary-card"><div className="staff-card__header"><div><p className="staff-card__eyebrow">Current updates</p><h2>Activity summary</h2></div><span className="staff-live-pill"><i /> Live</span></div><div className="notification-summary-list"><div><span className="notification-summary-icon notification-summary-icon--teal"><Icon name="calendar" size={15} /></span><span><strong>{appointmentCount}</strong><small>Appointment updates</small></span></div><div><span className="notification-summary-icon notification-summary-icon--amber"><Icon name="box" size={15} /></span><span><strong>{inventoryCount}</strong><small>Inventory alerts</small></span></div><div><span className="notification-summary-icon notification-summary-icon--violet"><Icon name="shield" size={15} /></span><span><strong>{leaveCount}</strong><small>Leave updates</small></span></div></div></section><section className="staff-card notification-access-card"><Icon name="shield" size={18} /><span><strong>{currentRole} access</strong><small>{currentRole === 'Admin' ? 'You receive clinic-wide operational notifications.' : 'You receive notifications related to your workspace.'}</small></span></section></aside>
           </section>
         </div>
       </main>
