@@ -4,7 +4,7 @@ import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
-import { dummyLogin, SESSION_KEY, type Profile } from "@/utils/auth";
+import { SESSION_KEY, type Profile } from "@/utils/auth";
 import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
 
 const OLD_STAFF_SESSION_KEY = "careplus-staff-session";
@@ -250,16 +250,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
         } catch (error) {
             authApi.clearToken();
-
-            try {
-                const fallbackProfile = dummyLogin(email, password);
-                const nextSession: StoredSession = { type: "patient", profile: fallbackProfile };
-                saveSession(nextSession);
-                setSession(nextSession);
-                setHasCompletedTutorial(false);
-            } catch {
-                throw error;
-            }
+            throw error;
         }
     };
 

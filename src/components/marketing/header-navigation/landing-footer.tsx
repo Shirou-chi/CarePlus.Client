@@ -4,7 +4,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 
 export const LandingFooter = () => {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { profile } = useAuth();
     const columns: { heading: string; links: { label: string; href: string }[] }[] = profile
         ? [
@@ -14,6 +14,7 @@ export const LandingFooter = () => {
                       { label: t.home, href: "/home" },
                       { label: t.bookVisit, href: "/book" },
                       { label: t.upcomingVisits, href: "/visits" },
+                      { label: locale === "zh" ? "诊所排队" : "Clinic queue", href: "/queue" },
                       { label: t.medTitle, href: "/medicine" },
                   ],
               },

@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
-import { ArrowLeft, ChevronDown, FilterLines, Grid01, Rows01, SearchLg } from "@untitledui/icons";
-import { Link, Navigate } from "react-router";
+import { useState } from "react";
+import { ChevronDown, Grid01, Rows01, SearchLg } from "@untitledui/icons";
+import { Navigate } from "react-router";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
-import { BadgeWithButton } from "@/components/base/badges/badges";
+import { FormStatus } from "@/components/application/form-status";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
-import { Input } from "@/components/base/input/input";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
@@ -15,12 +14,9 @@ import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import {
-    filterMedicines,
-    formFilters,
     getClinicPharmacy,
     type CatalogView,
     type Medicine,
-    type MedicineForm,
     type MedicineKind,
 } from "@/utils/prescribed-medicine";
 
@@ -31,19 +27,14 @@ const kindLabel = (kind: MedicineKind, t: Copy) =>
         antihistamine: t.medKindAntihistamine,
     })[kind];
 
-const formLabel = (form: MedicineForm, t: Copy) => (form === "capsule" ? t.medFormCapsule : t.medFormTablet);
-
 export const PrescribedMedicineBrowsePage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const { add, flyToCart, remainingFor } = useCart();
-    const { medicines, ready } = useMedicineCatalog();
+    const { medicines, ready, error, reload } = useMedicineCatalog();
     const clinic = getClinicPharmacy(locale);
-    const [query, setQuery] = useState("");
-    const [forms, setForms] = useState<MedicineForm[]>([]);
     const [view, setView] = useState<CatalogView>("grid");
-
-    const results = useMemo(() => filterMedicines(medicines, query, forms), [forms, medicines, query]);
+    const results = medicines;
 
     if (!isReady) {
         return <div className="careplus-landing min-h-dvh" />;
@@ -52,10 +43,6 @@ export const PrescribedMedicineBrowsePage = () => {
     if (!profile) {
         return <Navigate to="/login" replace />;
     }
-
-    const toggleForm = (form: MedicineForm) => {
-        setForms((list) => (list.includes(form) ? list.filter((item) => item !== form) : [...list, form]));
-    };
 
     const addOne = (medicine: Medicine, source: HTMLElement) => {
         const remaining = remainingFor(medicine.id);
@@ -80,72 +67,7 @@ export const PrescribedMedicineBrowsePage = () => {
             <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
                 <h1 className="sr-only">{t.medTitle}</h1>
-                <div className="flex items-center gap-3">
-                    <Link
-                        to="/home"
-                        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full ring-1 ring-secondary hover:bg-primary_hover"
-                        aria-label={t.medBack}
-                    >
-                        <ArrowLeft className="size-4" />
-                    </Link>
-                    <Input
-                        icon={SearchLg}
-                        size="md"
-                        placeholder={t.medSearch}
-                        value={query}
-                        onChange={setQuery}
-                        className="min-w-0 flex-1"
-                    />
-                    <div className="relative shrink-0">
-                        <Dropdown.Root>
-                            <Button color="secondary" size="md" iconLeading={FilterLines} aria-label={t.medFilter} />
-                            <Dropdown.Popover className="w-52">
-                                <Dropdown.Menu
-                                    selectionMode="multiple"
-                                    selectedKeys={forms}
-                                    onSelectionChange={(keys) => {
-                                        if (keys === "all") {
-                                            setForms([...formFilters]);
-                                            return;
-                                        }
-                                        setForms(
-                                            [...keys].filter((key): key is MedicineForm => formFilters.includes(key as MedicineForm)),
-                                        );
-                                    }}
-                                >
-                                    {formFilters.map((form) => (
-                                        <Dropdown.Item key={form} id={form} label={formLabel(form, t)} selectionIndicator="checkbox" />
-                                    ))}
-                                </Dropdown.Menu>
-                            </Dropdown.Popover>
-                        </Dropdown.Root>
-                        {forms.length > 0 ? (
-                            <span className="pointer-events-none absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-fg-error-primary px-1 text-[10px] leading-none font-semibold text-white">
-                                {forms.length}
-                            </span>
-                        ) : null}
-                    </div>
-                </div>
-
-                {forms.length > 0 ? (
-                    <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
-                        <p className="shrink-0 text-sm text-tertiary">{t.medFilterBy}</p>
-                        {forms.map((form) => (
-                            <BadgeWithButton
-                                key={form}
-                                size="md"
-                                color="brand"
-                                type="pill-color"
-                                buttonLabel={t.medFilter}
-                                onButtonClick={() => toggleForm(form)}
-                            >
-                                {formLabel(form, t)}
-                            </BadgeWithButton>
-                        ))}
-                    </div>
-                ) : null}
-
-                <div className="mt-6 flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-primary">{t.medResults.replace("{count}", String(results.length))}</p>
                     <Dropdown.Root>
                         <Button
@@ -170,7 +92,14 @@ export const PrescribedMedicineBrowsePage = () => {
                     </Dropdown.Root>
                 </div>
 
-                {!ready ? null : results.length === 0 ? (
+                {!ready ? null : error ? (
+                    <div className="mt-6">
+                        <FormStatus error={t.medLoadFailed} />
+                        <Button color="secondary" size="sm" className="mt-3" onClick={reload}>
+                            {t.tryAgain}
+                        </Button>
+                    </div>
+                ) : results.length === 0 ? (
                     <EmptyState size="sm" className="mt-16">
                         <EmptyState.Header pattern="circle">
                             <EmptyState.FeaturedIcon icon={SearchLg} color="gray" theme="modern" />

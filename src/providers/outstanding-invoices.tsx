@@ -8,6 +8,7 @@ import type { OutstandingInvoice } from "@/utils/invoices";
 type OutstandingInvoicesValue = {
     invoices: OutstandingInvoice[];
     ready: boolean;
+    error: string | null;
     overdue: boolean;
     reload: () => Promise<OutstandingInvoice[]>;
 };
@@ -18,11 +19,13 @@ export const OutstandingInvoicesProvider = ({ children }: { children: ReactNode 
     const { profile, isReady } = useAuth();
     const [invoices, setInvoices] = useState<OutstandingInvoice[]>([]);
     const [ready, setReady] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const reload = useCallback(async () => {
         if (!profile || profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY)) {
             flushSync(() => {
                 setInvoices([]);
+                setError(null);
                 setReady(true);
             });
             return [];
@@ -32,12 +35,14 @@ export const OutstandingInvoicesProvider = ({ children }: { children: ReactNode 
             const rows = await invoiceApi.listOutstanding();
             flushSync(() => {
                 setInvoices(rows);
+                setError(null);
                 setReady(true);
             });
             return rows;
-        } catch {
+        } catch (cause) {
             flushSync(() => {
                 setInvoices([]);
+                setError(cause instanceof Error ? cause.message : "Outstanding invoices could not be loaded.");
                 setReady(true);
             });
             return [];
@@ -54,10 +59,11 @@ export const OutstandingInvoicesProvider = ({ children }: { children: ReactNode 
         () => ({
             invoices,
             ready,
+            error,
             overdue: invoices.some((invoice) => invoice.status === "overdue"),
             reload,
         }),
-        [invoices, ready, reload],
+        [invoices, ready, error, reload],
     );
 
     return <OutstandingInvoicesContext.Provider value={value}>{children}</OutstandingInvoicesContext.Provider>;
