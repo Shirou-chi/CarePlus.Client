@@ -111,7 +111,7 @@ const genderLabel = (value: string | null, t: Copy) => {
 export const AccountPage = () => {
     const { profile, isReady, updateProfile, logout } = useAuth();
     const { t, locale, setLocale } = useI18n();
-    const { theme, setTheme } = useTheme();
+    const { theme, setTheme, textSize, setTextSize } = useTheme();
     const navigate = useNavigate();
     const [activeSection, setActiveSection] = useState<SectionId>("profile");
     const [settings, setSettings] = useState<ProfileSettings>(() =>
@@ -849,6 +849,32 @@ export const AccountPage = () => {
                                             onClick={() => setTheme("dark")}
                                         >
                                             {t.settingsThemeDark}
+                                        </Button>
+                                    </div>
+                                </PreferenceBlock>
+
+                                <PreferenceBlock title={t.settingsTextSize}>
+                                    <div className="flex flex-wrap gap-3">
+                                        <Button
+                                            color={textSize === "normal" ? "primary" : "secondary"}
+                                            size="sm"
+                                            onClick={() => setTextSize("normal")}
+                                        >
+                                            {t.settingsTextSizeNormal}
+                                        </Button>
+                                        <Button
+                                            color={textSize === "large" ? "primary" : "secondary"}
+                                            size="sm"
+                                            onClick={() => setTextSize("large")}
+                                        >
+                                            {t.settingsTextSizeLarge}
+                                        </Button>
+                                        <Button
+                                            color={textSize === "larger" ? "primary" : "secondary"}
+                                            size="sm"
+                                            onClick={() => setTextSize("larger")}
+                                        >
+                                            {t.settingsTextSizeLarger}
                                         </Button>
                                     </div>
                                 </PreferenceBlock>
