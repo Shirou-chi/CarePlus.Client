@@ -258,6 +258,8 @@ export function SchedulePage() {
   const [staff, setStaff] = useState<StaffRecord[]>([])
   const [rooms, setRooms] = useState<ClinicRoomRecord[]>([])
   const [roomSelection, setRoomSelection] = useState('')
+  const [roomAssignmentEditing, setRoomAssignmentEditing] = useState(false)
+  const [roomAssignmentError, setRoomAssignmentError] = useState('')
   const [scheduleRoomSelection, setScheduleRoomSelection] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -308,6 +310,8 @@ export function SchedulePage() {
 
   useEffect(() => {
     setRoomSelection(selectedBlock?.roomId ?? '')
+    setRoomAssignmentEditing(false)
+    setRoomAssignmentError('')
   }, [selectedBlock])
 
   const scheduleBlocks = useMemo(() => schedules.filter((schedule) => isSchedulableRole(schedule.role)).map(toScheduleBlock), [schedules])
@@ -620,6 +624,7 @@ export function SchedulePage() {
 
     setSaving(true)
     setError('')
+    setRoomAssignmentError('')
 
     try {
       if (!roomSelection && selectedBlock.roomAssignmentId) {
@@ -633,7 +638,7 @@ export function SchedulePage() {
       setSelectedBlock(null)
       await loadScheduleData()
     } catch (assignmentError) {
-      setError(assignmentError instanceof Error ? assignmentError.message : 'Unable to save clinic room assignment.')
+      setRoomAssignmentError(assignmentError instanceof Error ? assignmentError.message : 'Unable to save clinic room assignment.')
     } finally {
       setSaving(false)
     }
@@ -686,6 +691,7 @@ export function SchedulePage() {
               <div className="schedule-toolbar">
                 <StaffWeekFilter value={selectedWeekKey} onChange={setSelectedWeekKey} />
                 {currentRole === 'Admin' ? <>
+                  <label className="schedule-staff-search"><Icon name="search" size={14} /><span className="sr-only">Search staff</span><input placeholder="Search staff" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label>
                   <label className="schedule-role-select"><span className="sr-only">Filter by role</span><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>{roles.map((role) => <option key={role}>{role}</option>)}</select><Icon name="chevronDown" size={14} /></label>
                   <StaffListReset onClick={resetListControls} />
                 </> : null}
@@ -714,7 +720,24 @@ export function SchedulePage() {
               <div><dt>Schedule ID</dt><dd>{selectedBlock.id}</dd></div>
               <div><dt>Status</dt><dd>{selectedBlock.type}</dd></div>
             </dl>
-            {currentRole === 'Admin' && selectedBlock.role === 'Doctor' ? <div className="schedule-room-assignment"><label>Assign clinic room<select value={roomSelection} onChange={(event) => setRoomSelection(event.target.value)} disabled={saving}><option value="">No room assigned</option>{rooms.filter((room) => room.status.toLowerCase() === 'available' || room.roomId === selectedBlock.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.roomName}{room.status.toLowerCase() === 'available' ? '' : ` · ${room.status}`}</option>)}</select></label><button className="staff-button staff-button--secondary" type="button" onClick={() => void saveRoomAssignment()} disabled={saving || roomSelection === (selectedBlock.roomId ?? '')}>{saving ? 'Saving…' : selectedBlock.roomAssignmentId && !roomSelection ? 'Remove room' : 'Save room'}</button></div> : null}
+            {currentRole === 'Admin' && selectedBlock.role === 'Doctor' && !roomAssignmentEditing ? (
+              <button className="staff-button staff-button--secondary schedule-room-edit-trigger" type="button" onClick={() => { setRoomAssignmentError(''); setRoomAssignmentEditing(true) }} disabled={saving}><Icon name="edit" size={15} /> Edit room assignment</button>
+            ) : null}
+            {currentRole === 'Admin' && selectedBlock.role === 'Doctor' && roomAssignmentEditing ? (
+              <section aria-labelledby="room-assignment-title" className="schedule-room-assignment">
+                <div className="schedule-room-assignment__header">
+                  <div className="schedule-room-assignment__title">
+                    <span className="schedule-room-assignment__icon"><Icon name="box" size={17} /></span>
+                    <span><strong id="room-assignment-title">Room assignment</strong><small>Set the consultation room for this doctor’s shift.</small></span>
+                  </div>
+                  <span className={`schedule-room-status${selectedBlock.roomAssignmentId ? ' schedule-room-status--assigned' : ''}`}><i />{selectedBlock.roomAssignmentId ? 'Assigned' : 'Unassigned'}</span>
+                </div>
+                <label>Consultation room<select value={roomSelection} onChange={(event) => { setRoomAssignmentError(''); setRoomSelection(event.target.value) }} disabled={saving}><option value="">No room assigned</option>{rooms.filter((room) => room.status.toLowerCase() === 'available' || room.roomId === selectedBlock.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.roomName}{room.status.toLowerCase() === 'available' ? '' : ` · ${room.status}`}</option>)}</select></label>
+                <p className="schedule-room-assignment__hint">{rooms.filter((room) => room.status.toLowerCase() === 'available').length} room{rooms.filter((room) => room.status.toLowerCase() === 'available').length === 1 ? '' : 's'} available</p>
+                {roomAssignmentError ? <p className="schedule-room-assignment__error" role="alert"><Icon name="activity" size={14} /> <span>{roomAssignmentError}</span></p> : null}
+                <div className="schedule-room-assignment__actions"><button className="staff-button staff-button--secondary" type="button" onClick={() => { setRoomSelection(selectedBlock.roomId ?? ''); setRoomAssignmentError(''); setRoomAssignmentEditing(false) }} disabled={saving}>Cancel</button><button className="staff-button staff-button--primary" type="button" onClick={() => void saveRoomAssignment()} disabled={saving || roomSelection === (selectedBlock.roomId ?? '')}>{saving ? 'Saving…' : selectedBlock.roomAssignmentId && !roomSelection ? 'Remove assignment' : 'Save assignment'}</button></div>
+              </section>
+            ) : null}
             <div className={`schedule-detail-actions${currentRole === 'Admin' ? '' : ' schedule-detail-actions--single'}`}>
               {currentRole === 'Admin' ? <button className="staff-button staff-button--secondary" type="button" onClick={() => void toggleScheduleStatus()} disabled={saving}>{saving ? 'Saving…' : selectedBlock.type === 'Active' ? 'Set inactive' : 'Set active'}</button> : null}
               <button className="staff-button staff-button--secondary schedule-detail-close" type="button" onClick={() => setSelectedBlock(null)} disabled={saving}>Close details</button>

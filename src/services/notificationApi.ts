@@ -39,3 +39,21 @@ export const notificationApi = {
         return unwrap<ApiNotification[]>("/api/Notification", { method: "DELETE", body: JSON.stringify({ ids }) });
     },
 };
+
+export const staffNotificationApi = {
+    async list(): Promise<ApiNotification[]> {
+        return unwrap<ApiNotification[]>("/api/Notification/staff", { cache: "no-store" });
+    },
+    async markRead(id: string): Promise<ApiNotification[]> {
+        return unwrap<ApiNotification[]>(`/api/Notification/staff/${encodeURIComponent(id)}/read`, { method: "POST" });
+    },
+    async markManyRead(ids: string[]): Promise<ApiNotification[]> {
+        return unwrap<ApiNotification[]>("/api/Notification/staff/read", { method: "POST", body: JSON.stringify({ ids }) });
+    },
+    async markAllRead(): Promise<ApiNotification[]> {
+        return unwrap<ApiNotification[]>("/api/Notification/staff/read-all", { method: "POST" });
+    },
+    async remove(ids: string[]): Promise<ApiNotification[]> {
+        return unwrap<ApiNotification[]>("/api/Notification/staff", { method: "DELETE", body: JSON.stringify({ ids }) });
+    },
+};

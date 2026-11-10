@@ -254,7 +254,7 @@ export function PatientsPage() {
               {loading ? <div className="patients-empty"><Icon name="activity" size={25} /><strong>Loading patient records</strong><span>Getting the latest profiles from the clinic API.</span></div> : null}
               {!loading && !error && filteredPatients.length ? (
                 <table className="patients-table">
-                  <thead><tr><th scope="col">Patient</th><th scope="col">Contact</th><th scope="col">Profile</th><th scope="col">Demographics</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
+                  <thead><tr><th scope="col">Patient</th><th scope="col">Contact</th><th scope="col">Account</th><th scope="col">Demographics</th><th scope="col">Status</th><th className="patients-table__actions-heading" scope="col">Actions</th></tr></thead>
                   <tbody>
                     {filteredPatients.map((patient) => (
                       <tr key={patient.patientId || patient.userId}>

@@ -1,9 +1,19 @@
 import type { Theme } from '../../../components/theme/useTheme'
 import { useAuth } from '@/providers/auth-provider'
+import { useNotices } from '@/providers/notification-provider'
 import { useNavigate } from 'react-router'
 import { StaffAccountMenu } from '../components/StaffAccountMenu'
 import type { StaffRole } from './StaffSidebar'
 import { Icon } from './StaffIcon'
+
+function notificationAge(createdAt: string) {
+  const minutes = Math.max(0, Math.round((Date.now() - Date.parse(createdAt)) / 60_000))
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h`
+  return `${Math.round(hours / 24)}d`
+}
 
 type StaffNavbarProps = {
   activeNav: string
@@ -17,9 +27,10 @@ type StaffNavbarProps = {
   toggleTheme: () => void
 }
 
-export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onSearchChange, onToggleNotifications, searchTerm, selectedRole, theme, toggleTheme }: StaffNavbarProps) {
+export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onToggleNotifications, selectedRole, theme, toggleTheme }: StaffNavbarProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { unread, loading: notificationsLoading, error: notificationsError, markRead, markAllRead } = useNotices()
   const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
   return (
@@ -30,12 +41,6 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onSea
         <span className="staff-role-context"><i /> {selectedRole} access</span>
       </div>
       <div className="staff-topbar__actions">
-        <label className="staff-search">
-          <Icon name="search" size={19} />
-          <span className="sr-only">Search dashboard</span>
-          <input placeholder="Search anything..." type="search" value={searchTerm} onChange={(event) => onSearchChange(event.target.value)} />
-          <kbd>⌘ K</kbd>
-        </label>
         <div className="staff-notification-wrap">
           <button aria-expanded={notificationsOpen} aria-label="Open notifications" className="staff-icon-button" type="button" onClick={onToggleNotifications}>
             <Icon name="bell" size={20} />
@@ -43,9 +48,15 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onSea
           </button>
           {notificationsOpen ? (
             <div className="staff-notifications" role="status">
-              <div className="staff-notifications__header"><strong>Notifications</strong><button type="button" onClick={onToggleNotifications}>Mark all read</button></div>
-              <div className="staff-notification"><span className="staff-notification__bullet staff-notification__bullet--teal" /><span><strong>Inventory alert</strong><small>Paracetamol stock is below threshold.</small></span><time>12m</time></div>
-              <div className="staff-notification"><span className="staff-notification__bullet staff-notification__bullet--amber" /><span><strong>Schedule change</strong><small>Dr. Aisha has opened 2 more slots.</small></span><time>34m</time></div>
+              <div className="staff-notifications__header"><strong>Notifications</strong><button type="button" onClick={() => void markAllRead()} disabled={!unread.length || notificationsLoading}>Mark all read</button></div>
+              {notificationsError ? <div className="staff-notification-empty">Unable to load notifications.</div> : null}
+              {notificationsLoading ? <div className="staff-notification-empty">Loading notifications…</div> : null}
+              {!notificationsLoading && !notificationsError && !unread.length ? <div className="staff-notification-empty">No unread notifications.</div> : null}
+              {!notificationsLoading ? unread.slice(0, 3).map((item) => {
+                const tone = item.kind === 'medicine' ? 'amber' : 'teal'
+                return <button className="staff-notification" key={item.id} type="button" onClick={() => { markRead(item.id); navigate(item.href || '/staff/notifications'); onToggleNotifications() }}><span className={`staff-notification__bullet staff-notification__bullet--${tone}`} /><span><strong>{item.title}</strong><small>{item.message}</small></span><time>{notificationAge(item.createdAt)}</time></button>
+              }) : null}
+              <button className="staff-notifications__view-all" type="button" onClick={() => { navigate('/staff/notifications'); onToggleNotifications() }}>View all notifications</button>
             </div>
           ) : null}
         </div>
