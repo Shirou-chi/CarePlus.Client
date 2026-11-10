@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '@/providers/auth-provider'
+import { clinicRoomApi, type ClinicRoomRecord } from '@/services/clinicRoomApi'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { workScheduleApi, type WorkScheduleRecord, type WorkShift } from '@/services/workScheduleApi'
 import { useTheme } from '../../../components/theme/useTheme'
@@ -25,8 +26,11 @@ type ScheduleBlock = {
   role: string
   shift: string
   room: string
+  roomAssignmentId?: string | null
+  roomId?: string | null
   type: string
   tone: ScheduleTone
+  shiftTone: ScheduleTone
   startMinutes: number
   endMinutes: number
   top: number
@@ -55,9 +59,10 @@ const timeSlots = Array.from({ length: 24 }, (_, index) => {
   return `${String(displayHour).padStart(2, '0')} ${meridiem}`
 })
 const scheduleRoleOptions = ['All roles', 'Doctor', 'Pharmacist'] as const
+type SchedulableRole = 'Doctor' | 'Pharmacist'
 
 type ScheduleDay = { label: string; date: string; dateKey: string; today: boolean }
-type ScheduleForm = { staffId: string; workingDate: string; shift: WorkShift }
+type ScheduleForm = { role: SchedulableRole | ''; staffIds: string[]; workingDate: string; shift: WorkShift }
 
 const calendarStartMinutes = 6 * 60
 const pixelsPerHour = 30
@@ -116,6 +121,11 @@ function roleTone(role: string): ScheduleTone {
   return 'teal'
 }
 
+function shiftTone(shift: string, status: string): ScheduleTone {
+  if (status === 'Inactive') return 'red'
+  return shift.toLowerCase() === 'night' ? 'violet' : 'teal'
+}
+
 function isSchedulableRole(role?: string | null) {
   const normalizedRole = role?.trim().toLowerCase()
   return normalizedRole === 'doctor' || normalizedRole === 'pharmacist'
@@ -139,9 +149,12 @@ function toScheduleBlock(schedule: WorkScheduleRecord): ScheduleBlock {
     provider: schedule.staffName || schedule.username || schedule.staffId,
     role: schedule.role || 'Staff',
     shift,
-    room: 'Clinic schedule',
+    room: schedule.roomName || 'No room assigned',
+    roomAssignmentId: schedule.roomAssignmentId,
+    roomId: schedule.roomId,
     type: schedule.status,
     tone: schedule.status === 'Inactive' ? 'red' : roleTone(schedule.role),
+    shiftTone: shiftTone(shift, schedule.status),
     startMinutes,
     endMinutes,
     top: Math.max(8, ((startMinutes - calendarStartMinutes) / 60) * pixelsPerHour + 8),
@@ -225,7 +238,7 @@ function StaffScheduleGrid({
   rows: StaffScheduleRow[]
   onSelect: (block: ScheduleBlock) => void
 }) {
-  return <div className="schedule-staff-view"><div className="schedule-staff-grid"><div className="schedule-staff-row schedule-staff-row--header"><div className="schedule-staff-name">Staff member</div>{days.map((day) => <div className="schedule-staff-day" key={day.dateKey}><small>{day.label}</small><strong>{day.date}</strong></div>)}</div>{rows.map((row) => <div className="schedule-staff-row" key={row.staffId}><div className="schedule-staff-name"><span className={`schedule-team-avatar schedule-team-avatar--${row.tone}`}>{row.provider.split(' ').map((part) => part[0]).slice(-2).join('').toUpperCase()}</span><span><strong>{row.provider}</strong><small>{row.role}</small></span></div>{days.map((day) => { const daySchedules = row.schedules.filter((block) => block.workingDate === day.dateKey); return <div className="schedule-staff-cell" key={day.dateKey}>{daySchedules.length ? daySchedules.map((block) => <button aria-label={`${block.provider}, ${block.shift} shift, ${block.type}`} className={`schedule-staff-slot schedule-staff-slot--${block.tone}`} key={block.id} type="button" onClick={() => onSelect(block)}><strong>{block.shift} shift</strong></button>) : <span className="schedule-staff-cell__empty">—</span>}</div> })}</div>)}{!rows.length ? <div className="schedule-empty"><Icon name="calendar" size={25} /><strong>No schedules found</strong><span>Try another staff member, week, or search term.</span></div> : null}</div></div>
+  return <div className="schedule-staff-view"><div className="schedule-staff-grid"><div className="schedule-staff-row schedule-staff-row--header"><div className="schedule-staff-name">Staff member</div>{days.map((day) => <div className="schedule-staff-day" key={day.dateKey}><small>{day.label}</small><strong>{day.date}</strong></div>)}</div>{rows.map((row) => <div className="schedule-staff-row" key={row.staffId}><div className="schedule-staff-name"><span className={`schedule-team-avatar schedule-team-avatar--${row.tone}`}>{row.provider.split(' ').map((part) => part[0]).slice(-2).join('').toUpperCase()}</span><span><strong>{row.provider}</strong><small>{row.role}</small></span></div>{days.map((day) => { const daySchedules = row.schedules.filter((block) => block.workingDate === day.dateKey); return <div className="schedule-staff-cell" key={day.dateKey}>{daySchedules.length ? daySchedules.map((block) => <button aria-label={`${block.provider}, ${block.shift} shift, ${block.type}`} className={`schedule-staff-slot schedule-staff-slot--${block.shiftTone}`} key={block.id} type="button" onClick={() => onSelect(block)}><strong>{block.shift} shift</strong></button>) : <span className="schedule-staff-cell__empty">—</span>}</div> })}</div>)}{!rows.length ? <div className="schedule-empty"><Icon name="calendar" size={25} /><strong>No schedules found</strong><span>Try another staff member, week, or search term.</span></div> : null}</div></div>
 }
 
 export function SchedulePage() {
@@ -243,11 +256,15 @@ export function SchedulePage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [schedules, setSchedules] = useState<WorkScheduleRecord[]>([])
   const [staff, setStaff] = useState<StaffRecord[]>([])
+  const [rooms, setRooms] = useState<ClinicRoomRecord[]>([])
+  const [roomSelection, setRoomSelection] = useState('')
+  const [scheduleRoomSelection, setScheduleRoomSelection] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [dialogError, setDialogError] = useState('')
-  const [form, setForm] = useState<ScheduleForm>({ staffId: '', workingDate: '', shift: 'Morning' })
+  const [staffErrors, setStaffErrors] = useState<Record<string, string>>({})
+  const [form, setForm] = useState<ScheduleForm>({ role: '', staffIds: [], workingDate: '', shift: 'Morning' })
   const [scheduleDateRange, setScheduleDateRange] = useState<StaffDateRange>({ start: null, end: null })
   const [notice, setNotice] = useState('')
 
@@ -261,11 +278,14 @@ export function SchedulePage() {
     setError('')
 
     try {
-      const [scheduleResult, staffResult] = await Promise.allSettled([
+      const [scheduleResult, staffResult, roomResult] = await Promise.allSettled([
         workScheduleApi.retrieveAll(),
         currentRole === 'Admin'
           ? staffApi.retrieveAll()
           : Promise.resolve<StaffRecord[]>([]),
+        currentRole === 'Admin'
+          ? clinicRoomApi.retrieveAll()
+          : Promise.resolve<ClinicRoomRecord[]>([]),
       ])
 
       if (scheduleResult.status === 'rejected') {
@@ -274,6 +294,7 @@ export function SchedulePage() {
 
       setSchedules(scheduleResult.value)
       setStaff(staffResult.status === 'fulfilled' ? staffResult.value.filter((member) => member.status === 'Active' && isSchedulableRole(member.role)) : [])
+      setRooms(roomResult.status === 'fulfilled' ? roomResult.value : [])
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load working schedules.')
     } finally {
@@ -285,11 +306,29 @@ export function SchedulePage() {
     void loadScheduleData()
   }, [])
 
+  useEffect(() => {
+    setRoomSelection(selectedBlock?.roomId ?? '')
+  }, [selectedBlock])
+
   const scheduleBlocks = useMemo(() => schedules.filter((schedule) => isSchedulableRole(schedule.role)).map(toScheduleBlock), [schedules])
   const currentWeekKey = dateKey(startOfWeek(new Date()))
   const selectedWeekStart = new Date(`${selectedWeekKey}T00:00:00`)
   const days = useMemo(() => getDays(selectedWeekStart), [selectedWeekKey])
   const roles = scheduleRoleOptions
+  const selectedStaffMembers = useMemo(
+    () => staff.filter((member) => form.role === member.role && form.staffIds.includes(member.staffId)),
+    [form.role, form.staffIds, staff],
+  )
+  const selectedDoctorMembers = useMemo(
+    () => form.role === 'Doctor' ? selectedStaffMembers : [],
+    [form.role, selectedStaffMembers],
+  )
+
+  useEffect(() => {
+    if (form.role !== 'Doctor' || selectedDoctorMembers.length !== 1) {
+      setScheduleRoomSelection('')
+    }
+  }, [form.role, selectedDoctorMembers.length])
 
   const filteredBlocks = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -386,13 +425,34 @@ export function SchedulePage() {
     }
 
     setDialogError('')
-    setForm((current) => ({
-      ...current,
-      staffId: current.staffId || staff[0]?.staffId || user?.staffId || '',
-      workingDate: '',
-    }))
+    setStaffErrors({})
+    setForm({ role: '', staffIds: [], workingDate: '', shift: 'Morning' })
+    setScheduleRoomSelection('')
     setScheduleDateRange({ start: null, end: null })
     setDialogOpen(true)
+  }
+
+  const selectScheduleRole = (role: SchedulableRole | '') => {
+    setForm((current) => ({ ...current, role, staffIds: [] }))
+    setScheduleRoomSelection('')
+    setStaffErrors({})
+  }
+
+  const toggleStaffSelection = (staffId: string) => {
+    setStaffErrors((current) => {
+      if (!current[staffId]) return current
+      const next = { ...current }
+      delete next[staffId]
+      return next
+    })
+    setForm((current) => ({
+      ...current,
+      staffIds: current.role === 'Doctor'
+        ? [staffId]
+        : current.staffIds.includes(staffId)
+          ? current.staffIds.filter((selectedId) => selectedId !== staffId)
+          : [...current.staffIds, staffId],
+    }))
   }
 
   const updateScheduleDateRange = (range: StaffDateRange) => {
@@ -400,9 +460,17 @@ export function SchedulePage() {
     setForm((current) => ({ ...current, workingDate: range.start ?? '' }))
   }
 
+  const formatStaffErrors = (messages: Record<string, string>) => Object.entries(messages)
+    .map(([staffId, message]) => {
+      const member = staff.find((item) => item.staffId === staffId)
+      return `${member?.name || member?.username || staffId}: ${message}`
+    })
+    .join('\n')
+
   const submitAvailability = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setDialogError('')
+    setStaffErrors({})
 
     const workingDates = getDateRange(scheduleDateRange)
 
@@ -411,32 +479,115 @@ export function SchedulePage() {
       return
     }
 
+    if (!form.role) {
+      setDialogError('Choose Doctor or Pharmacist first.')
+      return
+    }
+
+    if (!form.staffIds.length) {
+      setDialogError('Select at least one staff member.')
+      return
+    }
+
+    if (form.role === 'Doctor' && form.staffIds.length !== 1) {
+      setDialogError('Select one doctor for a schedule.')
+      return
+    }
+
     setSaving(true)
 
     try {
-      const latestSchedules = await workScheduleApi.retrieveAll()
-      const activeScheduleDates = new Set(
-        latestSchedules
-          .filter((schedule) => (
-            schedule.staffId === form.staffId &&
-            schedule.status === 'Active'
-          ))
-          .map((schedule) => schedule.workingDate),
-      )
-      const datesToCreate = workingDates.filter((workingDate) => !activeScheduleDates.has(workingDate))
-      const skippedCount = workingDates.length - datesToCreate.length
+      if (scheduleRoomSelection) {
+        const assignmentsByDate = await Promise.all(
+          workingDates.map(async (workingDate) => ({
+            workingDate,
+            assignments: await clinicRoomApi.retrieveAssignments({ date: workingDate }),
+          })),
+        )
+        const roomConflict = assignmentsByDate.some(({ workingDate, assignments }) => assignments.some((assignment) => (
+          assignment.roomId === scheduleRoomSelection
+          && assignment.assignmentDate === workingDate
+          && assignment.shift.toLowerCase() === form.shift.toLowerCase()
+        )))
 
-      if (!datesToCreate.length) {
-        setDialogError('All selected dates already have an active schedule for this staff member.')
+        if (roomConflict) {
+          setDialogError('This room is already assigned for the selected doctor, date, and shift. Choose another room.')
+          return
+        }
+      }
+
+      const latestSchedules = await workScheduleApi.retrieveAll()
+      const selectedStaffIdSet = new Set(form.staffIds)
+      const activeScheduleDatesByStaff = new Map<string, Set<string>>()
+
+      latestSchedules
+        .filter((schedule) => selectedStaffIdSet.has(schedule.staffId) && schedule.status === 'Active')
+        .forEach((schedule) => {
+          const dates = activeScheduleDatesByStaff.get(schedule.staffId) ?? new Set<string>()
+          dates.add(schedule.workingDate)
+          activeScheduleDatesByStaff.set(schedule.staffId, dates)
+        })
+
+      const createJobs = form.staffIds.flatMap((staffId) => {
+        const activeDates = activeScheduleDatesByStaff.get(staffId) ?? new Set<string>()
+        return workingDates
+          .filter((workingDate) => !activeDates.has(workingDate))
+          .map((workingDate) => ({ staffId, workingDate }))
+      })
+      const requestedCount = form.staffIds.length * workingDates.length
+      const skippedCount = requestedCount - createJobs.length
+      const initialStaffErrors: Record<string, string> = {}
+
+      form.staffIds.forEach((staffId) => {
+        const activeDates = activeScheduleDatesByStaff.get(staffId) ?? new Set<string>()
+        if (!workingDates.some((workingDate) => !activeDates.has(workingDate))) {
+          initialStaffErrors[staffId] = 'All selected dates already have an active schedule.'
+        }
+      })
+
+      if (!createJobs.length) {
+        setStaffErrors(initialStaffErrors)
+        setDialogError(formatStaffErrors(initialStaffErrors) || 'All selected staff already have an active schedule on the selected dates.')
         return
       }
 
-      for (const workingDate of datesToCreate) {
-        await workScheduleApi.create({ ...form, workingDate })
+      let roomAssigned = false
+      let createdCount = 0
+      const requestStaffErrors: Record<string, string> = {}
+      for (const job of createJobs) {
+        try {
+          const createdSchedule = await workScheduleApi.create({
+            staffId: job.staffId,
+            workingDate: job.workingDate,
+            shift: form.shift,
+          })
+          createdCount += 1
+
+          if (scheduleRoomSelection && selectedDoctorMembers.length === 1 && job.staffId === selectedDoctorMembers[0].staffId) {
+            await clinicRoomApi.assign({ scheduleId: createdSchedule.scheduleId, roomId: scheduleRoomSelection })
+            roomAssigned = true
+          }
+        } catch (jobError) {
+          const message = jobError instanceof Error ? jobError.message : 'Unable to create this schedule.'
+          const dateMessage = `${formatDate(job.workingDate)}: ${message}`
+          requestStaffErrors[job.staffId] = requestStaffErrors[job.staffId]
+            ? `${requestStaffErrors[job.staffId]}\n${dateMessage}`
+            : dateMessage
+        }
       }
+
+      const allStaffErrors = { ...initialStaffErrors, ...requestStaffErrors }
+      if (Object.keys(allStaffErrors).length) {
+        setStaffErrors(allStaffErrors)
+        setDialogError(formatStaffErrors(allStaffErrors))
+        await loadScheduleData()
+        announce(`${createdCount} schedule${createdCount === 1 ? '' : 's'} created. Some staff could not be saved.`)
+        return
+      }
+
       setDialogOpen(false)
       await loadScheduleData()
-      announce(`${datesToCreate.length} working schedule${datesToCreate.length === 1 ? '' : 's'} created${skippedCount ? `, ${skippedCount} already existed` : ''}.`)
+      announce(`${createdCount} working schedule${createdCount === 1 ? '' : 's'} created${skippedCount ? `, ${skippedCount} already existed` : ''}${roomAssigned ? ' and room assigned' : ''}.`)
     } catch (saveError) {
       setDialogError(saveError instanceof Error ? saveError.message : 'Unable to create working schedule.')
     } finally {
@@ -459,6 +610,30 @@ export function SchedulePage() {
       announce(`Schedule marked ${selectedBlock.type === 'Active' ? 'inactive' : 'active'}.`)
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Unable to update working schedule.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveRoomAssignment = async () => {
+    if (!selectedBlock || selectedBlock.role !== 'Doctor' || currentRole !== 'Admin') return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      if (!roomSelection && selectedBlock.roomAssignmentId) {
+        await clinicRoomApi.removeAssignment(selectedBlock.roomAssignmentId)
+        announce('Clinic room assignment removed.')
+      } else if (roomSelection) {
+        await clinicRoomApi.assign({ scheduleId: selectedBlock.id, roomId: roomSelection })
+        announce('Clinic room assignment saved.')
+      }
+
+      setSelectedBlock(null)
+      await loadScheduleData()
+    } catch (assignmentError) {
+      setError(assignmentError instanceof Error ? assignmentError.message : 'Unable to save clinic room assignment.')
     } finally {
       setSaving(false)
     }
@@ -516,7 +691,7 @@ export function SchedulePage() {
                 </> : null}
               </div>
 
-              {loading ? <div className="schedule-empty schedule-empty--compact"><Icon name="calendar" size={25} /><strong>Loading schedules…</strong></div> : view === 'staff' ? <StaffScheduleGrid days={days} rows={staffScheduleRows} onSelect={setSelectedBlock} /> : view === 'week' ? <div className="schedule-calendar-wrap"><div className="schedule-week-head"><span /><div className="schedule-day-heads">{days.map((day) => <div className={day.today ? 'is-today' : ''} key={day.label}><small>{day.label}</small><strong>{day.date}</strong></div>)}</div></div><div className="schedule-week-body"><div className="schedule-time-axis">{timeSlots.map((time) => <span key={time}>{time}</span>)}</div><div className="schedule-day-columns">{days.map((day) => <div className={`schedule-day-column${day.today ? ' is-today' : ''}`} key={day.label}>{timeSlots.map((time) => <i key={time} />)}{positionedBlocks.filter((block) => block.workingDate === day.dateKey).map((block) => <button aria-label={`${block.title}, ${block.provider}, ${block.shift} shift`} className={`schedule-block schedule-block--${block.tone}`} key={block.id} style={{ height: `${block.height}px`, top: `${block.top}px`, left: `calc(${block.column} * (100% / ${block.columnCount}) + 4px)`, width: `calc(100% / ${block.columnCount} - 8px)`, right: 'auto' }} type="button" onClick={() => setSelectedBlock(block)}><strong>{block.title}</strong><small>{block.provider}</small><span>{block.shift} shift · {block.room}</span></button>)}</div>)}</div></div></div> : <div className="schedule-list"><div className="schedule-list__summary"><div><strong>All schedule records</strong><span>Every schedule returned by the clinic API</span></div><em>{allFilteredBlocks.length} shown</em></div>{allFilteredBlocks.map((block) => <button className="schedule-list-item" key={block.id} type="button" onClick={() => setSelectedBlock(block)}><span className={`schedule-list-icon schedule-list-icon--${block.tone}`}><Icon name={block.icon} size={17} /></span><span><strong>{block.provider}</strong><small>{block.role || 'Staff'} · {block.shift} shift</small></span><span className="schedule-list-date"><strong>{formatDate(block.workingDate)}</strong><small>{block.shift} shift</small></span><span className={`schedule-list-status schedule-list-status--${block.type.toLowerCase()}`}>{block.type}</span><Icon name="chevronRight" size={17} /></button>)}{!allFilteredBlocks.length ? <div className="schedule-empty"><Icon name="calendar" size={25} /><strong>No schedule blocks found</strong><span>Try another provider or search term.</span></div> : null}</div>}
+              {loading ? <div className="schedule-empty schedule-empty--compact"><Icon name="calendar" size={25} /><strong>Loading schedules…</strong></div> : view === 'staff' ? <StaffScheduleGrid days={days} rows={staffScheduleRows} onSelect={setSelectedBlock} /> : view === 'week' ? <div className="schedule-calendar-wrap"><div className="schedule-week-head"><span /><div className="schedule-day-heads">{days.map((day) => <div className={day.today ? 'is-today' : ''} key={day.label}><small>{day.label}</small><strong>{day.date}</strong></div>)}</div></div><div className="schedule-week-body"><div className="schedule-time-axis">{timeSlots.map((time) => <span key={time}>{time}</span>)}</div><div className="schedule-day-columns">{days.map((day) => <div className={`schedule-day-column${day.today ? ' is-today' : ''}`} key={day.label}>{timeSlots.map((time) => <i key={time} />)}{positionedBlocks.filter((block) => block.workingDate === day.dateKey).map((block) => <button aria-label={`${block.title}, ${block.provider}, ${block.shift} shift`} className={`schedule-block schedule-block--${block.shiftTone}`} key={block.id} style={{ height: `${block.height}px`, top: `${block.top}px`, left: `calc(${block.column} * (100% / ${block.columnCount}) + 4px)`, width: `calc(100% / ${block.columnCount} - 8px)`, right: 'auto' }} type="button" onClick={() => setSelectedBlock(block)}><strong>{block.title}</strong><small>{block.provider}</small><span>{block.shift} shift · {block.room}</span></button>)}</div>)}</div></div></div> : <div className="schedule-list"><div className="schedule-list__summary"><div><strong>All schedule records</strong><span>Every schedule returned by the clinic API</span></div><em>{allFilteredBlocks.length} shown</em></div>{allFilteredBlocks.map((block) => <button className="schedule-list-item" key={block.id} type="button" onClick={() => setSelectedBlock(block)}><span className={`schedule-list-icon schedule-list-icon--${block.tone}`}><Icon name={block.icon} size={17} /></span><span><strong>{block.provider}</strong><small>{block.role || 'Staff'} · {block.shift} shift</small></span><span className="schedule-list-date"><strong>{formatDate(block.workingDate)}</strong><small>{block.shift} shift</small></span><span className={`schedule-list-status schedule-list-status--${block.type.toLowerCase()}`}>{block.type}</span><Icon name="chevronRight" size={17} /></button>)}{!allFilteredBlocks.length ? <div className="schedule-empty"><Icon name="calendar" size={25} /><strong>No schedule blocks found</strong><span>Try another provider or search term.</span></div> : null}</div>}
             </div>
 
           </section>
@@ -535,9 +710,11 @@ export function SchedulePage() {
               <div><dt>Staff member</dt><dd>{selectedBlock.provider}</dd></div>
               <div><dt>Date</dt><dd>{formatDate(selectedBlock.workingDate)}</dd></div>
               <div><dt>Working hours</dt><dd>{formatShiftDisplay(selectedBlock.shift)}</dd></div>
+              <div><dt>Clinic room</dt><dd>{selectedBlock.room}</dd></div>
               <div><dt>Schedule ID</dt><dd>{selectedBlock.id}</dd></div>
               <div><dt>Status</dt><dd>{selectedBlock.type}</dd></div>
             </dl>
+            {currentRole === 'Admin' && selectedBlock.role === 'Doctor' ? <div className="schedule-room-assignment"><label>Assign clinic room<select value={roomSelection} onChange={(event) => setRoomSelection(event.target.value)} disabled={saving}><option value="">No room assigned</option>{rooms.filter((room) => room.status.toLowerCase() === 'available' || room.roomId === selectedBlock.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.roomName}{room.status.toLowerCase() === 'available' ? '' : ` · ${room.status}`}</option>)}</select></label><button className="staff-button staff-button--secondary" type="button" onClick={() => void saveRoomAssignment()} disabled={saving || roomSelection === (selectedBlock.roomId ?? '')}>{saving ? 'Saving…' : selectedBlock.roomAssignmentId && !roomSelection ? 'Remove room' : 'Save room'}</button></div> : null}
             <div className={`schedule-detail-actions${currentRole === 'Admin' ? '' : ' schedule-detail-actions--single'}`}>
               {currentRole === 'Admin' ? <button className="staff-button staff-button--secondary" type="button" onClick={() => void toggleScheduleStatus()} disabled={saving}>{saving ? 'Saving…' : selectedBlock.type === 'Active' ? 'Set inactive' : 'Set active'}</button> : null}
               <button className="staff-button staff-button--secondary schedule-detail-close" type="button" onClick={() => setSelectedBlock(null)} disabled={saving}>Close details</button>
@@ -558,11 +735,35 @@ export function SchedulePage() {
         >
           {dialogError ? <p className="schedule-dialog-alert" role="alert">{dialogError}</p> : null}
           <form onSubmit={submitAvailability}>
-            <label>Staff member<select required value={form.staffId} onChange={(event) => setForm((current) => ({ ...current, staffId: event.target.value }))} disabled={saving}><option value="">Select staff member</option>{staff.map((member) => <option key={member.staffId} value={member.staffId}>{member.name || member.username} · {member.role}</option>)}</select></label>
+            <label>Staff role<select required value={form.role} onChange={(event) => selectScheduleRole(event.target.value as SchedulableRole | '')} disabled={saving}>
+              <option value="">Choose Doctor or Pharmacist</option>
+              <option value="Doctor">Doctor</option>
+              <option value="Pharmacist">Pharmacist</option>
+            </select></label>
+            {form.role ? <fieldset className="schedule-staff-picker" disabled={saving}>
+              <legend>{form.role} {form.role === 'Doctor' ? 'member' : 'members'} <span>{form.staffIds.length} selected</span></legend>
+              <div className="schedule-staff-picker__list">
+                {staff.filter((member) => member.role === form.role).map((member) => {
+                  const selected = form.staffIds.includes(member.staffId)
+                  return <label className={`schedule-staff-picker__option${selected ? ' is-selected' : ''}`} key={member.staffId}>
+                    <input checked={selected} name={form.role === 'Doctor' ? 'schedule-doctor' : undefined} onChange={() => toggleStaffSelection(member.staffId)} type={form.role === 'Doctor' ? 'radio' : 'checkbox'} />
+                    <span><strong>{member.name || member.username}</strong><small>{member.role} · {member.staffId}</small></span>
+                  </label>
+                })}
+              </div>
+              <small className="schedule-staff-picker__hint">{form.role === 'Doctor' ? 'Select one doctor for this schedule.' : 'Select one or more pharmacists for the same date and shift.'}</small>
+            </fieldset> : <p className="schedule-staff-picker__empty">Choose a role to show the available staff list.</p>}
             <div className="schedule-form-grid">
               <label>Working date or range<StaffDateFilter disabled={saving} label="Choose working date or date range" value={scheduleDateRange} onChange={updateScheduleDateRange} /></label>
               <label>Working hours<select required value={form.shift} onChange={(event) => setForm((current) => ({ ...current, shift: event.target.value as WorkShift }))} disabled={saving}><option value="Morning">Morning · 06:00 AM – 05:30 PM</option><option value="Night">Night · 06:00 PM – 05:30 AM</option></select></label>
             </div>
+            {form.role === 'Doctor' && selectedDoctorMembers.length === 1 ? <div className="schedule-dialog-room-field">
+              <label>Clinic room <select value={scheduleRoomSelection} onChange={(event) => setScheduleRoomSelection(event.target.value)} disabled={saving || selectedDoctorMembers.length !== 1}>
+                <option value="">No room assigned</option>
+                {rooms.filter((room) => room.status.toLowerCase() === 'available').map((room) => <option key={room.roomId} value={room.roomId}>{room.roomName} · {room.roomId}</option>)}
+              </select></label>
+              <small>Optional. The room is checked for date and shift conflicts before the schedule is saved.</small>
+            </div> : null}
             <div className="schedule-dialog__actions"><button className="staff-button staff-button--secondary" type="button" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving || !staff.length} type="submit">{saving ? 'Saving…' : 'Save schedule'}</button></div>
           </form>
         </StaffDialog>

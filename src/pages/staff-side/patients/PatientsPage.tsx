@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/providers/auth-provider'
-import { authApi } from '@/services/authApi'
 import { patientApi, type PatientRecord } from '@/services/patientApi'
-import { normalizeIdentityCard } from '@/utils/identity-card'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
@@ -120,9 +118,6 @@ export function PatientsPage() {
   const [patients, setPatients] = useState<PatientRow[]>([])
   const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null)
   const [modalMode, setModalMode] = useState<'view' | 'edit' | null>(null)
-  const [addPatientOpen, setAddPatientOpen] = useState(false)
-  const [addPatientLoading, setAddPatientLoading] = useState(false)
-  const [addPatientError, setAddPatientError] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -164,35 +159,6 @@ export function PatientsPage() {
   useEffect(() => {
     void loadPatients()
   }, [])
-
-  const submitAddPatient = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const form = event.currentTarget
-    const values = new FormData(form)
-
-    setAddPatientLoading(true)
-    setAddPatientError('')
-
-    try {
-      const result = await authApi.patientRegister({
-        username: String(values.get('username') ?? '').trim(),
-        name: String(values.get('name') ?? '').trim(),
-        email: String(values.get('email') ?? '').trim(),
-        password: String(values.get('password') ?? ''),
-        phone: String(values.get('phone') ?? '').trim() || null,
-        identityCardNumber: normalizeIdentityCard(String(values.get('identityCardNumber') ?? '')),
-      })
-
-      form.reset()
-      setAddPatientOpen(false)
-      announce(`Patient ${result.patientId} created. Verification email sent.`)
-      await loadPatients()
-    } catch (requestError) {
-      setAddPatientError(requestError instanceof Error ? requestError.message : 'Unable to create patient account.')
-    } finally {
-      setAddPatientLoading(false)
-    }
-  }
 
   const filteredPatients = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -265,7 +231,6 @@ export function PatientsPage() {
               <h1>Manage your patients.</h1>
               <p className="patients-hero__copy">Review patient accounts, contact details, demographics, and access status from one directory.</p>
             </div>
-            {currentRole === 'Admin' ? <button className="staff-button staff-button--primary" type="button" onClick={() => { setAddPatientError(''); setAddPatientOpen(true) }}><Icon name="plus" size={17} /> Add patient</button> : null}
           </section>
 
           <section aria-label="Patient summary" className="patients-summary">
@@ -311,7 +276,6 @@ export function PatientsPage() {
         </div>
       </main>
 
-      {addPatientOpen ? <StaffDialog className="patient-dialog--create" closeLabel="Close add patient form" closeOnBackdropClick={false} eyebrow="Patient management" onClose={() => setAddPatientOpen(false)} title="Add patient" titleId="patient-create-title"><form className="patient-edit-form" onSubmit={submitAddPatient}><div className="patient-edit-form-grid"><label>Username<input autoComplete="username" name="username" required /></label><label>Full name<input autoComplete="name" name="name" required /></label><label>Email<input autoComplete="email" name="email" required type="email" /></label><label>Phone<input autoComplete="tel" name="phone" placeholder="Optional" type="tel" /></label><label>Password<input autoComplete="new-password" minLength={8} name="password" required type="password" /></label><label>Identity card number<input name="identityCardNumber" placeholder="e.g. 900101-14-5678" required /></label></div>{addPatientError ? <div className="patient-create-error" role="alert">{addPatientError}</div> : null}<p className="patient-create-note">The patient will receive an email verification code after the account is created.</p><div className="patient-dialog-actions"><button className="staff-button staff-button--secondary" disabled={addPatientLoading} type="button" onClick={() => setAddPatientOpen(false)}>Cancel</button><button className="staff-button staff-button--primary" disabled={addPatientLoading} type="submit">{addPatientLoading ? 'Creating…' : 'Create patient'}</button></div></form></StaffDialog> : null}
       {selectedPatient && modalMode === 'view' ? <StaffDialog className="patient-dialog--view" closeLabel="Close patient profile" closeOnBackdropClick={false} eyebrow="Patient profile" onClose={closePatientModal} title={selectedPatient.name} titleId="patient-view-title"><div className="patient-dialog-profile-heading"><span className={`patients-avatar patients-avatar--${selectedPatient.tone}`}>{selectedPatient.initials}</span><span><strong>{selectedPatient.patientId || `User ${selectedPatient.userId}`}</strong><small>{selectedPatient.status} account</small></span></div><dl className="staff-detail-grid"><div><dt>Patient ID</dt><dd>{selectedPatient.patientId || '-'}</dd></div><div><dt>Username</dt><dd>@{selectedPatient.username}</dd></div><div><dt>Email</dt><dd>{selectedPatient.email}</dd></div><div><dt>Phone</dt><dd>{selectedPatient.phone}</dd></div><div><dt>Gender</dt><dd>{selectedPatient.gender}</dd></div><div><dt>Date of birth</dt><dd>{selectedPatient.dateOfBirthLabel}{selectedPatient.age === null ? '' : ` · ${selectedPatient.age} years old`}</dd></div><div className="staff-detail-grid__wide"><dt>Address</dt><dd>{selectedPatient.address || '-'}</dd></div></dl><div className="patient-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closePatientModal}>Close</button><button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedPatient)}><Icon name="edit" size={15} /> Edit patient</button></div></StaffDialog> : null}
       {selectedPatient && modalMode === 'edit' ? <StaffDialog className="patient-dialog--edit" closeLabel="Close patient edit form" closeOnBackdropClick={false} eyebrow="Patient account" onClose={closePatientModal} title="Edit patient" titleId="patient-edit-title"><form className="patient-edit-form" onSubmit={(event) => { event.preventDefault(); announce('Patient editing is not available until the patient update API is implemented.') }}><div className="patient-edit-readonly"><span>Patient ID</span><strong>{selectedPatient.patientId || '-'}</strong><small>@{selectedPatient.username}</small></div><div className="patient-edit-form-grid"><label>Full name<input defaultValue={selectedPatient.name === '-' ? '' : selectedPatient.name} readOnly /></label><label>Email<input defaultValue={selectedPatient.email === '-' ? '' : selectedPatient.email} readOnly /></label><label>Phone<input defaultValue={selectedPatient.phone === '-' ? '' : selectedPatient.phone} readOnly /></label><label>Gender<input defaultValue={selectedPatient.gender === '-' ? '' : selectedPatient.gender} readOnly /></label><label>Date of birth<input defaultValue={selectedPatient.dateOfBirth ? selectedPatient.dateOfBirth.slice(0, 10) : ''} readOnly type="date" /></label><label>Address<textarea defaultValue={selectedPatient.address || ''} readOnly rows={3} /></label></div><p className="patient-edit-note">Patient updates are not available yet because the backend update endpoint has not been implemented.</p><div className="patient-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closePatientModal}>Cancel</button><button className="staff-button staff-button--primary" disabled type="submit">Save changes</button></div></form></StaffDialog> : null}
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}

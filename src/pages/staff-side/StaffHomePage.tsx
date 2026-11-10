@@ -343,7 +343,7 @@ export function StaffHomePage() {
 
               <section aria-labelledby="quick-actions" className="staff-card staff-quick-card">
                 <div className="staff-card__header"><div><p className="staff-card__eyebrow">Shortcuts</p><h2 id="quick-actions">Quick actions</h2></div></div>
-                <div className="staff-quick-actions"><button type="button" onClick={() => announce('Patient registration opened.')}><span className="staff-quick-icon staff-quick-icon--teal"><Icon name="users" size={17} /></span><span><strong>Add patient</strong><small>Create a new profile</small></span><Icon name="chevronRight" size={16} /></button><button type="button" onClick={() => announce('Staff availability opened.')}><span className="staff-quick-icon staff-quick-icon--violet"><Icon name="staff" size={17} /></span><span><strong>Check availability</strong><small>View staff schedules</small></span><Icon name="chevronRight" size={16} /></button></div>
+                <div className="staff-quick-actions"><button type="button" onClick={() => announce('Staff availability opened.')}><span className="staff-quick-icon staff-quick-icon--violet"><Icon name="staff" size={17} /></span><span><strong>Check availability</strong><small>View staff schedules</small></span><Icon name="chevronRight" size={16} /></button></div>
               </section>
             </div>
           </div>
