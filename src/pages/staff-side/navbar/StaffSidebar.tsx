@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { StaffAccountMenu } from '../components/StaffAccountMenu'
@@ -13,7 +12,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Workspace',
     items: [
       { label: 'Overview', icon: 'grid', roles: ['Admin', 'Doctor', 'Pharmacist'] },
-      { label: 'Appointments', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'], badge: '8' },
+      { label: 'Appointments', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Patients', icon: 'users', roles: ['Admin'] },
       { label: 'Queue', icon: 'clock', roles: ['Admin', 'Doctor', 'Pharmacist'] },
     ],
@@ -25,7 +24,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Schedules & availability', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Leave', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Clinic rooms', icon: 'activity', roles: ['Admin'] },
-      { label: 'Inventory', icon: 'box', roles: ['Pharmacist'] },
+      { label: 'Medicine', icon: 'box', roles: ['Pharmacist'] },
+      { label: 'Medicine batches', icon: 'box', roles: ['Pharmacist'] },
       { label: 'Prescriptions', icon: 'check', roles: ['Doctor', 'Pharmacist'] },
       { label: 'Medical records', icon: 'shield', roles: ['Doctor'] },
     ],
@@ -41,38 +41,41 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   },
 ]
 
-const roleDetails: Record<StaffRole, { initials: string; description: string }> = {
-  Admin: { initials: 'AD', description: 'Full clinic management' },
-  Doctor: { initials: 'DR', description: 'Clinical care workspace' },
-  Pharmacist: { initials: 'PH', description: 'Medicine & dispensing' },
-}
-
-const roleModules: Record<StaffRole, string[]> = {
-  Admin: ['Overview', 'Appointments', 'Patients', 'Queue', 'Staff', 'Schedules & availability', 'Leave', 'Clinic rooms', 'Notifications', 'Reports & analytics', 'Audit & logs', 'Settings'],
-  Doctor: ['Overview', 'Appointments', 'Queue', 'Schedules & availability', 'Leave', 'Notifications', 'Prescriptions', 'Medical records', 'Settings'],
-  Pharmacist: ['Overview', 'Appointments', 'Queue', 'Schedules & availability', 'Leave', 'Notifications', 'Inventory', 'Prescriptions', 'Settings'],
-}
-
-function isStaffRole(value: string | undefined): value is StaffRole {
+export function isStaffRole(value: string | undefined): value is StaffRole {
   return value === 'Admin' || value === 'Doctor' || value === 'Pharmacist'
+}
+
+export function getStaffRole(value: string | undefined): StaffRole {
+  return isStaffRole(value) ? value : 'Admin'
 }
 
 type StaffSidebarProps = {
   activeNav: string
   announce: (message: string) => void
   onClose: () => void
-  onNavigate: (label: string) => void
-  onRoleChange: (role: StaffRole) => void
-  role: StaffRole
   sidebarOpen: boolean
 }
 
-export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleChange, role, sidebarOpen }: StaffSidebarProps) {
+const staffRoutes: Record<string, string> = {
+  Overview: '/staff',
+  Appointments: '/staff/appointments',
+  Patients: '/staff/patients',
+  Staff: '/staff/staff',
+  'Schedules & availability': '/staff/schedules',
+  Leave: '/staff/leave',
+  'Clinic rooms': '/staff/rooms',
+  Medicine: '/staff/medicine',
+  'Medicine batches': '/staff/medicine-batches',
+  'Medical records': '/staff/medical-records',
+  Notifications: '/staff/notifications',
+  'Audit & logs': '/staff/audit-logs',
+  Settings: '/staff/settings',
+}
+
+export function StaffSidebar({ activeNav, announce, onClose, sidebarOpen }: StaffSidebarProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const claimRole = isStaffRole(user?.role) ? user.role : undefined
-  const effectiveRole = claimRole ?? role
-  const [rolePanelOpen, setRolePanelOpen] = useState(false)
+  const currentRole = getStaffRole(user?.role)
   const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
   const openAccountSettings = () => {
@@ -81,8 +84,21 @@ export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleC
     onClose()
   }
 
+  const handleNavigate = (label: string) => {
+    const route = staffRoutes[label]
+
+    if (route) {
+      navigate(route)
+      return
+    }
+
+    if (label !== activeNav) {
+      announce(`${label} is ready to connect to your clinic workflow.`)
+    }
+  }
+
   const visibleNavGroups = navGroups
-    .map((group) => ({ ...group, items: group.items.filter((item) => item.roles.includes(effectiveRole)) }))
+    .map((group) => ({ ...group, items: group.items.filter((item) => item.roles.includes(currentRole)) }))
     .filter((group) => group.items.length > 0)
 
   return (
@@ -93,44 +109,6 @@ export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleC
           <span className="staff-brand__mark"><img alt="CarePlus Clinic logo" src="/clinic-logo.png" /></span>
           <span className="staff-brand__copy"><strong>CarePlus</strong><small>CLINIC STAFF</small></span>
         </div>
-
-        <div className="staff-role-preview">
-          {claimRole ? (
-            <div aria-label={`Signed-in role: ${effectiveRole}`} className="staff-role-preview__button" role="status">
-              <span className="staff-role-preview__avatar">{roleDetails[effectiveRole].initials}</span>
-              <span><small>Signed-in role</small><strong>{effectiveRole}</strong></span>
-              <Icon name="shield" size={16} />
-            </div>
-          ) : (
-            <button aria-expanded={rolePanelOpen} className="staff-role-preview__button" type="button" onClick={() => setRolePanelOpen((current) => !current)}>
-              <span className="staff-role-preview__avatar">{roleDetails[effectiveRole].initials}</span>
-              <span><small>Role preview</small><strong>{effectiveRole}</strong></span>
-              <Icon name="chevronDown" size={16} />
-            </button>
-          )}
-          {!claimRole && rolePanelOpen ? (
-            <div className="staff-role-panel">
-              <div className="staff-role-panel__heading"><strong>View as role</strong><small>Preview module access</small></div>
-              <div className="staff-role-options">
-                {(Object.keys(roleDetails) as StaffRole[]).map((nextRole) => (
-                  <button className={`staff-role-option${role === nextRole ? ' is-selected' : ''}`} key={nextRole} type="button" onClick={() => {
-                    onRoleChange(nextRole)
-                    setRolePanelOpen(false)
-                    onClose()
-                  }}>
-                    <span className={`staff-role-option__avatar staff-role-option__avatar--${nextRole.toLowerCase()}`}>{roleDetails[nextRole].initials}</span>
-                    <span><strong>{nextRole}</strong><small>{roleDetails[nextRole].description}</small></span>
-                    <small className="staff-role-option__count">{roleModules[nextRole].length} modules</small>
-                    {effectiveRole === nextRole ? <Icon name="check" size={15} /> : null}
-                  </button>
-                ))}
-              </div>
-              <div className="staff-role-panel__modules"><small>{effectiveRole} can access</small><div>{roleModules[effectiveRole].map((module) => <span key={module}>{module}</span>)}</div></div>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="staff-role-access-note"><Icon name="shield" size={14} /><span>Menu shows modules available to <strong>{effectiveRole}</strong>.</span></div>
 
         <div className="staff-nav-groups">
           {visibleNavGroups.map((group, groupIndex) => (
@@ -144,11 +122,7 @@ export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleC
                     key={item.label}
                     type="button"
                     onClick={() => {
-                      if (item.label === 'Settings') {
-                        navigate('/staff/settings')
-                      } else {
-                        onNavigate(item.label)
-                      }
+                      handleNavigate(item.label)
                       onClose()
                     }}
                   >
@@ -165,7 +139,7 @@ export function StaffSidebar({ activeNav, announce, onClose, onNavigate, onRoleC
         <div className="staff-sidebar__bottom">
           <div className="staff-user-card">
             <span className="staff-avatar">{initials}</span>
-            <span><strong>{user?.name || 'Staff user'}</strong><small>{user?.role || role}</small></span>
+            <span><strong>{user?.name || 'Staff user'}</strong><small>{user?.role || currentRole}</small></span>
             <StaffAccountMenu onClose={onClose} onSettings={openAccountSettings} triggerClassName="staff-user-card__menu-trigger" triggerLabel="Open account menu"><Icon name="more" size={19} /></StaffAccountMenu>
           </div>
         </div>

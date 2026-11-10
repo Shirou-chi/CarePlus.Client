@@ -1,50 +1,125 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@/providers/auth-provider'
+import { patientApi, type PatientRecord } from '@/services/patientApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
-import { StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
+import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
+import { StaffDialog } from '../components/StaffDialog'
+import { StaffListReset, StaffListSort } from '../components/StaffListControls'
 import '../StaffHomePage.css'
 import './PatientsPage.css'
 
-type PatientStatus = 'Active' | 'Follow-up due' | 'Inactive'
-type Patient = {
-  id: string
-  name: string
+const statusFilters = ['All statuses', 'Active', 'Inactive', 'Suspended'] as const
+type StatusFilter = (typeof statusFilters)[number]
+const sortOptions = ['Name A–Z', 'Name Z–A', 'Patient ID', 'Date of birth'] as const
+type SortOption = (typeof sortOptions)[number]
+type AvatarTone = 'teal' | 'blue' | 'amber' | 'violet'
+
+type PatientRow = PatientRecord & {
+  age: number | null
+  dateOfBirthLabel: string
   initials: string
-  age: number
-  gender: string
-  phone: string
-  email: string
-  lastVisit: string
-  nextVisit: string
-  visits: string
-  condition: string
-  status: PatientStatus
-  tone: 'teal' | 'blue' | 'amber' | 'violet'
+  tone: AvatarTone
 }
 
-const statusFilters = ['All statuses', 'Active', 'Follow-up due', 'Inactive'] as const
-const patients: Patient[] = [
-  { id: 'PT-260819-42', name: 'Sofia Tan', initials: 'ST', age: 29, gender: 'Female', phone: '+60 12-482 8801', email: 'sofia.tan@email.com', lastVisit: '19 Aug 2026', nextVisit: '—', visits: '12 visits', condition: 'General wellness', status: 'Active', tone: 'teal' },
-  { id: 'PT-260819-41', name: 'Ethan Wong', initials: 'EW', age: 42, gender: 'Male', phone: '+60 16-739 2104', email: 'ethan.wong@email.com', lastVisit: '19 Aug 2026', nextVisit: '26 Aug 2026', visits: '08 visits', condition: 'Blood pressure review', status: 'Active', tone: 'blue' },
-  { id: 'PT-260819-40', name: 'Amir Hakim', initials: 'AH', age: 35, gender: 'Male', phone: '+60 11-220 4589', email: 'amir.hakim@email.com', lastVisit: '12 Aug 2026', nextVisit: '21 Aug 2026', visits: '06 visits', condition: 'Respiratory follow-up', status: 'Follow-up due', tone: 'amber' },
-  { id: 'PT-260819-39', name: 'Nadia Ismail', initials: 'NI', age: 31, gender: 'Female', phone: '+60 17-623 9012', email: 'nadia.ismail@email.com', lastVisit: '19 Aug 2026', nextVisit: '—', visits: '15 visits', condition: 'Mental wellness review', status: 'Active', tone: 'violet' },
-  { id: 'PT-260819-38', name: 'Hannah Lee', initials: 'HL', age: 8, gender: 'Female', phone: '+60 13-801 5520', email: 'hannah.lee@email.com', lastVisit: '02 Aug 2026', nextVisit: '28 Aug 2026', visits: '04 visits', condition: 'Paediatric care', status: 'Active', tone: 'teal' },
-  { id: 'PT-260819-37', name: 'Marcus Lim', initials: 'ML', age: 54, gender: 'Male', phone: '+60 19-330 7714', email: 'marcus.lim@email.com', lastVisit: '15 Jul 2026', nextVisit: '—', visits: '21 visits', condition: 'Diabetes management', status: 'Follow-up due', tone: 'blue' },
-  { id: 'PT-260819-36', name: 'Priya Nair', initials: 'PN', age: 27, gender: 'Female', phone: '+60 18-470 6021', email: 'priya.nair@email.com', lastVisit: '20 Jun 2026', nextVisit: '—', visits: '03 visits', condition: 'Physiotherapy', status: 'Inactive', tone: 'violet' },
-]
+const avatarTones: AvatarTone[] = ['teal', 'blue', 'amber', 'violet']
+
+function getInitials(name: string, username: string) {
+  const source = name.trim() || username.trim() || 'Patient'
+  const parts = source.split(/\s+/).filter(Boolean)
+
+  return parts.length > 1
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+    : source.slice(0, 2).toUpperCase()
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '-'
+
+  const date = parseDateOnly(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)
+}
+
+function parseDateOnly(value: string) {
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number)
+
+  if (year && month && day) {
+    return new Date(year, month - 1, day)
+  }
+
+  return new Date(value)
+}
+
+function calculateAge(value?: string | null) {
+  if (!value) return null
+
+  const dateOfBirth = parseDateOnly(value)
+  if (Number.isNaN(dateOfBirth.getTime())) return null
+
+  const today = new Date()
+  let age = today.getFullYear() - dateOfBirth.getFullYear()
+  const monthDifference = today.getMonth() - dateOfBirth.getMonth()
+
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dateOfBirth.getDate())) {
+    age -= 1
+  }
+
+  return age >= 0 ? age : null
+}
+
+function normalizeStatus(status: string | null | undefined): string {
+  const value = status?.trim()
+  if (!value) return 'Unknown'
+
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
+}
+
+function statusClass(status: string) {
+  return status.toLowerCase().replace(/\s+/g, '-')
+}
+
+function toPatientRow(patient: PatientRecord, index: number): PatientRow {
+  return {
+    ...patient,
+    name: patient.name || '-',
+    username: patient.username || '-',
+    email: patient.email || '-',
+    phone: patient.phone || '-',
+    gender: patient.gender || '-',
+    status: normalizeStatus(patient.status),
+    age: calculateAge(patient.dateOfBirth),
+    dateOfBirthLabel: formatDate(patient.dateOfBirth),
+    initials: getInitials(patient.name, patient.username),
+    tone: avatarTones[index % avatarTones.length],
+  }
+}
+
+function matchesStatus(patientStatus: string, filter: StatusFilter) {
+  return filter === 'All statuses' || patientStatus.toLowerCase() === filter.toLowerCase()
+}
 
 export function PatientsPage() {
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const [activeNav, setActiveNav] = useState('Patients')
-  const [selectedRole, setSelectedRole] = useState<StaffRole>('Admin')
+  const [activeNav] = useState('Patients')
+  const currentRole = getStaffRole(user?.role)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<(typeof statusFilters)[number]>('All statuses')
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All statuses')
+  const [sortOption, setSortOption] = useState<SortOption>('Name A–Z')
+  const [patients, setPatients] = useState<PatientRow[]>([])
+  const [selectedPatient, setSelectedPatient] = useState<PatientRow | null>(null)
+  const [modalMode, setModalMode] = useState<'view' | 'edit' | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   const announce = (message: string) => {
@@ -52,56 +127,80 @@ export function PatientsPage() {
     window.setTimeout(() => setNotice(''), 3200)
   }
 
-  const handleRoleChange = (role: StaffRole) => {
-    if (role !== 'Admin') {
-      navigate('/staff')
-      return
-    }
-    setSelectedRole(role)
-    announce('Administrator patient access is now displayed.')
+  const openView = (patient: PatientRow) => {
+    setSelectedPatient(patient)
+    setModalMode('view')
   }
 
-  const handleNavigate = (label: string) => {
-    if (label === 'Staff') {
-      navigate('/staff/staff')
-      return
-    }
-    if (label === 'Overview') {
-      navigate('/staff')
-      return
-    }
-    if (label === 'Appointments') {
-      navigate('/staff/appointments')
-      return
-    }
-    if (label === 'Audit & logs') {
-      navigate('/staff/audit-logs')
-      return
-    }
-    if (label === 'Schedules & availability') {
-      navigate('/staff/schedules')
-      return
-    }
-    if (label === 'Leave') {
-      navigate('/staff/leave')
-      return
-    }
-    if (label === 'Notifications') {
-      navigate('/staff/notifications')
-      return
-    }
-    setActiveNav(label)
-    if (label !== 'Patients') announce(`${label} is ready to connect to your clinic workflow.`)
+  const openEdit = (patient: PatientRow) => {
+    setSelectedPatient(patient)
+    setModalMode('edit')
   }
+
+  const closePatientModal = () => {
+    setModalMode(null)
+    setSelectedPatient(null)
+  }
+
+  const loadPatients = async () => {
+    setLoading(true)
+    setError('')
+
+    try {
+      const records = await patientApi.retrieveAll()
+      setPatients(records.map(toPatientRow))
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to load patient records.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadPatients()
+  }, [])
 
   const filteredPatients = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
-    return patients.filter((patient) => {
-      const matchesQuery = !query || `${patient.name} ${patient.id} ${patient.phone} ${patient.email} ${patient.condition}`.toLowerCase().includes(query)
-      const matchesStatus = statusFilter === 'All statuses' || patient.status === statusFilter
-      return matchesQuery && matchesStatus
+    const rows = patients.filter((patient) => {
+      const searchableText = [
+        patient.patientId,
+        patient.username,
+        patient.name,
+        patient.email,
+        patient.phone,
+        patient.gender,
+        patient.address,
+        patient.status,
+      ].join(' ').toLowerCase()
+
+      return (!query || searchableText.includes(query)) && matchesStatus(patient.status, statusFilter)
     })
-  }, [searchTerm, statusFilter])
+
+    return rows.sort((left, right) => {
+      switch (sortOption) {
+        case 'Name Z–A':
+          return right.name.localeCompare(left.name)
+        case 'Patient ID':
+          return left.patientId.localeCompare(right.patientId)
+        case 'Date of birth':
+          return (left.dateOfBirth ?? '9999-12-31').localeCompare(right.dateOfBirth ?? '9999-12-31')
+        case 'Name A–Z':
+        default:
+          return left.name.localeCompare(right.name)
+      }
+    })
+  }, [patients, searchTerm, sortOption, statusFilter])
+
+  const resetListControls = () => {
+    setSearchTerm('')
+    setStatusFilter('All statuses')
+    setSortOption('Name A–Z')
+  }
+
+  const activeCount = patients.filter((patient) => patient.status.toLowerCase() === 'active').length
+  const maleCount = patients.filter((patient) => patient.gender.toLowerCase() === 'male').length
+  const femaleCount = patients.filter((patient) => patient.gender.toLowerCase() === 'female').length
 
   return (
     <div className="staff-page patients-page">
@@ -109,22 +208,18 @@ export function PatientsPage() {
         activeNav={activeNav}
         announce={announce}
         onClose={() => setSidebarOpen(false)}
-        onNavigate={handleNavigate}
-        onRoleChange={handleRoleChange}
-        role={selectedRole}
         sidebarOpen={sidebarOpen}
       />
 
       <main className="staff-main">
         <StaffNavbar
           activeNav={activeNav}
-          announce={announce}
           notificationsOpen={notificationsOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
           onSearchChange={setSearchTerm}
           onToggleNotifications={() => setNotificationsOpen((current) => !current)}
           searchTerm={searchTerm}
-          selectedRole={selectedRole}
+          selectedRole={currentRole}
           theme={theme}
           toggleTheme={toggleTheme}
         />
@@ -132,51 +227,57 @@ export function PatientsPage() {
         <div className="staff-content patients-content">
           <section className="patients-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Patient records</p>
-              <h1>Know every patient better.</h1>
-              <p className="patients-hero__copy">Keep patient profiles, care history, and follow-up needs organized in one place.</p>
+              <p className="staff-eyebrow">CarePlus Clinic · Patient management</p>
+              <h1>Manage your patients.</h1>
+              <p className="patients-hero__copy">Review patient accounts, contact details, demographics, and access status from one directory.</p>
             </div>
-            <button className="staff-button staff-button--primary patients-add-button" type="button" onClick={() => announce('New patient form is ready to open.')}><Icon name="plus" size={17} /> Add patient</button>
           </section>
 
           <section aria-label="Patient summary" className="patients-summary">
-            <article className="patients-summary-card patients-summary-card--teal"><span><Icon name="users" size={18} /></span><small>Total patients</small><strong>2,846</strong><em>+5.2% this month</em></article>
-            <article className="patients-summary-card patients-summary-card--blue"><span><Icon name="activity" size={18} /></span><small>Active patients</small><strong>2,314</strong><em>81% of patient base</em></article>
-            <article className="patients-summary-card patients-summary-card--amber"><span><Icon name="calendar" size={18} /></span><small>Follow-ups due</small><strong>128</strong><em>24 due this week</em></article>
-            <article className="patients-summary-card patients-summary-card--violet"><span><Icon name="clock" size={18} /></span><small>New this month</small><strong>64</strong><em>12 since last week</em></article>
+            <article className="patients-summary-card patients-summary-card--teal"><span><Icon name="users" size={18} /></span><small>Total patients</small><strong>{patients.length}</strong><em>Registered accounts</em></article>
+            <article className="patients-summary-card patients-summary-card--blue"><span><Icon name="activity" size={18} /></span><small>Active patients</small><strong>{activeCount}</strong><em>Can access the portal</em></article>
+            <article className="patients-summary-card patients-summary-card--amber"><span><Icon name="users" size={18} /></span><small>Male patients</small><strong>{maleCount}</strong><em>From profile details</em></article>
+            <article className="patients-summary-card patients-summary-card--violet"><span><Icon name="users" size={18} /></span><small>Female patients</small><strong>{femaleCount}</strong><em>From profile details</em></article>
           </section>
 
           <section className="staff-card patients-list-card">
-            <div className="staff-card__header patients-list-card__header"><div><p className="staff-card__eyebrow">Patient directory</p><h2>All patients</h2><span className="patients-list-card__description">Search and review patient profiles across the clinic.</span></div><span className="staff-live-pill"><i /> Records synced</span></div>
+            <div className="staff-card__header patients-list-card__header"><div><p className="staff-card__eyebrow">Patient directory</p><h2>All patient accounts</h2></div></div>
             <div className="patients-toolbar">
-              <label className="patients-search"><Icon name="search" size={16} /><span className="sr-only">Search patients</span><input placeholder="Search name, ID, phone, or condition" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label>
-              <label className="patients-select"><span className="sr-only">Filter by patient status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as (typeof statusFilters)[number])}>{statusFilters.map((filter) => <option key={filter}>{filter}</option>)}</select><Icon name="chevronDown" size={14} /></label>
+              <label className="patients-search"><Icon name="search" size={16} /><span className="sr-only">Search patients</span><input placeholder="Search name, username, email, or phone" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label>
+              <label className="patients-select"><span className="sr-only">Filter by patient status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>{statusFilters.map((filter) => <option key={filter}>{filter}</option>)}</select><Icon name="chevronDown" size={14} /></label>
+              <StaffListSort label="Sort patients" options={sortOptions} value={sortOption} onChange={(value) => setSortOption(value as SortOption)} />
+              <StaffListReset onClick={resetListControls} />
               <span className="patients-result-count"><strong>{filteredPatients.length}</strong> shown</span>
             </div>
+            {error ? <div className="patients-error" role="alert"><strong>Unable to load patient records</strong><span>{error}</span><button type="button" onClick={() => void loadPatients()}>Try again</button></div> : null}
             <div className="patients-table-wrap">
-              <table className="patients-table">
-                <thead><tr><th scope="col">Patient</th><th scope="col">Contact</th><th scope="col">Care summary</th><th scope="col">Last visit</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
-                <tbody>
-                  {filteredPatients.map((patient) => (
-                    <tr key={patient.id}>
-                      <td><span className={`patients-avatar patients-avatar--${patient.tone}`}>{patient.initials}</span><span><strong>{patient.name}</strong><small>{patient.id} · {patient.age} years · {patient.gender}</small></span></td>
-                      <td><span className="patients-contact"><strong>{patient.phone}</strong><small>{patient.email}</small></span></td>
-                      <td><span className="patients-care"><strong>{patient.condition}</strong><small>{patient.visits} · Next: {patient.nextVisit}</small></span></td>
-                      <td><span className="patients-date"><strong>{patient.lastVisit}</strong><small>Most recent visit</small></span></td>
-                      <td><span className={`patient-status patient-status--${patient.status.toLowerCase().replace(' ', '-')}`}><i />{patient.status}</span></td>
-                      <td><button aria-label={`View ${patient.name}'s profile`} className="patients-row-action" type="button" onClick={() => setSelectedPatient(patient)}><Icon name="chevronRight" size={17} /></button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!filteredPatients.length ? <div className="patients-empty"><Icon name="users" size={25} /><strong>No patients found</strong><span>Try another search or status filter.</span><button type="button" onClick={() => { setSearchTerm(''); setStatusFilter('All statuses') }}>Clear filters</button></div> : null}
+              {loading ? <div className="patients-empty"><Icon name="activity" size={25} /><strong>Loading patient records</strong><span>Getting the latest profiles from the clinic API.</span></div> : null}
+              {!loading && !error && filteredPatients.length ? (
+                <table className="patients-table">
+                  <thead><tr><th scope="col">Patient</th><th scope="col">Contact</th><th scope="col">Profile</th><th scope="col">Demographics</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
+                  <tbody>
+                    {filteredPatients.map((patient) => (
+                      <tr key={patient.patientId || patient.userId}>
+                        <td><span className={`patients-avatar patients-avatar--${patient.tone}`}>{patient.initials}</span><span><strong>{patient.name}</strong><small>{patient.patientId || `User ${patient.userId}`}</small></span></td>
+                        <td><span className="patients-contact"><strong>{patient.email}</strong><small>{patient.phone}</small></span></td>
+                        <td><span className="patients-care"><strong>@{patient.username}</strong><small>User ID: {patient.userId}</small></span></td>
+                        <td><span className="patients-date"><strong>{patient.gender}</strong><small>{patient.age === null ? 'Age -' : `${patient.age} years`} · DOB {patient.dateOfBirthLabel}</small></span></td>
+                        <td><span className={`patient-status patient-status--${statusClass(patient.status)}`}><i />{patient.status}</span></td>
+                        <td><div className="patients-actions"><button aria-label={`View ${patient.name}'s profile`} className="patients-view" type="button" onClick={() => openView(patient)}><Icon name="eye" size={15} /> View</button><button aria-label={`Edit ${patient.name}'s profile`} className="patients-edit" type="button" onClick={() => openEdit(patient)}><Icon name="edit" size={15} /> Edit</button></div></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : null}
+              {!loading && !error && !filteredPatients.length ? <div className="patients-empty"><Icon name="users" size={25} /><strong>{patients.length ? 'No patients found' : 'No patient records available'}</strong><span>{patients.length ? 'Try another search or status filter.' : 'Patient accounts will appear here after they are registered.'}</span>{patients.length ? <button type="button" onClick={resetListControls}>Clear filters</button> : null}</div> : null}
             </div>
-            <div className="patients-pagination"><span>Showing 1–{filteredPatients.length} of 2,846 patients</span><div><button aria-label="Previous page" disabled type="button"><Icon name="chevronRight" size={15} /></button><button aria-current="page" type="button">1</button><button type="button" onClick={() => announce('Page 2 is ready to load.')}>2</button><button type="button" onClick={() => announce('Page 3 is ready to load.')}>3</button><button aria-label="Next page" type="button" onClick={() => announce('Next patient page is ready to load.')}><Icon name="chevronRight" size={15} /></button></div></div>
+            {!loading && !error && patients.length ? <div className="patients-pagination"><span>Showing {filteredPatients.length} of {patients.length} patient records</span></div> : null}
           </section>
         </div>
       </main>
 
-      {selectedPatient ? <div className="patient-detail-backdrop" role="presentation" onClick={() => setSelectedPatient(null)}><aside aria-labelledby="patient-detail-title" aria-modal="true" className="patient-detail-drawer" role="dialog" onClick={(event) => event.stopPropagation()}><div className="patient-detail-drawer__header"><div><p className="staff-card__eyebrow">Patient profile</p><h2 id="patient-detail-title">Patient details</h2></div><button aria-label="Close patient details" type="button" onClick={() => setSelectedPatient(null)}><Icon name="close" size={19} /></button></div><div className="patient-profile"><span className={`patients-avatar patients-avatar--${selectedPatient.tone}`}>{selectedPatient.initials}</span><div><strong>{selectedPatient.name}</strong><small>{selectedPatient.id} · {selectedPatient.age} years · {selectedPatient.gender}</small><span className={`patient-status patient-status--${selectedPatient.status.toLowerCase().replace(' ', '-')}`}><i />{selectedPatient.status}</span></div></div><dl className="patient-detail-list"><div><dt>Contact</dt><dd>{selectedPatient.phone}<small>{selectedPatient.email}</small></dd></div><div><dt>Care summary</dt><dd>{selectedPatient.condition}<small>{selectedPatient.visits}</small></dd></div><div><dt>Last visit</dt><dd>{selectedPatient.lastVisit}</dd></div><div><dt>Next visit</dt><dd>{selectedPatient.nextVisit === '—' ? 'No visit scheduled' : selectedPatient.nextVisit}</dd></div></dl><div className="patient-detail-actions"><button className="staff-button staff-button--secondary" type="button" onClick={() => announce('Patient record editing is ready to connect.')}>Edit profile</button><button className="staff-button staff-button--primary" type="button" onClick={() => announce('New appointment form is ready to open.')}>Book appointment</button></div></aside></div> : null}
+      {selectedPatient && modalMode === 'view' ? <StaffDialog className="patient-dialog--view" closeLabel="Close patient profile" closeOnBackdropClick={false} eyebrow="Patient profile" onClose={closePatientModal} title={selectedPatient.name} titleId="patient-view-title"><div className="patient-dialog-profile-heading"><span className={`patients-avatar patients-avatar--${selectedPatient.tone}`}>{selectedPatient.initials}</span><span><strong>{selectedPatient.patientId || `User ${selectedPatient.userId}`}</strong><small>{selectedPatient.status} account</small></span></div><dl className="staff-detail-grid"><div><dt>Patient ID</dt><dd>{selectedPatient.patientId || '-'}</dd></div><div><dt>Username</dt><dd>@{selectedPatient.username}</dd></div><div><dt>Email</dt><dd>{selectedPatient.email}</dd></div><div><dt>Phone</dt><dd>{selectedPatient.phone}</dd></div><div><dt>Gender</dt><dd>{selectedPatient.gender}</dd></div><div><dt>Date of birth</dt><dd>{selectedPatient.dateOfBirthLabel}{selectedPatient.age === null ? '' : ` · ${selectedPatient.age} years old`}</dd></div><div className="staff-detail-grid__wide"><dt>Address</dt><dd>{selectedPatient.address || '-'}</dd></div></dl><div className="patient-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closePatientModal}>Close</button><button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedPatient)}><Icon name="edit" size={15} /> Edit patient</button></div></StaffDialog> : null}
+      {selectedPatient && modalMode === 'edit' ? <StaffDialog className="patient-dialog--edit" closeLabel="Close patient edit form" closeOnBackdropClick={false} eyebrow="Patient account" onClose={closePatientModal} title="Edit patient" titleId="patient-edit-title"><form className="patient-edit-form" onSubmit={(event) => { event.preventDefault(); announce('Patient editing is not available until the patient update API is implemented.') }}><div className="patient-edit-readonly"><span>Patient ID</span><strong>{selectedPatient.patientId || '-'}</strong><small>@{selectedPatient.username}</small></div><div className="patient-edit-form-grid"><label>Full name<input defaultValue={selectedPatient.name === '-' ? '' : selectedPatient.name} readOnly /></label><label>Email<input defaultValue={selectedPatient.email === '-' ? '' : selectedPatient.email} readOnly /></label><label>Phone<input defaultValue={selectedPatient.phone === '-' ? '' : selectedPatient.phone} readOnly /></label><label>Gender<input defaultValue={selectedPatient.gender === '-' ? '' : selectedPatient.gender} readOnly /></label><label>Date of birth<input defaultValue={selectedPatient.dateOfBirth ? selectedPatient.dateOfBirth.slice(0, 10) : ''} readOnly type="date" /></label><label>Address<textarea defaultValue={selectedPatient.address || ''} readOnly rows={3} /></label></div><p className="patient-edit-note">Patient updates are not available yet because the backend update endpoint has not been implemented.</p><div className="patient-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closePatientModal}>Cancel</button><button className="staff-button staff-button--primary" disabled type="submit">Save changes</button></div></form></StaffDialog> : null}
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}
     </div>
   )
