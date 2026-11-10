@@ -143,8 +143,17 @@ export const BookingPage = () => {
                     const all = [...next.morning, ...next.night];
                     const stillOpen = current && all.some((item) => item.startAt === current.startAt && !item.booked);
                     if (current && !stillOpen) {
+                        // A doctor selection can make the previously chosen time unavailable.
+                        // Return to the time step so the user can choose a valid slot instead
+                        // of leaving a stale error on the doctor step.
+                        if (step === 2 && doctorId !== ANY_DOCTOR) {
+                            setStep(1);
+                        }
                         setError(t.bookSlotTaken);
                         return null;
+                    }
+                    if (step === 2) {
+                        setError(null);
                     }
                     return current;
                 });
@@ -202,7 +211,7 @@ export const BookingPage = () => {
             : step === 1
               ? Boolean(slot)
               : step === 2
-                ? Boolean(doctorId)
+                ? Boolean(doctorId) && Boolean(slot)
                 : step === 3
                   ? Boolean(visitType)
                   : Boolean(family && slot && visitType);
@@ -350,7 +359,10 @@ export const BookingPage = () => {
                                         selected={doctorId === ANY_DOCTOR}
                                         title={t.bookAnyDoctor}
                                         subtitle={t.bookAnyDoctorHint}
-                                        onSelect={() => setDoctorId(ANY_DOCTOR)}
+                                        onSelect={() => {
+                                            setError(null);
+                                            setDoctorId(ANY_DOCTOR);
+                                        }}
                                     />
                                     {(catalog?.doctors ?? []).map((item) => (
                                         <DoctorChoice
@@ -358,7 +370,10 @@ export const BookingPage = () => {
                                             selected={doctorId === item.id}
                                             title={item.name}
                                             subtitle={`${item.specialty} · ${item.bio}`}
-                                            onSelect={() => setDoctorId(item.id)}
+                                            onSelect={() => {
+                                                setError(null);
+                                                setDoctorId(item.id);
+                                            }}
                                         />
                                     ))}
                                 </div>
