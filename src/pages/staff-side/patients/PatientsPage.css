@@ -335,8 +335,7 @@
 }
 
 .patient-dialog--view,
-.patient-dialog--edit,
-.patient-dialog--create {
+.patient-dialog--edit {
   width: min(560px, 100%);
 }
 
@@ -441,28 +440,6 @@
   color: #b9791b;
   font-size: 0.65rem;
   line-height: 1.5;
-}
-
-.patient-create-error,
-.patient-create-note {
-  margin: 0;
-  padding: 10px 11px;
-  border-radius: 7px;
-  font-size: 0.65rem;
-  line-height: 1.5;
-}
-
-.patient-create-error {
-  border: 1px solid rgba(211, 107, 114, 0.4);
-  background: rgba(211, 107, 114, 0.09);
-  color: #d36b72;
-  white-space: pre-line;
-}
-
-.patient-create-note {
-  border: 1px solid var(--staff-line);
-  background: var(--staff-subtle);
-  color: var(--staff-muted);
 }
 
 .patient-dialog-actions .staff-button:disabled {

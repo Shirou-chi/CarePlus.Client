@@ -821,6 +821,36 @@
 
 .schedule-detail-list dt { color: var(--staff-muted); font-size: 0.63rem; font-weight: 700; }
 .schedule-detail-list dd { margin: 0; color: var(--staff-ink); font-size: 0.68rem; }
+.schedule-room-assignment {
+  display: grid;
+  gap: 9px;
+  margin: 17px 0 18px;
+  padding: 13px;
+  border: 1px solid var(--staff-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--staff-card) 72%, transparent);
+}
+
+.schedule-room-assignment label {
+  display: grid;
+  gap: 6px;
+  color: var(--staff-muted);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.schedule-room-assignment select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--staff-line);
+  border-radius: 9px;
+  color: var(--staff-ink);
+  background: var(--staff-subtle);
+  font: inherit;
+}
+
+.schedule-room-assignment .staff-button { width: 100%; }
 .schedule-detail-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -845,6 +875,124 @@
   gap: 14px;
 }
 
+.schedule-staff-picker {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.schedule-staff-picker legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 7px;
+  color: var(--staff-muted);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.schedule-staff-picker legend span {
+  color: var(--staff-accent);
+  font-size: 0.58rem;
+  font-weight: 600;
+}
+
+.schedule-staff-picker__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  max-height: 174px;
+  overflow-y: auto;
+  padding: 2px;
+  border: 1px solid var(--staff-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--staff-subtle) 75%, transparent);
+}
+
+.schedule-staff-picker__option {
+  display: flex !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  align-items: center;
+  min-width: 0;
+  gap: 9px !important;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--staff-ink) !important;
+  font-size: 0.66rem !important;
+  font-weight: 600 !important;
+}
+
+.schedule-staff-picker__option:hover,
+.schedule-staff-picker__option.is-selected {
+  border-color: color-mix(in srgb, var(--staff-accent) 45%, var(--staff-line));
+  background: color-mix(in srgb, var(--staff-accent) 12%, var(--staff-subtle));
+}
+
+.schedule-staff-picker__option input {
+  flex: 0 0 auto;
+  width: 15px;
+  min-height: 15px;
+  margin: 0;
+  accent-color: var(--staff-accent);
+}
+
+.schedule-staff-picker__option > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.schedule-staff-picker__option strong,
+.schedule-staff-picker__option small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-staff-picker__option small,
+.schedule-staff-picker__hint,
+.schedule-dialog-room-field > small {
+  color: var(--staff-muted);
+  font-size: 0.58rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.schedule-staff-picker__hint {
+  display: block;
+  margin-top: 6px;
+}
+
+.schedule-staff-picker__empty {
+  margin: -3px 0 0;
+  padding: 11px;
+  border: 1px dashed var(--staff-line);
+  border-radius: 9px;
+  color: var(--staff-muted);
+  background: color-mix(in srgb, var(--staff-subtle) 65%, transparent);
+  font-size: 0.62rem;
+}
+
+.schedule-dialog-room-field {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  border: 1px solid var(--staff-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--staff-card) 70%, transparent);
+}
+
+.schedule-dialog-room-field label {
+  display: grid;
+  gap: 6px;
+}
+
 .schedule-dialog-alert {
   margin: 0 0 14px;
   padding: 10px 11px;
@@ -854,6 +1002,7 @@
   color: #c65f5f;
   font-size: 0.66rem;
   line-height: 1.4;
+  white-space: pre-line;
 }
 
 .schedule-dialog label {
@@ -875,6 +1024,23 @@
   background: var(--staff-subtle);
   color: var(--staff-ink);
   font-size: 0.7rem;
+}
+
+.schedule-dialog .schedule-staff-picker__option {
+  display: flex;
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+
+.schedule-dialog .schedule-staff-picker__option input {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
 }
 
 .schedule-dialog .staff-date-filter,
@@ -950,5 +1116,6 @@
 
   .schedule-form-grid,
   .schedule-detail-actions { grid-template-columns: 1fr; }
+  .schedule-staff-picker__list { grid-template-columns: 1fr; }
   .schedule-detail-drawer { padding: 20px 17px; }
 }

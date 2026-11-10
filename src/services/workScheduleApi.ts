@@ -11,6 +11,9 @@ export type WorkScheduleRecord = {
   workingDate: string
   shift?: WorkShift | string
   status: 'Active' | 'Inactive' | string
+  roomAssignmentId?: string | null
+  roomId?: string | null
+  roomName?: string | null
 }
 
 export type WorkScheduleCreateRequest = {
