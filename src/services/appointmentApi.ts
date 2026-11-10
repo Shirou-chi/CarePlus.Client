@@ -129,6 +129,17 @@ export const appointmentApi = {
     return unwrap(result, 'Unable to load available times.')
   },
 
+  async availableDates(doctorId: string, days = 90): Promise<string[]> {
+    const query = `?doctorId=${encodeURIComponent(doctorId)}&days=${encodeURIComponent(String(days))}`
+    const result = await request<ApiResponse<string[]>>(
+      `/api/Appointment/AvailableDates${query}`,
+      {},
+      true,
+    )
+
+    return unwrap(result, 'Unable to load scheduled dates.')
+  },
+
   async upcoming(): Promise<Appointment[]> {
     const result = await request<ApiResponse<Appointment[]>>(
       '/api/Appointment/Upcoming',

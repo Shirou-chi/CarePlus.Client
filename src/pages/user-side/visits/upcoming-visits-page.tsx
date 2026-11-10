@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { getLocalTimeZone, parseDate, today, type DateValue } from "@internationalized/date";
 import { CalendarPlus01 } from "@untitledui/icons";
-import { Link, Navigate } from "react-router";
-import { DatePicker } from "@/components/application/date-picker/date-picker";
+import { Link, Navigate, useNavigate } from "react-router";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
@@ -13,7 +11,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Locale } from "@/providers/locale-provider";
-import { appointmentApi, type Appointment, type BookingSlots } from "@/services/appointmentApi";
+import { appointmentApi, type Appointment } from "@/services/appointmentApi";
 import { cx } from "@/utils/cx";
 
 const initials = (name: string) =>
@@ -26,24 +24,16 @@ const initials = (name: string) =>
         .join("")
         .toUpperCase();
 
-const klDay = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
-
-const klShift = (iso: string): "morning" | "night" => {
-    const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Asia/Kuala_Lumpur" }).format(new Date(iso)));
-    return hour >= 18 || hour < 6 ? "night" : "morning";
-};
-
 export const UpcomingVisitsPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
+    const navigate = useNavigate();
     const [visits, setVisits] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
     const [selectedVisit, setSelectedVisit] = useState<Appointment | null>(null);
     const [pendingCancel, setPendingCancel] = useState<Appointment | null>(null);
-    const [pendingSave, setPendingSave] = useState<{ visit: Appointment; startAt: string } | null>(null);
-    const [editingId, setEditingId] = useState<string | null>(null);
     const loadVisits = async () => {
         if (!profile) return;
         setLoading(true);
@@ -94,26 +84,8 @@ export const UpcomingVisitsPage = () => {
             setNotice({ ok: false, text: cause instanceof Error ? cause.message : t.authFailed });
             return;
         }
-        setEditingId((current) => (current === pendingCancel.id ? null : current));
         setPendingCancel(null);
         setNotice({ ok: true, text: t.visitsCancelled });
-    };
-
-    const confirmSave = async () => {
-        if (!pendingSave) return;
-        try {
-            await appointmentApi.reschedule(pendingSave.visit.id, pendingSave.startAt);
-            await loadVisits();
-            setEditingId(null);
-            setNotice({ ok: true, text: t.visitsRescheduled });
-        } catch (cause) {
-            const code = cause instanceof Error ? cause.message : "";
-            setNotice({
-                ok: false,
-                text: code === "reschedule-limit" ? t.visitsRescheduleBlocked : code === "same-day-session-limit" ? t.visitsSameDaySessionLimit : t.bookSlotTaken,
-            });
-        }
-        setPendingSave(null);
     };
 
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
@@ -130,7 +102,7 @@ export const UpcomingVisitsPage = () => {
                             setNotice({ ok: false, text: t.visitsRescheduleBlocked });
                             return;
                         }
-                        setEditingId((current) => (current === visit.id ? null : visit.id));
+                        navigate(`/book?reschedule=${encodeURIComponent(visit.id)}`);
                     }}
                 >
                     {t.visitsReschedule}
@@ -139,9 +111,6 @@ export const UpcomingVisitsPage = () => {
                     {t.visitsCancel}
                 </Button>
             </div>
-            {editingId === visit.id ? (
-                <ReschedulePanel visit={visit} onAskSave={(startAt) => setPendingSave({ visit, startAt })} />
-            ) : null}
         </div>
     );
 
@@ -292,30 +261,6 @@ export const UpcomingVisitsPage = () => {
                 </Modal>
             </ModalOverlay>
 
-            <ModalOverlay isDismissable isOpen={pendingSave !== null} onOpenChange={(open) => !open && setPendingSave(null)}>
-                <Modal className="w-full max-w-md">
-                    <Dialog className="flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
-                        {pendingSave ? (
-                            <>
-                                <h2 className="text-lg font-semibold text-primary">{t.visitsSaveTitle}</h2>
-                                <p className="mt-2 text-sm text-tertiary">{t.visitsSaveBody}</p>
-                                <p className="mt-4 text-sm font-medium text-primary">
-                                    {formatDate(pendingSave.startAt)} · {formatTime(pendingSave.startAt)}
-                                </p>
-                                <div className="mt-6 flex flex-col gap-3">
-                                    <Button color="primary" size="lg" onClick={confirmSave}>
-                                        {t.visitsRescheduleSave}
-                                    </Button>
-                                    <Button color="secondary" size="lg" onClick={() => setPendingSave(null)}>
-                                        {t.visitsSaveKeep}
-                                    </Button>
-                                </div>
-                            </>
-                        ) : null}
-                    </Dialog>
-                </Modal>
-            </ModalOverlay>
-
             <ModalOverlay isDismissable isOpen={selectedVisit !== null} onOpenChange={(open) => !open && setSelectedVisit(null)}>
                 <Modal className="w-full max-w-lg">
                     <Dialog className="flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
@@ -357,66 +302,6 @@ export const UpcomingVisitsPage = () => {
                     </Dialog>
                 </Modal>
             </ModalOverlay>
-        </div>
-    );
-};
-
-const ReschedulePanel = ({ visit, onAskSave }: { visit: Appointment; onAskSave: (startAt: string) => void }) => {
-    const { t } = useI18n();
-    const [date, setDate] = useState<DateValue>(() => parseDate(klDay(visit.startAt)));
-    const [shift, setShift] = useState<"morning" | "night">(() => klShift(visit.startAt));
-    const [slot, setSlot] = useState<string | null>(visit.startAt);
-    const [slots, setSlots] = useState<BookingSlots | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    useEffect(() => {
-        let active = true;
-        setError(null);
-        appointmentApi
-            .slots(date.toString(), visit.doctorId)
-            .then((next) => active && setSlots(next))
-            .catch((cause) => active && setError(cause instanceof Error ? cause.message : t.authFailed))
-        return () => {
-            active = false;
-        };
-    }, [date, visit.doctorId, t.authFailed]);
-    const open = slots ? (shift === "morning" ? slots.morning : slots.night).map((item) => (item.startAt === visit.startAt ? { ...item, booked: false } : item)) : [];
-
-    return (
-        <div className="rounded-xl bg-secondary p-3">
-            <p className="text-sm font-semibold text-primary">{t.visitsRescheduleTitle}</p>
-            <div className="mt-3 flex flex-col gap-3">
-                <DatePicker aria-label={t.bookPickDate} value={date} minValue={today(getLocalTimeZone())} onChange={(next) => next && (setDate(next), setSlot(null))} />
-                <div className="grid grid-cols-2 gap-2">
-                    <Button color={shift === "morning" ? "primary" : "secondary"} size="sm" onClick={() => (setShift("morning"), setSlot(null))}>
-                        {t.bookMorning}
-                    </Button>
-                    <Button color={shift === "night" ? "primary" : "secondary"} size="sm" onClick={() => (setShift("night"), setSlot(null))}>
-                        {t.bookNight}
-                    </Button>
-                </div>
-                <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto">
-                    {open.map((item) => (
-                        <button
-                            key={item.startAt}
-                            type="button"
-                            disabled={item.booked}
-                            onClick={() => setSlot(item.startAt)}
-                            className={cx(
-                                "min-h-11 rounded-xl px-2 py-2 text-sm font-semibold ring-1 transition",
-                                item.booked && "cursor-not-allowed bg-secondary text-tertiary ring-transparent dark:bg-white/10 dark:ring-white/30",
-                                !item.booked && slot === item.startAt && "bg-primary text-brand-secondary ring-2 ring-brand-solid dark:bg-white/15 dark:ring-brand-300",
-                                !item.booked && slot !== item.startAt && "bg-primary text-primary ring-secondary hover:ring-brand dark:bg-white/12 dark:ring-white/40",
-                            )}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
-                </div>
-                {error ? <p className="text-sm text-error-primary">{error}</p> : null}
-                <Button color="primary" size="sm" isDisabled={!slot || slot === visit.startAt} onClick={() => slot && onAskSave(slot)}>
-                    {t.visitsRescheduleSave}
-                </Button>
-            </div>
         </div>
     );
 };
