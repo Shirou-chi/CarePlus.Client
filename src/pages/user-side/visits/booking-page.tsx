@@ -17,7 +17,14 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { familyApi, type FamilyMember } from "@/services/familyApi";
-import { appointmentApi, type Appointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/services/appointmentApi";
+import {
+    appointmentApi,
+    type Appointment,
+    type AvailableDoctorRecord,
+    type BookingCatalog,
+    type BookingSlots,
+    type TimeSlot,
+} from "@/services/appointmentApi";
 import { cx } from "@/utils/cx";
 
 const ANY_DOCTOR = "any";
@@ -64,6 +71,8 @@ export const BookingPage = () => {
     const [shift, setShift] = useState<"morning" | "night">("morning");
     const [slot, setSlot] = useState<TimeSlot | null>(null);
     const [slots, setSlots] = useState<BookingSlots | null>(null);
+    const [availableDoctors, setAvailableDoctors] = useState<AvailableDoctorRecord[]>([]);
+    const [availableDoctorsLoading, setAvailableDoctorsLoading] = useState(false);
     const [visitType, setVisitType] = useState("");
     const [notes, setNotes] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -128,7 +137,7 @@ export const BookingPage = () => {
     }, [profile, presetDoctor, t.authFailed]);
 
     useEffect(() => {
-        if (!profile || step < 1) {
+        if (!profile || step !== 1) {
             return;
         }
 
@@ -143,17 +152,8 @@ export const BookingPage = () => {
                     const all = [...next.morning, ...next.night];
                     const stillOpen = current && all.some((item) => item.startAt === current.startAt && !item.booked);
                     if (current && !stillOpen) {
-                        // A doctor selection can make the previously chosen time unavailable.
-                        // Return to the time step so the user can choose a valid slot instead
-                        // of leaving a stale error on the doctor step.
-                        if (step === 2 && doctorId !== ANY_DOCTOR) {
-                            setStep(1);
-                        }
                         setError(t.bookSlotTaken);
                         return null;
-                    }
-                    if (step === 2) {
-                        setError(null);
                     }
                     return current;
                 });
@@ -169,13 +169,50 @@ export const BookingPage = () => {
         };
     }, [date, doctorId, profile, step, t.authFailed, t.bookSlotTaken]);
 
+    useEffect(() => {
+        if (!profile || step !== 2 || !slot) {
+            return;
+        }
+
+        let active = true;
+        setAvailableDoctorsLoading(true);
+        setError(null);
+        appointmentApi
+            .retrieveAvailableDoctors(slot.startAt.slice(0, 10), slot.startAt.slice(11, 16))
+            .then((next) => {
+                if (!active) return;
+                setAvailableDoctors(next);
+                if (next.length === 0) {
+                    setDoctorId(ANY_DOCTOR);
+                    setSlot(null);
+                    setStep(1);
+                    setError(t.bookSlotTaken);
+                    return;
+                }
+                setDoctorId((current) => (current === ANY_DOCTOR || next.some((item) => item.id === current) ? current : ANY_DOCTOR));
+            })
+            .catch((cause) => {
+                if (!active) return;
+                setAvailableDoctors([]);
+                setError(cause instanceof Error ? cause.message : t.authFailed);
+            })
+            .finally(() => active && setAvailableDoctorsLoading(false));
+
+        return () => {
+            active = false;
+        };
+    }, [profile, slot?.startAt, step, t.authFailed, t.bookSlotTaken]);
+
     const selectedFamilyMember = familyMembers.find((member) => member.id === familyId);
     const family = selectedFamilyMember
         ? { ...selectedFamilyMember, isYou: selectedFamilyMember.id === profile?.id }
         : undefined;
-    const doctor = doctorId === ANY_DOCTOR ? null : catalog?.doctors.find((item) => item.id === doctorId);
-    const openSlots = slots ? (shift === "morning" ? slots.morning : slots.night) : [];
-    const openCount = openSlots.filter((item) => !item.booked).length;
+    const doctor =
+        doctorId === ANY_DOCTOR
+            ? null
+            : availableDoctors.find((item) => item.id === doctorId) ?? catalog?.doctors.find((item) => item.id === doctorId);
+    const openSlots = slots ? (shift === "morning" ? slots.morning : slots.night).filter((item) => !item.booked) : [];
+    const openCount = openSlots.length;
 
     const steps = useMemo(
         () => [
@@ -211,7 +248,10 @@ export const BookingPage = () => {
             : step === 1
               ? Boolean(slot)
               : step === 2
-                ? Boolean(doctorId) && Boolean(slot)
+                ? Boolean(slot)
+                  && availableDoctors.length > 0
+                  && !availableDoctorsLoading
+                  && (doctorId === ANY_DOCTOR || availableDoctors.some((item) => item.id === doctorId))
                 : step === 3
                   ? Boolean(visitType)
                   : Boolean(family && slot && visitType);
@@ -227,6 +267,51 @@ export const BookingPage = () => {
         if (message === "child-self-only") return t.bookChildSelfOnly;
         if (message === "age-verification-required") return t.bookAgeUnavailable;
         return isSlotConflict(message) ? t.bookSlotTaken : message;
+    };
+
+    const resetDoctorSelection = () => {
+        setDoctorId(ANY_DOCTOR);
+        setAvailableDoctors([]);
+        setAvailableDoctorsLoading(false);
+    };
+
+    const selectStep = (nextStep: number) => {
+        if (step >= 2 && nextStep <= 1) {
+            resetDoctorSelection();
+        }
+        setError(null);
+        setStep(nextStep);
+    };
+
+    const goBack = () => {
+        if (step === 2) {
+            resetDoctorSelection();
+        }
+        setError(null);
+        setStep((current) => Math.max(0, current - 1));
+    };
+
+    const selectDate = (next: DateValue | null) => {
+        if (!next) return;
+        setDate(next);
+        setSlot(null);
+        setSlots(null);
+        setAvailableDoctors([]);
+        setError(null);
+    };
+
+    const selectShift = (next: "morning" | "night") => {
+        if (next === shift) return;
+        setShift(next);
+        setSlot(null);
+        setAvailableDoctors([]);
+        setError(null);
+    };
+
+    const selectSlot = (next: TimeSlot) => {
+        setSlot(next);
+        setAvailableDoctors([]);
+        setError(null);
     };
 
     const goNext = async () => {
@@ -312,7 +397,7 @@ export const BookingPage = () => {
                 ) : null}
 
                 <div className="mt-6 rounded-2xl bg-primary px-3 py-4 ring-1 ring-secondary sm:px-4 md:mt-8 md:px-6 md:py-5">
-                    <ProgressSteps steps={steps} current={step} onSelect={setStep} />
+                    <ProgressSteps steps={steps} current={step} onSelect={selectStep} />
                 </div>
 
                 <div className="mt-4 grid items-start gap-4 md:mt-6 md:gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -354,29 +439,35 @@ export const BookingPage = () => {
                             <div className="flex flex-col gap-4">
                                 <h2 className="text-lg font-semibold text-primary">{t.bookDoctorTitle}</h2>
                                 <p className="text-sm text-tertiary">{t.bookDoctorHint}</p>
-                                <div className="flex flex-col gap-3">
-                                    <DoctorChoice
-                                        selected={doctorId === ANY_DOCTOR}
-                                        title={t.bookAnyDoctor}
-                                        subtitle={t.bookAnyDoctorHint}
-                                        onSelect={() => {
-                                            setError(null);
-                                            setDoctorId(ANY_DOCTOR);
-                                        }}
-                                    />
-                                    {(catalog?.doctors ?? []).map((item) => (
+                                {availableDoctorsLoading ? <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary">{t.bookLoadingDoctors}</p> : null}
+                                {!availableDoctorsLoading && availableDoctors.length > 0 ? (
+                                    <div className="flex flex-col gap-3">
                                         <DoctorChoice
-                                            key={item.id}
-                                            selected={doctorId === item.id}
-                                            title={item.name}
-                                            subtitle={`${item.specialty} · ${item.bio}`}
+                                            selected={doctorId === ANY_DOCTOR}
+                                            title={t.bookAnyDoctor}
+                                            subtitle={t.bookAnyDoctorHint}
                                             onSelect={() => {
                                                 setError(null);
-                                                setDoctorId(item.id);
+                                                setDoctorId(ANY_DOCTOR);
                                             }}
                                         />
-                                    ))}
-                                </div>
+                                        {availableDoctors.map((item) => (
+                                            <DoctorChoice
+                                                key={item.id}
+                                                selected={doctorId === item.id}
+                                                title={item.name}
+                                                subtitle={`${item.specialty} · ${item.bio}`}
+                                                onSelect={() => {
+                                                    setError(null);
+                                                    setDoctorId(item.id);
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : null}
+                                {!availableDoctorsLoading && availableDoctors.length === 0 && !error ? (
+                                    <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary">{t.bookNoDoctors}</p>
+                                ) : null}
                             </div>
                         ) : null}
 
@@ -388,7 +479,7 @@ export const BookingPage = () => {
                                         <p className="mt-1 text-sm text-tertiary">{doctor ? t.bookWhenDoctor.replace("{name}", doctor.name) : t.bookWhenAny}</p>
                                     </div>
                                     <div className="w-full sm:w-auto sm:shrink-0">
-                                        <DatePicker aria-label={t.bookPickDate} value={date} minValue={today(getLocalTimeZone())} onChange={(next) => next && setDate(next)} />
+                                        <DatePicker aria-label={t.bookPickDate} value={date} minValue={today(getLocalTimeZone())} onChange={selectDate} />
                                     </div>
                                 </div>
                                 <div className="grid gap-3 sm:grid-cols-2">
@@ -397,14 +488,14 @@ export const BookingPage = () => {
                                         title={t.bookMorning}
                                         range={t.bookMorningRange}
                                         countLabel={t.bookTimesCount.replace("{count}", String(slots?.morning.filter((item) => !item.booked).length ?? 0))}
-                                        onSelect={() => setShift("morning")}
+                                        onSelect={() => selectShift("morning")}
                                     />
                                     <ShiftCard
                                         active={shift === "night"}
                                         title={t.bookNight}
                                         range={t.bookNightRange}
                                         countLabel={t.bookTimesCount.replace("{count}", String(slots?.night.filter((item) => !item.booked).length ?? 0))}
-                                        onSelect={() => setShift("night")}
+                                        onSelect={() => selectShift("night")}
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
@@ -412,20 +503,14 @@ export const BookingPage = () => {
                                         <button
                                             key={item.startAt}
                                             type="button"
-                                            disabled={item.booked}
-                                            onClick={() => {
-                                                setSlot(item);
-                                                setError(null);
-                                            }}
+                                            onClick={() => selectSlot(item)}
                                             className={cx(
                                                 "min-h-11 rounded-xl px-2 py-2.5 text-sm font-semibold ring-1 transition sm:px-3 sm:py-3",
-                                                item.booked && "cursor-not-allowed bg-secondary text-tertiary ring-transparent dark:bg-white/10 dark:ring-white/30",
-                                                !item.booked && slot?.startAt === item.startAt && "bg-primary text-brand-secondary ring-2 ring-brand-solid dark:bg-white/15 dark:ring-brand-300",
-                                                !item.booked && slot?.startAt !== item.startAt && "bg-primary text-primary ring-secondary hover:ring-brand dark:bg-white/12 dark:ring-white/40",
+                                                slot?.startAt === item.startAt && "bg-primary text-brand-secondary ring-2 ring-brand-solid dark:bg-white/15 dark:ring-brand-300",
+                                                slot?.startAt !== item.startAt && "bg-primary text-primary ring-secondary hover:ring-brand dark:bg-white/12 dark:ring-white/40",
                                             )}
                                         >
                                             {item.label}
-                                            {item.booked ? <span className="mt-1 block text-xs font-medium text-tertiary">{t.bookBooked}</span> : null}
                                         </button>
                                     ))}
                                 </div>
@@ -474,7 +559,7 @@ export const BookingPage = () => {
                         </dl>
                         <div className="mt-6 hidden flex-col gap-3 lg:flex">
                             {step > 0 ? (
-                                <Button color="secondary" size="lg" onClick={() => setStep((current) => current - 1)}>
+                                <Button color="secondary" size="lg" onClick={goBack}>
                                     {t.bookBack}
                                 </Button>
                             ) : null}
@@ -498,7 +583,7 @@ export const BookingPage = () => {
                     </dl>
                     <div className="flex gap-2">
                         {step > 0 ? (
-                            <Button color="secondary" size="md" className="flex-1" onClick={() => setStep((current) => current - 1)}>
+                            <Button color="secondary" size="md" className="flex-1" onClick={goBack}>
                                 {t.bookBack}
                             </Button>
                         ) : null}
