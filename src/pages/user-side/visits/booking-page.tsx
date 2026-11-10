@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getLocalTimeZone, today, type DateValue } from "@internationalized/date";
+import { getLocalTimeZone, parseDate, today, type DateValue } from "@internationalized/date";
 import { CheckCircle } from "@untitledui/icons";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { DatePicker } from "@/components/application/date-picker/date-picker";
@@ -60,7 +60,8 @@ export const BookingPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const presetDoctor = searchParams.get("doctor");
-    const [step, setStep] = useState(0);
+    const rescheduleId = searchParams.get("reschedule");
+    const [step, setStep] = useState(rescheduleId ? 1 : 0);
     const [catalog, setCatalog] = useState<BookingCatalog | null>(null);
     const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
     const [familyId, setFamilyId] = useState("");
@@ -79,6 +80,10 @@ export const BookingPage = () => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [booked, setBooked] = useState<Appointment | null>(null);
+    const [rescheduleVisit, setRescheduleVisit] = useState<Appointment | null>(null);
+    const [rescheduleConfirmOpen, setRescheduleConfirmOpen] = useState(false);
+    const [scheduledDates, setScheduledDates] = useState<string[]>([]);
+    const [scheduledDatesLoading, setScheduledDatesLoading] = useState(false);
 
     useEffect(() => {
         if (!profile) {
@@ -110,6 +115,29 @@ export const BookingPage = () => {
             .catch((cause) => active && setError(cause instanceof Error ? cause.message : t.authFailed))
             .finally(() => active && setLoading(false));
 
+        if (rescheduleId) {
+            appointmentApi
+                .upcoming()
+                .then((visits) => {
+                    if (!active) return;
+                    const target = visits.find((visit) => visit.id === rescheduleId);
+                    if (!target) {
+                        setError(t.bookRescheduleNotFound);
+                        return;
+                    }
+
+                    setRescheduleVisit(target);
+                    setDoctorId(target.doctorId);
+                    setVisitType(target.type);
+                    setNotes(target.notes ?? "");
+                    setDate(parseDate(target.startAt.slice(0, 10)));
+                    setShift(Number(target.startAt.slice(11, 13)) >= 18 || Number(target.startAt.slice(11, 13)) < 6 ? "night" : "morning");
+                    setSlot(null);
+                    setStep(1);
+                })
+                .catch((cause) => active && setError(cause instanceof Error ? cause.message : t.bookRescheduleNotFound));
+        }
+
         familyApi
             .overview()
             .then((overview) => {
@@ -134,7 +162,35 @@ export const BookingPage = () => {
         return () => {
             active = false;
         };
-    }, [profile, presetDoctor, t.authFailed]);
+    }, [profile, presetDoctor, rescheduleId, t.authFailed, t.bookRescheduleNotFound]);
+
+    useEffect(() => {
+        if (!profile || step !== 1) return;
+
+        let active = true;
+        setScheduledDatesLoading(true);
+        appointmentApi
+            .availableDates(doctorId)
+            .then((dates) => {
+                if (!active) return;
+                setScheduledDates(dates);
+                if (dates.length > 0 && !dates.includes(date.toString())) {
+                    setDate(parseDate(dates[0]));
+                    setSlot(null);
+                    setSlots(null);
+                }
+            })
+            .catch((cause) => {
+                if (!active) return;
+                setScheduledDates([]);
+                setError(cause instanceof Error ? cause.message : t.authFailed);
+            })
+            .finally(() => active && setScheduledDatesLoading(false));
+
+        return () => {
+            active = false;
+        };
+    }, [date, doctorId, profile, step, t.authFailed]);
 
     useEffect(() => {
         if (!profile || step !== 1) {
@@ -211,19 +267,29 @@ export const BookingPage = () => {
         doctorId === ANY_DOCTOR
             ? null
             : availableDoctors.find((item) => item.id === doctorId) ?? catalog?.doctors.find((item) => item.id === doctorId);
+    const isRescheduling = Boolean(rescheduleId);
+    const bookingForName = rescheduleVisit?.forName ?? family?.name ?? "—";
+    const scheduledDateSet = useMemo(() => new Set(scheduledDates), [scheduledDates]);
+    const highlightedScheduledDates = useMemo(() => scheduledDates.map((item) => parseDate(item)), [scheduledDates]);
     const openSlots = slots ? (shift === "morning" ? slots.morning : slots.night).filter((item) => !item.booked) : [];
     const openCount = openSlots.length;
 
     const steps = useMemo(
-        () => [
-            { title: t.bookStepFamily, description: t.bookStepFamilyHint },
-            { title: t.bookStepWhen, description: t.bookStepWhenHint },
-            { title: t.bookStepDoctor, description: t.bookStepDoctorHint },
-            { title: t.bookStepType, description: t.bookStepTypeHint },
-            { title: t.bookStepSummary, description: t.bookStepSummaryHint },
-        ],
-        [t],
+        () => isRescheduling
+            ? [
+                { title: t.bookStepWhen, description: t.visitsRescheduleTitle },
+                { title: t.bookStepSummary, description: t.bookStepSummaryHint },
+            ]
+            : [
+                { title: t.bookStepFamily, description: t.bookStepFamilyHint },
+                { title: t.bookStepWhen, description: t.bookStepWhenHint },
+                { title: t.bookStepDoctor, description: t.bookStepDoctorHint },
+                { title: t.bookStepType, description: t.bookStepTypeHint },
+                { title: t.bookStepSummary, description: t.bookStepSummaryHint },
+            ],
+        [isRescheduling, t],
     );
+    const progressStep = isRescheduling ? (step === 4 ? 1 : 0) : step;
 
     const typeLabel = (id: string) => {
         if (id === "VT01") return t.visitGeneral;
@@ -246,7 +312,7 @@ export const BookingPage = () => {
         step === 0
             ? Boolean(familyId) && !familyLoading && familyBookingRestriction !== "underage" && familyBookingRestriction !== "age-unavailable"
             : step === 1
-              ? Boolean(slot)
+              ? Boolean(slot) && (!isRescheduling || Boolean(rescheduleVisit))
               : step === 2
                 ? Boolean(slot)
                   && availableDoctors.length > 0
@@ -254,7 +320,7 @@ export const BookingPage = () => {
                   && (doctorId === ANY_DOCTOR || availableDoctors.some((item) => item.id === doctorId))
                 : step === 3
                   ? Boolean(visitType)
-                  : Boolean(family && slot && visitType);
+                  : Boolean((isRescheduling || family) && slot && visitType);
 
     const isSlotConflict = (message: string) =>
         message.toLowerCase().includes("slot") || message.toLowerCase().includes("booked") || message.toLowerCase().includes("free");
@@ -276,6 +342,12 @@ export const BookingPage = () => {
     };
 
     const selectStep = (nextStep: number) => {
+        if (isRescheduling) {
+            if (nextStep === 0) setStep(1);
+            if (nextStep === 1 && slot) setStep(4);
+            setError(null);
+            return;
+        }
         if (step >= 2 && nextStep <= 1) {
             resetDoctorSelection();
         }
@@ -284,6 +356,15 @@ export const BookingPage = () => {
     };
 
     const goBack = () => {
+        if (isRescheduling) {
+            if (step === 4) {
+                setStep(1);
+            } else {
+                navigate("/visits");
+            }
+            setError(null);
+            return;
+        }
         if (step === 2) {
             resetDoctorSelection();
         }
@@ -337,7 +418,7 @@ export const BookingPage = () => {
                 return;
             }
             setError(null);
-            setStep(2);
+            setStep(isRescheduling ? 4 : 2);
         } catch (cause) {
             setError(cause instanceof Error ? cause.message : t.authFailed);
         } finally {
@@ -346,21 +427,24 @@ export const BookingPage = () => {
     };
 
     const confirm = async () => {
-        if (!profile || !family || !slot || !visitType) {
+        if (!profile || (!isRescheduling && !family) || !slot || !visitType) {
             return;
         }
 
         setSaving(true);
         setError(null);
         try {
-            const result = await appointmentApi.book({
-                doctorId,
-                startAt: slot.startAt,
-                type: visitType,
-                patientId: family.id,
-                forName: family.name,
-                notes: notes.trim() || undefined,
-            });
+            const result = isRescheduling
+                ? await appointmentApi.reschedule(rescheduleVisit!.id, slot.startAt)
+                : await appointmentApi.book({
+                    doctorId,
+                    startAt: slot.startAt,
+                    type: visitType,
+                    patientId: family!.id,
+                    forName: family!.name,
+                    notes: notes.trim() || undefined,
+                });
+            setRescheduleConfirmOpen(false);
             setBooked(result);
         } catch (cause) {
             const message = cause instanceof Error ? cause.message : t.authFailed;
@@ -372,6 +456,14 @@ export const BookingPage = () => {
         } finally {
             setSaving(false);
         }
+    };
+
+    const requestConfirmation = () => {
+        if (isRescheduling) {
+            setRescheduleConfirmOpen(true);
+            return;
+        }
+        void confirm();
     };
 
     if (!isReady) {
@@ -387,9 +479,15 @@ export const BookingPage = () => {
             <LandingHeader />
             <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-6 pb-28 md:px-8 md:py-10 md:pb-10">
-                <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.bookTitle}</h1>
-                <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.bookBody}</p>
-                <p className="mt-4 max-w-3xl rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.bookLimitNote}</p>
+                <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">
+                    {isRescheduling ? t.bookReschedulePageTitle : t.bookTitle}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">
+                    {isRescheduling ? t.bookReschedulePageBody : t.bookBody}
+                </p>
+                <p className="mt-4 max-w-3xl rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">
+                    {isRescheduling ? t.bookRescheduleBanner : t.bookLimitNote}
+                </p>
                 {catalog?.bookingClosed ? (
                     <p role="status" className="mt-4 rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">
                         {t.visitsBookingBlocked}
@@ -397,7 +495,7 @@ export const BookingPage = () => {
                 ) : null}
 
                 <div className="mt-6 rounded-2xl bg-primary px-3 py-4 ring-1 ring-secondary sm:px-4 md:mt-8 md:px-6 md:py-5">
-                    <ProgressSteps steps={steps} current={step} onSelect={selectStep} />
+                    <ProgressSteps steps={steps} current={progressStep} onSelect={selectStep} />
                 </div>
 
                 <div className="mt-4 grid items-start gap-4 md:mt-6 md:gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -479,9 +577,20 @@ export const BookingPage = () => {
                                         <p className="mt-1 text-sm text-tertiary">{doctor ? t.bookWhenDoctor.replace("{name}", doctor.name) : t.bookWhenAny}</p>
                                     </div>
                                     <div className="w-full sm:w-auto sm:shrink-0">
-                                        <DatePicker aria-label={t.bookPickDate} value={date} minValue={today(getLocalTimeZone())} onChange={selectDate} />
+                                        <DatePicker
+                                            aria-label={t.bookPickDate}
+                                            value={date}
+                                            minValue={today(getLocalTimeZone())}
+                                            highlightedDates={highlightedScheduledDates}
+                                            isDisabled={scheduledDatesLoading || scheduledDates.length === 0}
+                                            isDateUnavailable={(candidate) => !scheduledDateSet.has(candidate.toString())}
+                                            onChange={selectDate}
+                                        />
                                     </div>
                                 </div>
+                                <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">
+                                    {scheduledDatesLoading ? t.bookScheduleLoading : scheduledDates.length === 0 ? t.bookScheduleNone : t.bookScheduleNote}
+                                </p>
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <ShiftCard
                                         active={shift === "morning"}
@@ -524,7 +633,15 @@ export const BookingPage = () => {
                                 <h2 className="text-lg font-semibold text-primary">{t.bookTypeTitle}</h2>
                                 <RadioGroup value={visitType} onChange={setVisitType} size="md" className="gap-3" aria-label={t.bookTypeTitle}>
                                     {(catalog?.types ?? []).map((item) => (
-                                        <div key={item.id} className={cx("rounded-xl px-4 py-3 ring-1", visitType === item.id ? "bg-primary ring-2 ring-brand-solid" : "bg-secondary ring-secondary")}>
+                                        <div
+                                            key={item.id}
+                                            className={cx(
+                                                "rounded-xl px-4 py-3 ring-1 transition-colors",
+                                                visitType === item.id
+                                                    ? "bg-primary ring-2 ring-brand-solid dark:bg-white/12 dark:ring-brand-300"
+                                                    : "bg-secondary ring-secondary",
+                                            )}
+                                        >
                                             <RadioButton value={item.id} label={typeLabel(item.id)} hint={item.id === "VT01" ? t.visitGeneralHint : item.id === "VT03" ? t.visitMentalHint : t.visitScreeningHint} size="md" />
                                         </div>
                                     ))}
@@ -537,7 +654,7 @@ export const BookingPage = () => {
                             <div className="flex flex-col gap-5">
                                 <h2 className="text-lg font-semibold text-primary">{t.bookSummaryTitle}</h2>
                                 <dl className="divide-y divide-secondary">
-                                    <SummaryRow label={t.bookWhoTitle} value={family?.name ?? "—"} />
+                                    <SummaryRow label={t.bookWhoTitle} value={bookingForName} />
                                     <SummaryRow label={t.bookStepWhen} value={slot ? formatWhen(slot.startAt) : "—"} />
                                     <SummaryRow label={t.bookStepDoctor} value={doctor?.name ?? t.bookAnyDoctor} />
                                     <SummaryRow label={t.bookStepType} value={visitType ? typeLabel(visitType) : "—"} />
@@ -552,7 +669,7 @@ export const BookingPage = () => {
                     <aside className="hidden min-w-0 rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary sm:p-5 lg:sticky lg:top-28 lg:block lg:p-5">
                         <h2 className="text-md font-semibold text-primary">{t.bookSidebarTitle}</h2>
                         <dl className="mt-4 flex flex-col gap-3 text-sm">
-                            <SummaryRow label={t.bookStepFamily} value={family?.name ?? "—"} compact />
+                            <SummaryRow label={t.bookStepFamily} value={bookingForName} compact />
                             <SummaryRow label={t.bookStepWhen} value={slot ? formatWhen(slot.startAt) : t.bookNotPicked} compact />
                             <SummaryRow label={t.bookStepDoctor} value={doctor?.name ?? t.bookAnyDoctor} compact />
                             <SummaryRow label={t.bookStepType} value={visitType ? typeLabel(visitType) : t.bookNotPicked} compact />
@@ -568,8 +685,8 @@ export const BookingPage = () => {
                                     {t.bookContinue}
                                 </Button>
                             ) : (
-                                <Button color="primary" size="lg" isDisabled={!canContinue || saving || catalog?.bookingClosed} onClick={() => void confirm()}>
-                                    {saving ? t.bookSaving : t.bookConfirm}
+                                <Button color="primary" size="lg" isDisabled={!canContinue || saving || (!isRescheduling && catalog?.bookingClosed)} onClick={requestConfirmation}>
+                                    {saving ? (isRescheduling ? t.bookRescheduling : t.bookSaving) : (isRescheduling ? t.bookRescheduleConfirm : t.bookConfirm)}
                                 </Button>
                             )}
                         </div>
@@ -578,7 +695,7 @@ export const BookingPage = () => {
 
                 <div className="fixed inset-x-0 bottom-0 z-40 border-t border-secondary bg-primary/95 px-4 py-3 shadow-lg backdrop-blur-md pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
                     <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-                        <SummaryRow label={t.bookStepFamily} value={family?.name ?? "—"} compact mobile />
+                        <SummaryRow label={t.bookStepFamily} value={bookingForName} compact mobile />
                         <SummaryRow label={t.bookStepWhen} value={slot ? formatWhen(slot.startAt) : t.bookNotPicked} compact mobile />
                     </dl>
                     <div className="flex gap-2">
@@ -592,8 +709,8 @@ export const BookingPage = () => {
                                 {t.bookContinue}
                             </Button>
                         ) : (
-                            <Button color="primary" size="md" className="flex-1" isDisabled={!canContinue || saving || catalog?.bookingClosed} onClick={() => void confirm()}>
-                                {saving ? t.bookSaving : t.bookConfirm}
+                            <Button color="primary" size="md" className="flex-1" isDisabled={!canContinue || saving || (!isRescheduling && catalog?.bookingClosed)} onClick={requestConfirmation}>
+                                {saving ? (isRescheduling ? t.bookRescheduling : t.bookSaving) : (isRescheduling ? t.bookRescheduleConfirm : t.bookConfirm)}
                             </Button>
                         )}
                     </div>
@@ -601,14 +718,32 @@ export const BookingPage = () => {
             </main>
             <LandingFooter />
 
-            <ModalOverlay isDismissable isOpen={booked !== null} onOpenChange={(open) => !open && navigate("/home")}>
+            <ModalOverlay isDismissable isOpen={rescheduleConfirmOpen} onOpenChange={setRescheduleConfirmOpen}>
+                <Modal className="w-full max-w-md">
+                    <Dialog className="flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
+                        <h2 className="text-lg font-semibold text-primary">{t.visitsSaveTitle}</h2>
+                        <p className="mt-2 text-sm text-tertiary">{t.visitsSaveBody}</p>
+                        {slot ? <p className="mt-4 rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-primary">{formatWhen(slot.startAt)}</p> : null}
+                        <div className="mt-6 flex flex-col gap-3">
+                            <Button color="primary" size="lg" isLoading={saving} onClick={() => void confirm()}>
+                                {saving ? t.bookRescheduling : t.bookRescheduleConfirm}
+                            </Button>
+                            <Button color="secondary" size="lg" isDisabled={saving} onClick={() => setRescheduleConfirmOpen(false)}>
+                                {t.visitsSaveKeep}
+                            </Button>
+                        </div>
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
+
+            <ModalOverlay isDismissable isOpen={booked !== null} onOpenChange={(open) => !open && navigate(isRescheduling ? "/visits" : "/home")}>
                 <Modal className="w-full max-w-md">
                     <Dialog className="flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
                         {booked ? (
                             <>
                                 <CheckCircle className="size-10 text-fg-success-primary" />
-                                <h2 className="mt-4 text-lg font-semibold text-primary">{t.bookDoneTitle}</h2>
-                                <p className="mt-2 text-sm text-tertiary">{t.bookDoneBody}</p>
+                                <h2 className="mt-4 text-lg font-semibold text-primary">{isRescheduling ? t.bookRescheduleDoneTitle : t.bookDoneTitle}</h2>
+                                <p className="mt-2 text-sm text-tertiary">{isRescheduling ? t.bookRescheduleDoneBody : t.bookDoneBody}</p>
                                 <dl className="mt-4 flex flex-col gap-2 text-sm">
                                     <SummaryRow label={t.bookStepFamily} value={booked.forName} compact />
                                     <SummaryRow label={t.bookStepWhen} value={formatWhen(booked.startAt)} compact />
@@ -616,12 +751,14 @@ export const BookingPage = () => {
                                     <SummaryRow label={t.bookStepType} value={typeLabel(visitType) || booked.type} compact />
                                 </dl>
                                 <div className="mt-6 flex flex-col gap-3">
-                                    <Button color="primary" size="lg" onClick={() => navigate("/home")}>
-                                        {t.backToHome}
+                                    <Button color="primary" size="lg" onClick={() => navigate(isRescheduling ? "/visits" : "/home")}>
+                                        {isRescheduling ? t.bookViewBooking : t.backToHome}
                                     </Button>
-                                    <Button color="secondary" size="lg" onClick={() => navigate("/visits")}>
-                                        {t.bookViewBooking}
-                                    </Button>
+                                    {!isRescheduling ? (
+                                        <Button color="secondary" size="lg" onClick={() => navigate("/visits")}>
+                                            {t.bookViewBooking}
+                                        </Button>
+                                    ) : null}
                                 </div>
                             </>
                         ) : null}
