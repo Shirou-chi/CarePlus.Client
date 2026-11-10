@@ -16,6 +16,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
+import { familyApi, type FamilyMember } from "@/services/familyApi";
 import { appointmentApi, type Appointment, type BookingCatalog, type BookingSlots, type TimeSlot } from "@/services/appointmentApi";
 import { cx } from "@/utils/cx";
 
@@ -29,6 +30,23 @@ const relationLabel = (t: Copy, relation: string) => {
     return relation;
 };
 
+type FamilyBookingRestriction = "underage" | "age-unavailable" | "child-self-only" | null;
+
+const calculateAge = (dateOfBirth: string | null) => {
+    if (!dateOfBirth) return null;
+
+    const birth = new Date(`${dateOfBirth.slice(0, 10)}T00:00:00`);
+    if (Number.isNaN(birth.getTime())) return null;
+
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const birthdayHasPassed =
+        now.getMonth() > birth.getMonth()
+        || (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
+    if (!birthdayHasPassed) age--;
+    return age >= 0 ? age : null;
+};
+
 export const BookingPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
@@ -37,7 +55,10 @@ export const BookingPage = () => {
     const presetDoctor = searchParams.get("doctor");
     const [step, setStep] = useState(0);
     const [catalog, setCatalog] = useState<BookingCatalog | null>(null);
+    const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
     const [familyId, setFamilyId] = useState("");
+    const [familyLoading, setFamilyLoading] = useState(false);
+    const [familyBookingRestriction, setFamilyBookingRestriction] = useState<FamilyBookingRestriction>(null);
     const [doctorId, setDoctorId] = useState(() => presetDoctor || ANY_DOCTOR);
     const [date, setDate] = useState<DateValue>(today(getLocalTimeZone()));
     const [shift, setShift] = useState<"morning" | "night">("morning");
@@ -56,17 +77,51 @@ export const BookingPage = () => {
         }
 
         let active = true;
+        const ownMember: FamilyMember = {
+            id: profile.id,
+            familyMemberId: 0,
+            name: profile.fullName,
+            email: profile.email,
+            relation: "parent",
+            permission: "parent",
+            status: "active",
+            isOwner: true,
+        };
+        setFamilyMembers([ownMember]);
+        setFamilyId(profile.id);
+        setFamilyLoading(true);
         setLoading(true);
         appointmentApi
             .catalog()
             .then((next) => {
                 if (!active) return;
                 setCatalog(next);
-                setFamilyId(profile.id);
                 if (presetDoctor && next.doctors.some((doctor) => doctor.id === presetDoctor)) setDoctorId(presetDoctor);
             })
             .catch((cause) => active && setError(cause instanceof Error ? cause.message : t.authFailed))
             .finally(() => active && setLoading(false));
+
+        familyApi
+            .overview()
+            .then((overview) => {
+                if (!active) return;
+                const members = overview.family?.members.filter((member) => member.status === "active") ?? [];
+                if (members.length > 0) {
+                    setFamilyMembers(members);
+                    const currentMember = members.find((member) => member.id === overview.currentPatientId);
+                    if (currentMember?.relation === "child") {
+                        const age = calculateAge(profile.dateOfBirth);
+                        setFamilyBookingRestriction(age === null ? "age-unavailable" : age < 12 ? "underage" : "child-self-only");
+                    } else {
+                        setFamilyBookingRestriction(null);
+                    }
+                } else {
+                    setFamilyBookingRestriction(null);
+                }
+            })
+            .catch(() => active && setFamilyBookingRestriction(null))
+            .finally(() => active && setFamilyLoading(false));
+
         return () => {
             active = false;
         };
@@ -105,7 +160,10 @@ export const BookingPage = () => {
         };
     }, [date, doctorId, profile, step, t.authFailed, t.bookSlotTaken]);
 
-    const family = profile && familyId === profile.id ? { id: profile.id, name: profile.fullName, relation: "", isYou: true } : undefined;
+    const selectedFamilyMember = familyMembers.find((member) => member.id === familyId);
+    const family = selectedFamilyMember
+        ? { ...selectedFamilyMember, isYou: selectedFamilyMember.id === profile?.id }
+        : undefined;
     const doctor = doctorId === ANY_DOCTOR ? null : catalog?.doctors.find((item) => item.id === doctorId);
     const openSlots = slots ? (shift === "morning" ? slots.morning : slots.night) : [];
     const openCount = openSlots.filter((item) => !item.booked).length;
@@ -140,7 +198,7 @@ export const BookingPage = () => {
 
     const canContinue =
         step === 0
-            ? Boolean(familyId)
+            ? Boolean(familyId) && !familyLoading && familyBookingRestriction !== "underage" && familyBookingRestriction !== "age-unavailable"
             : step === 1
               ? Boolean(slot)
               : step === 2
@@ -156,6 +214,9 @@ export const BookingPage = () => {
         if (message === "booking-closed") return t.visitsBookingBlocked;
         if (message === "upcoming-limit") return t.visitsUpcomingLimit;
         if (message === "same-day-session-limit") return t.visitsSameDaySessionLimit;
+        if (message === "child-underage-booking") return t.bookChildUnderage;
+        if (message === "child-self-only") return t.bookChildSelfOnly;
+        if (message === "age-verification-required") return t.bookAgeUnavailable;
         return isSlotConflict(message) ? t.bookSlotTaken : message;
     };
 
@@ -202,6 +263,7 @@ export const BookingPage = () => {
                 doctorId,
                 startAt: slot.startAt,
                 type: visitType,
+                patientId: family.id,
                 forName: family.name,
                 notes: notes.trim() || undefined,
             });
@@ -250,14 +312,18 @@ export const BookingPage = () => {
                             <div className="flex flex-col gap-4">
                                 <h2 className="text-lg font-semibold text-primary">{t.bookWhoTitle}</h2>
                                 <p className="text-sm text-tertiary">{t.bookWhoHint}</p>
+                                {familyBookingRestriction === "underage" ? <p role="status" className="rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">{t.bookChildUnderage}</p> : null}
+                                {familyBookingRestriction === "age-unavailable" ? <p role="status" className="rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">{t.bookAgeUnavailable}</p> : null}
+                                {familyBookingRestriction === "child-self-only" ? <p role="status" className="rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary">{t.bookChildSelfOnly}</p> : null}
                                 <Select
                                     label={t.bookFamilyLabel}
                                     selectedKey={familyId}
                                     onSelectionChange={(key) => setFamilyId(String(key))}
-                                    items={(family ? [family] : []).map((item) => ({
+                                    isDisabled={familyLoading || familyBookingRestriction === "underage" || familyBookingRestriction === "age-unavailable"}
+                                    items={familyMembers.filter((item) => familyBookingRestriction !== "child-self-only" || item.id === profile?.id).map((item) => ({
                                         id: item.id,
                                         label: item.name,
-                                        supportingText: item.isYou ? t.bookPrimaryContact : relationLabel(t, item.relation),
+                                        supportingText: item.id === profile?.id ? t.bookPrimaryContact : relationLabel(t, item.relation),
                                     }))}
                                 >
                                     {(item) => <Select.Item id={item.id} label={item.label} supportingText={item.supportingText} />}
