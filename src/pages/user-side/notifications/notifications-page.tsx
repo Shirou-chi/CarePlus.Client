@@ -439,7 +439,7 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                     <div className="flex items-center justify-between gap-3">
                                         {item.unread ? (
                                             <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
-                                                <span aria-hidden="true" className="size-2 rounded-full bg-[#0b1f38]" />
+                                                <span aria-hidden="true" className="size-2 rounded-full bg-[#0b1f38] dark:bg-brand-300" />
                                                 {t.notifUnreadLabel}
                                             </span>
                                         ) : (

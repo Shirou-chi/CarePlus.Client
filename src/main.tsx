@@ -23,6 +23,7 @@ import { OutstandingInvoicesPage } from "@/pages/user-side/bills/outstanding-inv
 import { PaymentHistoryPage } from "@/pages/user-side/bills/payment-history-page";
 import { BookingPage } from "@/pages/user-side/visits/booking-page";
 import { UpcomingVisitsPage } from "@/pages/user-side/visits/upcoming-visits-page";
+import { QueuePage } from "@/pages/user-side/visits/queue-page";
 import { ForgotPasswordPage } from "@/pages/user-side/auth/forgot-password-page";
 import { FamilyPage } from "@/pages/user-side/family/family-page";
 import { HealthRecordsPage } from "@/pages/user-side/records/health-records-page";
@@ -100,7 +101,7 @@ function StaffLoginRoute() {
 }
 
 const featurePath = (pathname: string) =>
-    ["/home", "/book", "/visits", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
+    ["/home", "/book", "/visits", "/queue", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
         (path) => pathname === path || pathname.startsWith(`${path}/`),
     );
 
@@ -139,6 +140,7 @@ const AppRoutes = () => {
                     <Route path="/account" element={<AccountPage />} />
                     <Route path="/book" element={<BookingPage />} />
                     <Route path="/visits" element={<UpcomingVisitsPage />} />
+                    <Route path="/queue" element={<QueuePage />} />
                     <Route path="/invoices" element={<OutstandingInvoicesPage />} />
                     <Route path="/invoices/:id/pay" element={<InvoicePaymentPage />} />
                     <Route path="/payments" element={<PaymentHistoryPage />} />

@@ -3,8 +3,8 @@ import { TOKEN_KEY } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
-import { useTheme } from "@/providers/theme-provider";
-import { dummyLogin, SESSION_KEY, type Profile } from "@/utils/auth";
+import { useTheme, type TextSize } from "@/providers/theme-provider";
+import { SESSION_KEY, type Profile } from "@/utils/auth";
 import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
 
 const OLD_STAFF_SESSION_KEY = "careplus-staff-session";
@@ -124,21 +124,26 @@ export const profileFromUser = (user: CurrentUserResponse): Profile => ({
 const isNotificationLevel = (value: string | null | undefined): value is NotificationLevel =>
     value === "all" || value === "reminder" || value === "none";
 
+const isTextSize = (value: string | null | undefined): value is TextSize =>
+    value === "normal" || value === "large" || value === "larger";
+
 async function loadPatientPreferences(
     profileId: string,
     applyTheme: (theme: "light" | "dark") => void,
     applyLocale: (locale: "en" | "zh") => void,
+    applyTextSize: (textSize: TextSize) => void,
 ): Promise<AppSettingResponse | null> {
     const setting = await profileApi.getAppSetting();
     if (!setting) {
         applyTheme("light");
         applyLocale("en");
+        applyTextSize("normal");
         const current = readProfileSettings(profileId);
         writeProfileSettings(profileId, { ...current, notificationLevel: "all" });
         return null;
     }
 
-    applyAppSetting(profileId, setting, applyTheme, applyLocale);
+    applyAppSetting(profileId, setting, applyTheme, applyLocale, applyTextSize);
     return setting;
 }
 
@@ -147,6 +152,7 @@ function applyAppSetting(
     setting: AppSettingResponse,
     applyTheme: (theme: "light" | "dark") => void,
     applyLocale: (locale: "en" | "zh") => void,
+    applyTextSize: (textSize: TextSize) => void,
 ) {
     if (setting.appearance === "light" || setting.appearance === "dark") {
         applyTheme(setting.appearance);
@@ -154,14 +160,19 @@ function applyAppSetting(
     if (setting.language === "en" || setting.language === "zh") {
         applyLocale(setting.language);
     }
-    if (isNotificationLevel(setting.notification)) {
+    if (isTextSize(setting.textSize)) {
+        applyTextSize(setting.textSize);
+    } else {
+        applyTextSize("normal");
+    }
+    if (profileId && isNotificationLevel(setting.notification)) {
         const current = readProfileSettings(profileId);
         writeProfileSettings(profileId, { ...current, notificationLevel: setting.notification });
     }
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const { applyTheme } = useTheme();
+    const { applyTheme, applyTextSize } = useTheme();
     const { applyLocale } = useI18n();
     const [session, setSession] = useState<StoredSession | null>(() => readStoredSession());
     const [isReady, setIsReady] = useState(false);
@@ -175,6 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!token) {
             applyTheme("light");
             applyLocale("en");
+            applyTextSize("normal");
             setHasCompletedTutorial(null);
             setIsReady(true);
             return;
@@ -194,11 +206,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     saveSession(nextSession);
                     setSession(nextSession);
                     setHasCompletedTutorial(null);
+                    const setting = await profileApi.getAppSetting().catch(() => null);
+                    if (setting) {
+                        applyAppSetting("", setting, applyTheme, () => undefined, applyTextSize);
+                    }
                     return;
                 }
 
                 const nextProfile = profileFromUser(apiUser);
-                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
+                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
                 if (cancelled) return;
 
                 const nextSession: StoredSession = {
@@ -217,6 +233,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setHasCompletedTutorial(null);
                 applyTheme("light");
                 applyLocale("en");
+                applyTextSize("normal");
             })
             .finally(() => {
                 if (!cancelled) setIsReady(true);
@@ -225,7 +242,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return () => {
             cancelled = true;
         };
-    }, [applyLocale, applyTheme]);
+    }, [applyLocale, applyTheme, applyTextSize]);
 
     const login = async (email: string, password: string) => {
         authApi.clearToken();
@@ -240,7 +257,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
 
             const nextProfile = profileFromUser(apiUser);
-            const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale);
+            const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
             const nextSession: StoredSession = {
                 type: "patient",
                 profile: nextProfile,
@@ -250,16 +267,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
         } catch (error) {
             authApi.clearToken();
-
-            try {
-                const fallbackProfile = dummyLogin(email, password);
-                const nextSession: StoredSession = { type: "patient", profile: fallbackProfile };
-                saveSession(nextSession);
-                setSession(nextSession);
-                setHasCompletedTutorial(false);
-            } catch {
-                throw error;
-            }
+            throw error;
         }
     };
 
@@ -277,6 +285,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 type: "staff",
                 user: convertApiUser(apiUser),
             };
+            const setting = await profileApi.getAppSetting().catch(() => null);
+            if (setting) {
+                applyAppSetting("", setting, applyTheme, () => undefined, applyTextSize);
+            }
             saveSession(nextSession);
             setSession(nextSession);
             setHasCompletedTutorial(null);

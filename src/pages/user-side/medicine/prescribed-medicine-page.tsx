@@ -155,7 +155,7 @@ export const PrescribedMedicinePage = () => {
                     <section className="lg:col-span-5">
                         <p className="text-sm text-tertiary">{medicine.brand}</p>
                         <h1 className="mt-1 text-display-xs font-semibold text-primary [font-family:var(--font-display)]">{medicine.name}</h1>
-                        <p className="mt-3 text-display-sm font-semibold text-[#0f766e]">{formatRm(medicine.price)}</p>
+                        <p className="mt-3 text-display-sm font-semibold text-[#0f766e] dark:text-[#5eead4]">{formatRm(medicine.price)}</p>
 
                         <ul className="mt-6 grid grid-cols-2 gap-3">
                             {specs.map((spec, index) => {
@@ -182,7 +182,7 @@ export const PrescribedMedicinePage = () => {
                         <h2 className="text-md font-semibold text-primary">{t.medPickup}</h2>
                         <p className="mt-1 text-sm font-medium text-primary">{clinic.name}</p>
                         <p className="mt-0.5 text-sm text-tertiary">{t.medFulfilmentHint}</p>
-                        <p className="mt-4 text-display-xs font-semibold text-[#0f766e]">{formatRm(medicine.price)}</p>
+                        <p className="mt-4 text-display-xs font-semibold text-[#0f766e] dark:text-[#5eead4]">{formatRm(medicine.price)}</p>
 
                         <div className="mt-5">
                             <InputNumber

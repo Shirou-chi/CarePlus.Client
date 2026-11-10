@@ -129,7 +129,7 @@ export const AboutPage = () => {
                                     <FeaturedIcon icon={item.icon} color="brand" theme="light" size="md" />
                                     <h3 className="mt-4 text-lg font-semibold text-primary">{item.title}</h3>
                                     <p className="mt-2 text-md text-tertiary">{item.body}</p>
-                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#d5e5eb] dark:bg-[#335775]">
+                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#b8d5dc] ring-1 ring-black/10 dark:bg-[#3d668a] dark:ring-white/10">
                                         <div className="h-full rounded-full bg-[#0b2036] dark:bg-[#72e6f0]" style={{ width: `${item.share}%` }} />
                                     </div>
                                 </article>
@@ -158,7 +158,7 @@ export const AboutPage = () => {
                                         <span className="font-medium text-primary">{item.label}</span>
                                         <span className="text-tertiary">{item.pct}%</span>
                                     </div>
-                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#d5e5eb] dark:bg-[#335775]">
+                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#b8d5dc] ring-1 ring-black/10 dark:bg-[#3d668a] dark:ring-white/10">
                                         <div className="h-full rounded-full bg-[#0b2036] dark:bg-[#72e6f0]" style={{ width: `${item.pct}%` }} />
                                     </div>
                                 </li>

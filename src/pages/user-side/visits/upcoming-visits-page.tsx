@@ -154,7 +154,7 @@ export const UpcomingVisitsPage = () => {
                     <div>
                         <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.upcomingVisits}</h1>
                         <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.visitsBody}</p>
-                        <p className="mt-4 max-w-3xl rounded-xl bg-primary px-4 py-3 text-sm text-primary ring-1 ring-secondary">{t.visitsLimitNote}</p>
+                        <p className="mt-4 w-fit max-w-full rounded-xl bg-primary px-4 py-3 text-sm text-primary ring-1 ring-secondary">{t.visitsLimitNote}</p>
                     </div>
                     {next ? (
                         <Button href="/book" color="primary" size="md" iconLeading={CalendarPlus01}>

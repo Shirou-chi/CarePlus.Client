@@ -39,6 +39,15 @@ body {
     font-kerning: normal;
 }
 
+/* Scale rem-based UI consistently for users who need larger text. */
+html[data-text-size="large"] {
+    font-size: 112.5%;
+}
+
+html[data-text-size="larger"] {
+    font-size: 125%;
+}
+
 /* Hide the default expand arrow on Safari.  */
 details summary::-webkit-details-marker {
     display: none;

@@ -55,6 +55,7 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
         ...common,
         page("/book", t.bookVisit, t.bookVisitHint, "booking appointment schedule timeslot consultation 预约 挂号 时段"),
         page("/visits", t.upcomingVisits, t.upcomingVisitsHint, "upcoming appointment reschedule cancel 即将就诊 改期 取消"),
+        page("/queue", "Clinic queue", "Check in and follow your live queue progress", "queue check in waiting number clinic 排队 报到 叫号"),
         page("/doctors", t.doctorsTitle, t.doctorsBody, "doctor physician browse 医生 医师"),
         page("/medicine", t.medTitle, t.medSearch, "medicine pharmacy drug prescribed buy 药物 药房 处方"),
         page("/cart", t.cart, t.medCartEmptyHint, "shopping basket checkout 购物车 结算"),
