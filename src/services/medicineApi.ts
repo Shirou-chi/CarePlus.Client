@@ -1,21 +1,7 @@
 import { messageFromBody, request, type ApiResponse } from './api'
+import type { MedicineRow } from '@/utils/prescribed-medicine'
 
-export type MedicineRecord = {
-  medicineId: string
-  medicineName: string
-  nameZh?: string | null
-  description: string
-  descriptionZh?: string | null
-  pack: string
-  packZh?: string | null
-  form: string
-  kind: string
-  method: string
-  methodZh?: string | null
-  imageKey: string
-  price: number
-  status: string
-}
+export type MedicineRecord = MedicineRow
 
 export type MedicineCreateRequest = {
   medicineName: string
@@ -49,7 +35,7 @@ function unwrap<T>(result: ApiResponse<T>, fallback: string): T {
 
 export const medicineApi = {
   async list(): Promise<MedicineRecord[]> {
-    const result = await request<ApiResponse<MedicineRecord[]>>('/api/Medicine/Retrieve', {}, true)
+    const result = await request<ApiResponse<MedicineRecord[]>>('/api/Medicine/Retrieve', { cache: 'no-store' }, true)
 
     if (!result.isSuccess && result.respCode === 404) {
       return []

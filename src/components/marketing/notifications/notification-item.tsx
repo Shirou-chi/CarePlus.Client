@@ -39,6 +39,6 @@ export const NotificationItem = ({ actor, initials, message, meta, unread, href,
             <span className={cx("block text-sm text-primary", unread ? "font-semibold" : "font-medium")}>{message}</span>
             <span className="mt-0.5 block text-xs text-tertiary">{meta}</span>
         </span>
-        {unread ? <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-[#0b1f38]" /> : <span className="mt-2 size-2 shrink-0" />}
+        {unread ? <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-[#0b1f38] dark:bg-brand-300" /> : <span className="mt-2 size-2 shrink-0" />}
     </a>
 );

@@ -129,7 +129,7 @@ export async function request<T>(
     const code = body && typeof body === 'object' && 'reason' in body && typeof body.reason === 'string'
       ? body.reason
       : undefined
-    throw new ApiRequestError(messageFromBody(body, `Request failed with status ${response.status}`), response.status, code)
+    throw new ApiRequestError(messageFromBody(body, messageFromHttpStatus(response.status)), response.status, code)
   }
 
   return body as T

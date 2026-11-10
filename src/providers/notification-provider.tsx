@@ -19,8 +19,7 @@ type NoticeContextValue = {
 const NoticeContext = createContext<NoticeContextValue | null>(null);
 
 const kindForType = (type: string): NoticeKind => {
-    if (type === "appointment_reminder") return "visit";
-    if (type === "staff_appointment" || type === "schedule_update") return "visit";
+    if (type === "appointment_reminder" || type === "appointment_cancelled" || type === "check_in_reminder" || type === "queue_update") return "visit";
     if (type === "payment_reminder") return "payment";
     if (type === "medicine_update") return "medicine";
     if (type === "family_invitation" || type === "family_invitation_declined" || type === "family_access_request") return "family";

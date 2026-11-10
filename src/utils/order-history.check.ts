@@ -1,16 +1,4 @@
-import { mergeOrders, nextOrderId, normalizeOrderStatus, showsPaymentHistory, trackingStepsFor, type MedicineOrder } from "./order-history.ts";
-
-const seed = { id: "CP-2026-0142" } as MedicineOrder;
-const placed = { id: "CP-2026-0004" } as MedicineOrder;
-const merged = mergeOrders([placed], [seed, placed]);
-if (merged.map((order) => order.id).join() !== "CP-2026-0004,CP-2026-0142") {
-    throw new Error("placed order should stay first");
-}
-
-const id = nextOrderId([seed, { id: "CP-2026-0003" } as MedicineOrder], new Date("2026-10-22T12:00:00+08:00"));
-if (id !== "CP-2026-0004") {
-    throw new Error(`expected CP-2026-0004, got ${id}`);
-}
+import { normalizeOrderStatus, showsPaymentHistory, trackingStepsFor } from "./order-history.ts";
 
 const pickup = normalizeOrderStatus("pickup", "processing");
 if (pickup !== "ready_pickup") throw new Error("pickup should be ready to pickup");

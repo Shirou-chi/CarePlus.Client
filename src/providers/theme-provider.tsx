@@ -4,11 +4,15 @@ import { TOKEN_KEY } from "@/services/api";
 import { profileApi } from "@/services/profileApi";
 
 type Theme = "light" | "dark" | "system";
+export type TextSize = "normal" | "large" | "larger";
 
 interface ThemeContextType {
     theme: Theme;
     setTheme: (theme: Theme) => void;
     applyTheme: (theme: Theme) => void;
+    textSize: TextSize;
+    setTextSize: (textSize: TextSize) => void;
+    applyTextSize: (textSize: TextSize) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -45,11 +49,21 @@ interface ThemeProviderProps {
 export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "ui-theme", darkModeClass = "dark-mode" }: ThemeProviderProps) => {
     const [theme, setThemeState] = useState<Theme>(() => {
         if (typeof window !== "undefined") {
-            // Start in the public default while account preferences are loaded.
-            // AuthProvider applies the saved patient/staff preference afterwards.
-            return defaultTheme;
+            const storedTheme = localStorage.getItem(storageKey);
+            if (storedTheme === "light" || storedTheme === "dark") {
+                return storedTheme;
+            }
         }
         return defaultTheme;
+    });
+    const [textSize, setTextSizeState] = useState<TextSize>(() => {
+        if (typeof window !== "undefined") {
+            const storedTextSize = localStorage.getItem("ui-text-size");
+            if (storedTextSize === "large" || storedTextSize === "larger") {
+                return storedTextSize;
+            }
+        }
+        return "normal";
     });
 
     useEffect(() => {
@@ -84,6 +98,11 @@ export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "
         return () => mediaQuery.removeEventListener("change", handleChange);
     }, [theme]);
 
+    useEffect(() => {
+        document.documentElement.dataset.textSize = textSize;
+        localStorage.setItem("ui-text-size", textSize);
+    }, [textSize]);
+
     const applyTheme = useCallback((next: Theme) => {
         setThemeState(next);
     }, []);
@@ -95,5 +114,16 @@ export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "
         }
     }, []);
 
-    return <ThemeContext.Provider value={{ theme, setTheme, applyTheme }}>{children}</ThemeContext.Provider>;
+    const applyTextSize = useCallback((next: TextSize) => {
+        setTextSizeState(next);
+    }, []);
+
+    const setTextSize = useCallback((next: TextSize) => {
+        setTextSizeState(next);
+        if (localStorage.getItem(TOKEN_KEY)) {
+            void profileApi.saveAppSetting({ textSize: next }).catch(() => undefined);
+        }
+    }, []);
+
+    return <ThemeContext.Provider value={{ theme, setTheme, applyTheme, textSize, setTextSize, applyTextSize }}>{children}</ThemeContext.Provider>;
 };

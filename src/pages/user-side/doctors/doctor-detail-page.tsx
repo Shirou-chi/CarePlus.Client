@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, CalendarCheck01 } from "@untitledui/icons";
+import { ArrowLeft, CalendarCheck01, ChevronDown } from "@untitledui/icons";
 import { Link, Navigate, useParams } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
@@ -21,7 +21,7 @@ const formatScheduleTime = (value: string) => {
 };
 
 const ScheduleRow = ({ schedule, locale }: { schedule: DoctorSchedule; locale: "en" | "zh" }) => (
-    <li className="flex flex-wrap items-center justify-between gap-4 px-4 py-3 text-sm">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-sm">
         <span className="font-medium text-primary">
             {new Date(schedule.workingDate).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
                 weekday: "long",
@@ -30,7 +30,7 @@ const ScheduleRow = ({ schedule, locale }: { schedule: DoctorSchedule; locale: "
                 timeZone: "Asia/Kuala_Lumpur",
             })}
         </span>
-        <span className="text-secondary">
+        <span className="whitespace-nowrap text-right text-secondary tabular-nums">
             {formatScheduleTime(schedule.startTime)} – {formatScheduleTime(schedule.endTime)}
         </span>
     </li>
@@ -43,10 +43,12 @@ export const DoctorDetailPage = () => {
     const [doctor, setDoctor] = useState<DoctorRecord | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showAllSchedules, setShowAllSchedules] = useState(false);
 
     useEffect(() => {
         if (!id) return;
         let active = true;
+        setShowAllSchedules(false);
         setLoading(true);
         setError(null);
         doctorApi
@@ -63,6 +65,9 @@ export const DoctorDetailPage = () => {
     if (!id) return <Navigate to="/doctors" replace />;
 
     const bookHref = profile ? `/book?doctor=${encodeURIComponent(id)}` : "/login";
+    const schedulePreviewCount = 7;
+    const hiddenScheduleCount = Math.max(0, (doctor?.schedules.length ?? 0) - schedulePreviewCount);
+    const visibleSchedules = doctor?.schedules.slice(0, showAllSchedules ? undefined : schedulePreviewCount) ?? [];
 
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
@@ -108,11 +113,31 @@ export const DoctorDetailPage = () => {
                                 <div className="mt-8">
                                     <h2 className="text-lg font-semibold text-primary">{t.doctorsHours}</h2>
                                     {doctor.schedules.length > 0 ? (
-                                        <ul className="mt-3 divide-y divide-primary/15 overflow-hidden rounded-xl border border-primary/15 bg-primary ring-1 ring-primary/20">
-                                            {doctor.schedules.map((schedule) => (
-                                                <ScheduleRow key={`${schedule.workingDate}-${schedule.startTime}`} schedule={schedule} locale={locale} />
-                                            ))}
-                                        </ul>
+                                        <div className="mt-3 overflow-hidden rounded-xl border border-primary/15 bg-primary ring-1 ring-primary/20">
+                                            <ul
+                                                id="doctor-working-hours"
+                                                className="divide-y divide-primary/15 overflow-y-auto overscroll-contain [scrollbar-color:var(--color-border-primary)_transparent]"
+                                                style={{ maxHeight: showAllSchedules ? "32rem" : "none" }}
+                                            >
+                                                {visibleSchedules.map((schedule) => (
+                                                    <ScheduleRow key={`${schedule.workingDate}-${schedule.startTime}`} schedule={schedule} locale={locale} />
+                                                ))}
+                                            </ul>
+                                            {hiddenScheduleCount > 0 ? (
+                                                <button
+                                                    type="button"
+                                                    aria-controls="doctor-working-hours"
+                                                    aria-expanded={showAllSchedules}
+                                                    onClick={() => setShowAllSchedules((current) => !current)}
+                                                    className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 border-t border-primary/15 bg-secondary px-4 py-2.5 text-sm font-semibold text-secondary outline-focus-ring transition hover:bg-secondary_hover hover:text-secondary_hover focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+                                                >
+                                                    {showAllSchedules
+                                                        ? t.doctorsShowLessHours
+                                                        : t.doctorsShowMoreHours.replace("{count}", String(hiddenScheduleCount))}
+                                                    <ChevronDown aria-hidden className={`size-4 transition-transform duration-200 ${showAllSchedules ? "rotate-180" : ""}`} />
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     ) : (
                                         <p className="mt-3 rounded-xl bg-secondary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.doctorsHoursUnavailable}</p>
                                     )}
