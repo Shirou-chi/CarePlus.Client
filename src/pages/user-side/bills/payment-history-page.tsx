@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Download01, Receipt } from "@untitledui/icons";
 import { Navigate, useSearchParams } from "react-router";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
+import { FormStatus } from "@/components/application/form-status";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
@@ -17,6 +18,7 @@ import { clinicChargeCategoryLabel, getClinicRecordTotals, type ClinicRecord } f
 import { printHtmlDocument } from "@/utils/document-download";
 import { type PaidInvoice } from "@/utils/invoices";
 import { paymentApi } from "@/services/paymentApi";
+import { invoiceApi } from "@/services/invoiceApi";
 import { type MedicineOrder } from "@/utils/order-history";
 import { formatRm } from "@/utils/prescribed-medicine";
 
@@ -77,6 +79,10 @@ export const PaymentHistoryPage = () => {
     const [order, setOrder] = useState<PaidOrder>("latest");
     const [openId, setOpenId] = useState<string | null>(null);
     const [medicineOrders, setMedicineOrders] = useState<MedicineOrder[]>([]);
+    const [clinicPayments, setClinicPayments] = useState<PaidInvoice[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
+    const [historyError, setHistoryError] = useState<string | null>(null);
+    const [historyAttempt, setHistoryAttempt] = useState(0);
     const [params] = useSearchParams();
     const requestedOrder = params.get("order");
     const openedOrder = useRef(false);
@@ -89,29 +95,40 @@ export const PaymentHistoryPage = () => {
     useEffect(() => {
         if (!profile?.id || profile.id.startsWith("fam-")) {
             setMedicineOrders([]);
+            setClinicPayments([]);
+            setHistoryLoading(false);
             return;
         }
         let cancel = false;
-        paymentApi
-            .list()
-            .then((remote) => {
-                if (!cancel) setMedicineOrders(remote);
+        setHistoryLoading(true);
+        setHistoryError(null);
+        Promise.all([paymentApi.list(), invoiceApi.listPaid()])
+            .then(([medicine, clinic]) => {
+                if (cancel) return;
+                setMedicineOrders(medicine);
+                setClinicPayments(clinic);
             })
             .catch(() => {
-                if (!cancel) setMedicineOrders([]);
+                if (cancel) return;
+                setMedicineOrders([]);
+                setClinicPayments([]);
+                setHistoryError(t.paymentsLoadFailed);
+            })
+            .finally(() => {
+                if (!cancel) setHistoryLoading(false);
             });
         return () => {
             cancel = true;
         };
-    }, [profile?.id]);
+    }, [historyAttempt, profile?.id, t.paymentsLoadFailed]);
     const filtered = useMemo(() => {
-        const clinic: HistoryEntry[] = [];
+        const clinic: HistoryEntry[] = clinicPayments.map((item) => ({ kind: "clinic", paidAt: item.paidAt, invoice: item }));
         const medicine: HistoryEntry[] = medicineOrders.map((item) => ({ kind: "medicine", paidAt: item.placedAt, order: item }));
         return [...clinic, ...medicine].sort((left, right) => {
             const diff = Date.parse(left.paidAt) - Date.parse(right.paidAt);
             return order === "oldest" ? diff : -diff;
         });
-    }, [medicineOrders, order]);
+    }, [clinicPayments, medicineOrders, order]);
     const totalPaid = filtered.reduce((sum, entry) => sum + (entry.kind === "clinic" ? entry.invoice.total : entry.order.total), 0);
     const openEntry = filtered.find((entry) => (entry.kind === "clinic" ? entry.invoice.id : entry.order.id) === openId) ?? null;
 
@@ -162,7 +179,18 @@ export const PaymentHistoryPage = () => {
                     </div>
                 </div>
 
-                {filtered.length === 0 ? (
+                {historyError ? (
+                    <div className="mt-4">
+                        <FormStatus error={historyError} />
+                        <Button color="secondary" size="sm" className="mt-3" onClick={() => setHistoryAttempt((value) => value + 1)}>
+                            {t.tryAgain}
+                        </Button>
+                    </div>
+                ) : null}
+
+                {historyLoading ? (
+                    <p className="mt-8 text-center text-sm text-tertiary">{t.phrLoading}</p>
+                ) : !historyError && filtered.length === 0 ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
                         <FeaturedIcon icon={Receipt} color="gray" theme="light" size="lg" />
                         <h2 className="mt-4 text-lg font-semibold text-primary">{t.paymentsEmptyTitle}</h2>

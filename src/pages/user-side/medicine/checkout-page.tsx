@@ -12,7 +12,7 @@ import { useI18n } from "@/providers/locale-provider";
 import { orderApi } from "@/services/orderApi";
 import { TOKEN_KEY } from "@/services/api";
 import { clearCheckoutDraft, readCheckoutDraft } from "@/utils/checkout-draft";
-import { getOrderHistory, nextOrderId, normalizeOrderStatus, orderStatusLabel, rememberPlacedOrder, trackingStepsFor, type MedicineOrder } from "@/utils/order-history";
+import { orderStatusLabel } from "@/utils/order-history";
 import { PROFILE_ADDRESS_ID } from "@/utils/delivery-address";
 import { formatRm, getClinicPharmacy, medicineName } from "@/utils/prescribed-medicine";
 
@@ -64,41 +64,29 @@ export const CheckoutPage = () => {
             pickedUp: orderStatusLabel(locale, "picked_up"),
             delivered: orderStatusLabel(locale, "delivered"),
         };
-        const status = normalizeOrderStatus(draft.fulfilment, "processing");
-        const local: MedicineOrder = {
-            id: nextOrderId(getOrderHistory(locale, profile.id)),
-            placedAt: new Date().toISOString(),
-            status,
-            fulfilment: draft.fulfilment,
-            payment: draft.paymentLabel,
-            address: draft.address,
-            lines,
-            total,
-            trackingSteps: trackingStepsFor(draft.fulfilment, status, labels),
-        };
-        let order = local;
-        const savedAccount = Boolean(localStorage.getItem(TOKEN_KEY)) && !profile.id.startsWith("fam-");
-        if (savedAccount) {
-            try {
-                const addressId = draft.addressId && draft.addressId !== PROFILE_ADDRESS_ID ? Number(draft.addressId) : null;
-                order = await orderApi.place(
-                    {
-                        fulfilment: draft.fulfilment,
-                        paymentMethod: draft.paymentLabel,
-                        deliveryAddressId: Number.isFinite(addressId) ? addressId : null,
-                        deliveryFee: draft.deliveryFee,
-                        lines,
-                    },
-                    labels,
-                );
-            } catch (error) {
-                const monthLimit = error instanceof Error && error.message.includes("one month");
-                setPlaceError(monthLimit ? t.medQtyMax : t.checkoutPlaceFailed);
-                setPlacing(false);
-                return;
-            }
-        } else {
-            rememberPlacedOrder(profile.id, order);
+        if (!localStorage.getItem(TOKEN_KEY) || profile.id.startsWith("fam-")) {
+            setPlaceError(t.checkoutPlaceFailed);
+            setPlacing(false);
+            return;
+        }
+        let order;
+        try {
+            const addressId = draft.addressId && draft.addressId !== PROFILE_ADDRESS_ID ? Number(draft.addressId) : null;
+            order = await orderApi.place(
+                {
+                    fulfilment: draft.fulfilment,
+                    paymentMethod: draft.paymentLabel,
+                    deliveryAddressId: Number.isFinite(addressId) ? addressId : null,
+                    deliveryFee: draft.deliveryFee,
+                    lines,
+                },
+                labels,
+            );
+        } catch (error) {
+            const monthLimit = error instanceof Error && error.message.includes("one month");
+            setPlaceError(monthLimit ? t.medQtyMax : t.checkoutPlaceFailed);
+            setPlacing(false);
+            return;
         }
         setPlaced(true);
         removeMany(draft.lines.map((line) => line.medicineId));

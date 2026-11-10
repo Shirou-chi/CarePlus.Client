@@ -45,9 +45,10 @@ interface ThemeProviderProps {
 export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "ui-theme", darkModeClass = "dark-mode" }: ThemeProviderProps) => {
     const [theme, setThemeState] = useState<Theme>(() => {
         if (typeof window !== "undefined") {
-            // Start in the public default while account preferences are loaded.
-            // AuthProvider applies the saved patient/staff preference afterwards.
-            return defaultTheme;
+            const storedTheme = localStorage.getItem(storageKey);
+            if (storedTheme === "light" || storedTheme === "dark") {
+                return storedTheme;
+            }
         }
         return defaultTheme;
     });

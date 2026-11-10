@@ -37,7 +37,7 @@ import { authApi } from "@/services/authApi";
 import { profileApi, profilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
-import { DUMMY_PASSWORD, type Profile } from "@/utils/auth";
+import { type Profile } from "@/utils/auth";
 import { passwordLockoutMessage } from "@/utils/password-lockout";
 import {
     cardBrandFromDigits,
@@ -1655,14 +1655,9 @@ const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: b
                         setFieldError(t.settingsPasswordMismatch);
                         return;
                     }
-                    const localOnly = !profile || profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY);
-                    if (localOnly) {
+                    if (!profile || profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY)) {
                         setFieldSuccess(null);
-                        if (current !== DUMMY_PASSWORD) {
-                            setFieldError(t.settingsCurrentPasswordWrong);
-                            return;
-                        }
-                        finishSaved();
+                        setFieldError(t.settingsPasswordFailed);
                         return;
                     }
                     setFieldError(null);

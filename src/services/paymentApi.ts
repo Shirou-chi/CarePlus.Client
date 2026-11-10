@@ -37,7 +37,9 @@ export const paymentApi = {
     async list(): Promise<MedicineOrder[]> {
         if (!localStorage.getItem(TOKEN_KEY)) return [];
         const result = await request<ApiResponse<PaymentRow[]>>("/api/Payment", { method: "GET" }, true);
-        if (!result.isSuccess || !result.data) return [];
-        return result.data.map(toOrder);
+        if (!result.isSuccess) {
+            throw new Error(result.respMessage || "Medicine payment history could not be loaded.");
+        }
+        return (result.data ?? []).map(toOrder);
     },
 };

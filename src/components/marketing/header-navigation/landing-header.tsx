@@ -60,6 +60,7 @@ const useServiceGroups = (): ServiceGroup[] => {
     const { profile } = useAuth();
     const bookHref = profile ? "/book" : "/login";
     const visitsHref = profile ? "/visits" : "/login";
+    const queueHref = profile ? "/queue" : "/login";
     const invoicesHref = profile ? "/invoices" : "/login";
     const paymentsHref = profile ? "/payments" : "/login";
     const ordersHref = profile ? "/orders" : "/login";
@@ -78,6 +79,7 @@ const useServiceGroups = (): ServiceGroup[] => {
             links: [
                 { title: t.bookVisit, subtitle: t.bookVisitHint, href: bookHref },
                 { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: visitsHref },
+                { title: locale === "zh" ? "诊所排队" : "Clinic queue", subtitle: locale === "zh" ? "报到并查看实时排队进度" : "Check in and follow your live queue", href: queueHref },
             ],
         },
         {

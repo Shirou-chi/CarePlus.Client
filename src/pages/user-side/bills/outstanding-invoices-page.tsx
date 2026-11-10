@@ -23,7 +23,7 @@ type DueOrder = "oldest" | "latest";
 
 export const OutstandingInvoicesPage = () => {
     const { profile, isReady } = useAuth();
-    const { invoices, ready } = useOutstandingInvoices();
+    const { invoices, ready, error, reload } = useOutstandingInvoices();
     const { t, locale } = useI18n();
     const { records } = useClinicRecords();
     const [status, setStatus] = useState<StatusFilter>("all");
@@ -71,6 +71,14 @@ export const OutstandingInvoicesPage = () => {
                         {t.invoicesBlocked} {t.invoicesLateNote}
                     </p>
                 ) : null}
+                {error ? (
+                    <div role="alert" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-error bg-primary px-4 py-3">
+                        <p className="text-sm text-error-primary">{t.invoicesLoadFailed}</p>
+                        <Button color="secondary" size="sm" onClick={() => void reload()}>
+                            {t.tryAgain}
+                        </Button>
+                    </div>
+                ) : null}
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl bg-primary p-4 ring-1 ring-secondary">
@@ -116,13 +124,13 @@ export const OutstandingInvoicesPage = () => {
                     )}
                 </div>
 
-                {filtered.length === 0 ? (
+                {!error && filtered.length === 0 ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
                         <FeaturedIcon icon={Receipt} color="gray" theme="light" size="lg" />
                         <h2 className="mt-4 text-lg font-semibold text-primary">{filtering ? t.invoicesNoMatch : t.invoicesEmptyTitle}</h2>
                         <p className="mt-2 text-sm text-tertiary">{filtering ? t.historyNoMatchBody : t.invoicesEmptyBody}</p>
                     </div>
-                ) : (
+                ) : !error ? (
                     <ul className="mt-6 grid gap-3 lg:grid-cols-2">
                         {filtered.map((invoice) => (
                             <li key={invoice.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5">
@@ -154,7 +162,7 @@ export const OutstandingInvoicesPage = () => {
                             </li>
                         ))}
                     </ul>
-                )}
+                ) : null}
             </main>
             {openInvoice ? (
                 <InvoiceDetail
