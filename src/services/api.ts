@@ -78,7 +78,7 @@ export function messageFromBody(body: unknown, fallback: string) {
     return fallback
   }
 
-  const record = body as { message?: string; respMessage?: string; data?: unknown }
+  const record = body as { respMessage?: string; message?: string; title?: string; detail?: string; data?: unknown }
   if (Array.isArray(record.data)) {
     const lines = record.data.filter((item): item is string => typeof item === "string" && item.length > 0)
     if (lines.length > 0) {
@@ -86,7 +86,15 @@ export function messageFromBody(body: unknown, fallback: string) {
     }
   }
 
-  return record.message || record.respMessage || fallback
+  return record.respMessage || record.message || record.detail || record.title || fallback
+}
+
+function messageFromHttpStatus(status: number) {
+  if (status === 401) return 'Your session has expired or is invalid. Please sign in again.'
+  if (status === 403) return 'You do not have permission to perform this action.'
+  if (status === 404) return 'The requested appointment could not be found.'
+  if (status === 405) return 'This action is not supported by the server.'
+  return `Request failed with status ${status}`
 }
 
 export async function request<T>(
@@ -121,7 +129,7 @@ export async function request<T>(
     const code = body && typeof body === 'object' && 'reason' in body && typeof body.reason === 'string'
       ? body.reason
       : undefined
-    throw new ApiRequestError(messageFromBody(body, `Request failed with status ${response.status}`), response.status, code)
+    throw new ApiRequestError(messageFromBody(body, messageFromHttpStatus(response.status)), response.status, code)
   }
 
   return body as T

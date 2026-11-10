@@ -1,58 +1,107 @@
-import { request, type ApiResponse } from "./api";
+import { formatApiErrorDetails, request, type ApiResponse } from './api'
 
-export type BookingDoctor = {
-    id: string;
-    name: string;
-    specialty: string;
-    bio: string;
-    qualification: string;
-    yearsOfExperience: number;
-};
+export type StaffAppointmentRecord = {
+  id: string
+  patientId: string
+  patientName: string
+  patientUsername: string
+  doctorId: string
+  doctorName: string
+  visitTypeId: string
+  visitType: string
+  notes: string | null
+  startAt: string
+  endAt: string
+  status: string
+  checkInStatus: string
+}
 
-export type BookingVisitType = { id: string; name: string; description: string };
-export type BookingCatalog = {
-    doctors: BookingDoctor[];
-    types: BookingVisitType[];
-    bookingClosed: boolean;
-    cancelsToday: number;
-    cancelLimit: number;
-    rescheduleLimit: number;
-};
+export type AvailableDoctorRecord = {
+  id: string
+  name: string
+  specialty: string
+  bio: string
+  qualification: string
+  yearsOfExperience: number
+}
 
-export type TimeSlot = { startAt: string; label: string; booked: boolean };
-export type BookingSlots = { date: string; doctorId: string; morning: TimeSlot[]; night: TimeSlot[] };
+export type StaffAppointmentCreateRequest = {
+  patientId: string
+  doctorId: string
+  startAt: string
+  type: string
+  notes?: string | null
+}
 
-export type Appointment = {
-    id: string;
-    forName: string;
-    doctorId: string;
-    doctorName: string;
-    type: "VT01" | "VT02" | "VT03" | string;
-    notes: string | null;
-    recordId?: string | null;
-    startAt: string;
-    endAt: string;
-    status: "confirmed" | "completed" | "cancelled" | string;
-    rescheduleCount: number;
-    rescheduleBlocked: boolean;
-};
+export type AppointmentRescheduleRequest = {
+  startAt: string
+}
 
-const unwrap = async <T>(path: string, options?: RequestInit): Promise<T> => {
-    const result = await request<ApiResponse<T>>(path, options, true);
-    if (!result.isSuccess || result.data === null) {
-        throw new Error(result.respMessage || "Unable to load appointment information.");
-    }
-    return result.data;
-};
+async function unwrap<T>(result: ApiResponse<T>, fallback: string): Promise<T> {
+  if (!result.isSuccess || result.data === null) {
+    const details = formatApiErrorDetails(result.data)
+    throw new Error([result.respMessage || fallback, details].filter(Boolean).join(': '))
+  }
+
+  return result.data
+}
 
 export const appointmentApi = {
-    catalog: () => unwrap<BookingCatalog>("/api/Appointment/Catalog"),
-    slots: (date: string, doctorId: string) =>
-        unwrap<BookingSlots>(`/api/Appointment/Slots?date=${encodeURIComponent(date)}&doctorId=${encodeURIComponent(doctorId)}`),
-    upcoming: () => unwrap<Appointment[]>("/api/Appointment/Upcoming"),
-    book: (body: { doctorId: string; startAt: string; type: string; forName: string; notes?: string }) =>
-        unwrap<Appointment>("/api/Appointment", { method: "POST", body: JSON.stringify(body) }),
-    cancel: (id: string) => unwrap<Appointment>(`/api/Appointment/${encodeURIComponent(id)}/Cancel`, { method: "POST" }),
-    reschedule: (id: string, startAt: string) =>
-        unwrap<Appointment>(`/api/Appointment/${encodeURIComponent(id)}/Reschedule`, { method: "POST", body: JSON.stringify({ startAt }) }),
-};
+  async createForStaff(payload: StaffAppointmentCreateRequest): Promise<void> {
+    const result = await request<ApiResponse<unknown>>(
+      '/api/Appointment/Staff',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      true,
+    )
+
+    await unwrap(result, 'Unable to create appointment.')
+  },
+
+  async cancelForStaff(appointmentId: string): Promise<void> {
+    const result = await request<ApiResponse<unknown>>(
+      `/api/Appointment/Staff/${encodeURIComponent(appointmentId)}/Cancel`,
+      { method: 'POST' },
+      true,
+    )
+
+    await unwrap(result, 'Unable to cancel appointment.')
+  },
+
+  async rescheduleForStaff(appointmentId: string, payload: AppointmentRescheduleRequest): Promise<void> {
+    const result = await request<ApiResponse<unknown>>(
+      `/api/Appointment/Staff/${encodeURIComponent(appointmentId)}/Reschedule`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      true,
+    )
+
+    await unwrap(result, 'Unable to reschedule appointment.')
+  },
+
+  async retrieveAvailableDoctors(date: string, time: string): Promise<AvailableDoctorRecord[]> {
+    const query = `?date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`
+    const result = await request<ApiResponse<AvailableDoctorRecord[]>>(
+      `/api/Appointment/AvailableDoctors${query}`,
+      {},
+      true,
+    )
+
+    return unwrap(result, 'Unable to load available doctors.')
+  },
+
+  async retrieveForStaff(date?: string): Promise<StaffAppointmentRecord[]> {
+    const query = date ? `?date=${encodeURIComponent(date)}` : ''
+    const result = await request<ApiResponse<StaffAppointmentRecord[]>>(
+      `/api/Appointment/Staff${query}`,
+      {},
+      true,
+    )
+
+    return unwrap(result, 'Unable to load appointments.')
+  },
+}
