@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
-import { notificationApi, type ApiNotification } from "@/services/notificationApi";
+import { notificationApi, staffNotificationApi, type ApiNotification } from "@/services/notificationApi";
 import type { ClinicNotice, NoticeKind } from "@/utils/notifications";
 
 type NoticeContextValue = {
@@ -20,6 +20,7 @@ const NoticeContext = createContext<NoticeContextValue | null>(null);
 
 const kindForType = (type: string): NoticeKind => {
     if (type === "appointment_reminder") return "visit";
+    if (type === "staff_appointment" || type === "schedule_update") return "visit";
     if (type === "payment_reminder") return "payment";
     if (type === "medicine_update") return "medicine";
     if (type === "family_invitation" || type === "family_invitation_declined" || type === "family_access_request") return "family";
@@ -43,11 +44,13 @@ const mapNotice = (item: ApiNotification, locale: "en" | "zh"): ClinicNotice => 
 });
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
     const { locale } = useI18n();
-    const profileId = profile?.id;
+    const accountId = profile?.id ?? user?.userId;
+    const isStaff = Boolean(user?.userId && !profile);
+    const api = isStaff ? staffNotificationApi : notificationApi;
     const [items, setItems] = useState<ClinicNotice[]>([]);
-    const [loading, setLoading] = useState(Boolean(profileId));
+    const [loading, setLoading] = useState(Boolean(accountId));
     const [error, setError] = useState<string | null>(null);
 
     const apply = useCallback(
@@ -64,7 +67,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
                 return;
             }
 
-            if (!profileId) {
+            if (!accountId) {
                 setItems([]);
                 setLoading(false);
                 setError(null);
@@ -77,7 +80,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
                 setError(null);
             }
             try {
-                const raw = await notificationApi.list();
+                const raw = await api.list();
                 if (!cancelled) {
                     apply(raw);
                 }
@@ -94,7 +97,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         };
 
         void load();
-        if (!profileId) {
+        if (!accountId) {
             return () => {
                 cancelled = true;
             };
@@ -118,7 +121,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             window.clearInterval(refreshInterval);
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
-    }, [apply, profileId]);
+    }, [accountId, api, apply]);
 
     const update = useCallback(
         async (operation: () => Promise<ApiNotification[]>) => {
@@ -132,9 +135,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         [apply],
     );
 
-    const markRead = useCallback((id: string) => void update(() => notificationApi.markRead(id)), [update]);
-    const markReadMany = useCallback((ids: string[]) => void update(() => notificationApi.markManyRead(ids)), [update]);
-    const markAllRead = useCallback(() => void update(() => notificationApi.markAllRead()), [update]);
+    const markRead = useCallback((id: string) => void update(() => api.markRead(id)), [api, update]);
+    const markReadMany = useCallback((ids: string[]) => void update(() => api.markManyRead(ids)), [api, update]);
+    const markAllRead = useCallback(() => void update(() => api.markAllRead()), [api, update]);
     const remove = useCallback(
         (ids: string[]) => {
             const removedIds = new Set(ids);
@@ -142,18 +145,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
             // Update the list immediately so deletion does not wait for the API round trip.
             setItems((current) => current.filter((item) => !removedIds.has(item.id)));
-            void notificationApi
+            void api
                 .remove(ids)
                 .then((raw) => apply(raw))
                 .catch(async (cause) => {
                     try {
-                        apply(await notificationApi.list());
+                        apply(await api.list());
                     } catch {
                         setError(cause instanceof Error ? cause.message : "Unable to update notifications.");
                     }
                 });
         },
-        [apply],
+        [api, apply],
     );
     const unread = useMemo(() => items.filter((item) => item.unread), [items]);
 

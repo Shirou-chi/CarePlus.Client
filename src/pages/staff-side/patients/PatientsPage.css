@@ -205,6 +205,11 @@
   text-transform: uppercase;
 }
 
+.patients-table__actions-heading,
+.patients-table td:last-child {
+  text-align: right;
+}
+
 .patients-table td {
   padding: 14px 17px;
   border-bottom: 1px solid var(--staff-line);
@@ -451,6 +456,7 @@
   display: flex;
   gap: 6px;
   align-items: center;
+  justify-content: flex-end;
   white-space: nowrap;
 }
 
