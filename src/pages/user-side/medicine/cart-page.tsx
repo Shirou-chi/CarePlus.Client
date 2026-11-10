@@ -472,7 +472,7 @@ const CartLineCard = ({
             <Checkbox aria-label={medicine?.name ?? line.name} isSelected={checked} onChange={onCheckedChange} className="mt-1 shrink-0" />
             <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
                 <Link to={`/medicine/${line.medicineId}`} className="shrink-0 outline-focus-ring">
-                    <div className="size-24 overflow-hidden rounded-xl bg-[#f4f6f8] sm:size-28">
+                    <div className="size-24 overflow-hidden rounded-xl bg-[#f4f6f8] dark:bg-[#122b4b] sm:size-28">
                         {medicine ? <MedicineShot medicine={medicine} view="box" className="!object-contain p-2" /> : null}
                     </div>
                 </Link>

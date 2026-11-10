@@ -13,6 +13,9 @@
             const isDarkTheme = savedTheme === "dark";
             document.documentElement.classList.toggle("dark-mode", isDarkTheme);
             document.documentElement.dataset.theme = isDarkTheme ? "dark" : "light";
+
+            const savedTextSize = localStorage.getItem("ui-text-size");
+            document.documentElement.dataset.textSize = savedTextSize === "large" || savedTextSize === "larger" ? savedTextSize : "normal";
         </script>
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />

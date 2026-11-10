@@ -14,6 +14,7 @@ export type AppSettingResponse = {
     appearance: string;
     language: string | null;
     notification: string | null;
+    textSize: string;
     twoFactorEnabled: boolean;
     hasCompletedTutorial: boolean;
 };
@@ -40,6 +41,7 @@ export type AppSettingSaveRequest = {
     appearance?: string;
     language?: string;
     notification?: string;
+    textSize?: string;
     hasCompletedTutorial?: boolean;
 };
 
