@@ -168,6 +168,7 @@ export const LandingHeader = () => {
                     {profile ? null : (
                         <div className="ml-12 flex items-center gap-3">
                             <ThemeToggle />
+                            <TextSizeToggle />
                             <LanguageSwitch />
                         </div>
                     )}
@@ -231,6 +232,7 @@ export const LandingHeader = () => {
                     {profile ? null : isLanding ? (
                         <>
                             <ThemeToggle />
+                            <TextSizeToggle />
                             <LanguageSwitch />
                         </>
                     ) : (
@@ -325,6 +327,32 @@ const ThemeToggle = () => {
                 {isDark ? <Sun className="size-5" /> : <Moon01 className="size-5" />}
             </AriaButton>
         </Tooltip>
+    );
+};
+
+const TextSizeToggle = () => {
+    const { textSize, setTextSize } = useTheme();
+    const { t } = useI18n();
+
+    return (
+        <ButtonGroup
+            size="sm"
+            className="careplus-text-size"
+            disallowEmptySelection
+            selectedKeys={new Set([textSize])}
+            onSelectionChange={(keys) => {
+                const next = [...keys][0];
+                if (next === "normal" || next === "large") setTextSize(next);
+            }}
+            aria-label={t.settingsTextSize}
+        >
+            <ButtonGroupItem id="normal" aria-label={t.settingsTextSizeNormal}>
+                A
+            </ButtonGroupItem>
+            <ButtonGroupItem id="large" aria-label={t.settingsTextSizeLarge}>
+                A+
+            </ButtonGroupItem>
+        </ButtonGroup>
     );
 };
 
@@ -496,8 +524,9 @@ const MobileNav = () => {
                             </details>
                         ))}
                         {profile ? null : (
-                            <div className="mt-3 flex items-center justify-between gap-3 px-2 py-2">
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-2 py-2">
                                 <ThemeToggle />
+                                <TextSizeToggle />
                                 <LanguageSwitch />
                             </div>
                         )}

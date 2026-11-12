@@ -33,11 +33,18 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
     const page = (href: string, title: string, description: string, keywords: string): SearchItem => ({
         href, title, description, keywords, category: "page",
     });
+    const chat = page(
+        "/chat",
+        t.chatTitle,
+        t.chatSubhead,
+        "chat chatbot chai ai assistant help support careplus bot 聊天 助手 聊天机器人 智能客服",
+    );
     const common = [
         page(signedIn ? "/home" : "/", t.home, t.clinicName, "landing homepage 首页 主页"),
         page("/about", t.aboutUs, t.aboutBody, "about clinic 关于 诊所"),
         page("/contact", t.contactTitle, t.contactBody, "contact address phone email hours map 联系 地址 电话 邮箱 营业时间"),
         page("/announcements", t.announcements, t.announcementsBody, "news notices updates clinic announcement 公告 新闻 通知"),
+        chat,
     ];
     if (!signedIn) {
         return [
@@ -67,7 +74,6 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
         invoices,
         page("/payments", t.payments, t.paymentsHint, "receipt paid bills history 收据 付款记录"),
         page("/notifications", t.notifPageTitle, t.notifications, "reminders alerts invitation notices 通知 提醒 邀请"),
-        page("/chat", t.chatTitle, t.chatSubhead, "chat assistant help support 聊天 助手"),
         account,
     ];
 };
