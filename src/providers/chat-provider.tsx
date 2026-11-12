@@ -86,7 +86,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         [profile],
     );
 
-    const active = threads.find((item) => item.id === activeId) ?? threads[0] ?? null;
+    const active = threads.find((item) => item.id === activeId) ?? (profile ? null : (threads[0] ?? null));
     const select = useCallback((id: string) => {
         setActiveId(id);
     }, []);

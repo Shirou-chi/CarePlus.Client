@@ -39,7 +39,7 @@ export const ClinicCoverflow = ({ cards }: { cards: ClinicCard[] }) => {
 
     return (
         <section className="mx-auto w-full max-w-container px-4 pb-10 md:px-8 md:pb-14">
-            <div className="overflow-hidden rounded-3xl bg-[#0b2036] py-12 md:py-16 dark:bg-[#eef8fb]">
+            <div className="overflow-hidden rounded-3xl bg-black py-12 md:py-16 dark:bg-[#171717]">
                 <div
                     className="relative mx-auto h-[22rem] w-full max-w-5xl touch-pan-y select-none sm:h-[26rem] md:h-[30rem]"
                     style={{ perspective: "1200px", transformStyle: "preserve-3d" }}
@@ -119,12 +119,12 @@ export const ClinicCoverflow = ({ cards }: { cards: ClinicCard[] }) => {
                     to="/about"
                     className="group mx-auto mt-8 flex max-w-md flex-col items-center px-4 text-center outline-focus-ring focus-visible:outline-2"
                 >
-                    <span className="text-xs font-semibold tracking-[0.22em] text-white/45 uppercase dark:text-[#071d35]/50">{t.clinicEnvironment}</span>
-                    <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-5 py-2.5 text-xl font-semibold text-white shadow-sm backdrop-blur-sm transition group-hover:border-white/60 group-hover:bg-white/15 group-hover:shadow-md [font-family:var(--font-display)] md:text-display-xs dark:border-[#071d35]/25 dark:bg-[#071d35]/8 dark:text-[#071d35] dark:group-hover:border-[#071d35]/45 dark:group-hover:bg-[#071d35]/12">
+                    <span className="text-xs font-semibold tracking-[0.22em] text-white/45 uppercase">{t.clinicEnvironment}</span>
+                    <span className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-5 py-2.5 text-xl font-semibold text-white shadow-sm backdrop-blur-sm transition group-hover:border-white/60 group-hover:bg-white/15 group-hover:shadow-md [font-family:var(--font-display)] md:text-display-xs">
                         {t.aboutUs}
                         <ArrowRight aria-hidden className="size-5 transition group-hover:translate-x-0.5" />
                     </span>
-                    <span className="mt-2 text-sm font-medium text-white/60 underline-offset-4 transition group-hover:text-white/85 group-hover:underline dark:text-[#071d35]/60 dark:group-hover:text-[#071d35]">
+                    <span className="mt-2 text-sm font-medium text-white/60 underline-offset-4 transition group-hover:text-white/85 group-hover:underline">
                         {t.aboutLearnMore}
                     </span>
                 </Link>

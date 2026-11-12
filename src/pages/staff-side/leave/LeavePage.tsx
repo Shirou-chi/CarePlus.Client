@@ -350,8 +350,12 @@ export function LeavePage() {
         />
 
         <div className="staff-content leave-content">
-          <header className="staff-page-heading">
-            <StaffPageEyebrow label="Leave management" />
+          <section className="leave-hero">
+            <div>
+              <p className="staff-eyebrow">People operations</p>
+              <h1>Leave</h1>
+              <p className="leave-hero__copy">{isAdmin ? 'Review requests and keep team coverage clear.' : 'Submit time-away requests and track upcoming leave.'}</p>
+            </div>
             {!isAdmin ? <button className="staff-button staff-button--primary leave-request-button" type="button" onClick={openRequestDialog}><Icon name="plus" size={17} />Request leave</button> : null}
           </header>
 

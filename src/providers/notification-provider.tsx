@@ -106,7 +106,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             if (document.visibilityState === "visible") {
                 void load(true);
             }
-        }, 2_000);
+        }, 15_000);
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible") {

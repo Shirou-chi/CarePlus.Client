@@ -8,9 +8,11 @@ type BackToTopProps = {
     offsetForChat?: boolean;
     /** Lift above the booking page mobile sticky action bar. */
     liftAboveStickyBar?: boolean;
+    /** The signed-in mobile bottom navigation is on screen. */
+    liftAboveMobileNav?: boolean;
 };
 
-export const BackToTop = ({ offsetForChat = false, liftAboveStickyBar = false }: BackToTopProps) => {
+export const BackToTop = ({ offsetForChat = false, liftAboveStickyBar = false, liftAboveMobileNav = false }: BackToTopProps) => {
     const { t } = useI18n();
     const [visible, setVisible] = useState(false);
 
@@ -21,15 +23,20 @@ export const BackToTop = ({ offsetForChat = false, liftAboveStickyBar = false }:
         return () => window.removeEventListener("scroll", onScroll);
     }, []);
 
+    // With the mobile bottom nav there is no free corner left, so the button is desktop-only there.
+    const bottomClass = liftAboveMobileNav
+        ? "max-lg:hidden lg:bottom-[max(2rem,env(safe-area-inset-bottom))]"
+        : offsetForChat && liftAboveStickyBar
+        ? "bottom-[calc(14.5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(6.75rem+env(safe-area-inset-bottom))]"
+        : offsetForChat
+          ? "bottom-[calc(6.25rem+env(safe-area-inset-bottom))] md:bottom-[calc(6.75rem+env(safe-area-inset-bottom))]"
+          : "bottom-[max(1.5rem,env(safe-area-inset-bottom))] md:bottom-[max(2rem,env(safe-area-inset-bottom))]";
+
     return (
         <div
             className={cx(
                 "fixed right-4 z-40 md:right-8",
-                offsetForChat && liftAboveStickyBar
-                    ? "bottom-[calc(14.5rem+env(safe-area-inset-bottom))] lg:bottom-[calc(6.75rem+env(safe-area-inset-bottom))]"
-                    : offsetForChat
-                      ? "bottom-[calc(6.25rem+env(safe-area-inset-bottom))] md:bottom-[calc(6.75rem+env(safe-area-inset-bottom))]"
-                      : "bottom-[max(1.5rem,env(safe-area-inset-bottom))] md:bottom-[max(2rem,env(safe-area-inset-bottom))]",
+                bottomClass,
                 "transition-[opacity,transform] duration-200 ease-out",
                 visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
             )}

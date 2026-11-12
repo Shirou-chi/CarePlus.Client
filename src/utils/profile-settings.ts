@@ -62,6 +62,8 @@ export const readProfileSettings = (profileId: string): ProfileSettings => {
 
 export const writeProfileSettings = (profileId: string, settings: ProfileSettings) => {
     localStorage.setItem(`${SETTINGS_KEY}-${profileId}`, JSON.stringify(settings));
+    // ponytail: let open toast UI react when preference flips to "none"
+    window.dispatchEvent(new CustomEvent("careplus-settings", { detail: { profileId } }));
 };
 
 export const genderFromIdentityCard = (identityCard: string | null): "male" | "female" | null => {

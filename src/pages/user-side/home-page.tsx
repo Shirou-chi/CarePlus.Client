@@ -9,7 +9,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 
 export const HomePage = () => {
-    const { t, locale } = useI18n();
+    const { t } = useI18n();
     const { profile } = useAuth();
     const bookHref = profile ? "/book" : "/login";
     const visitsHref = profile ? "/visits" : "/login";
@@ -28,17 +28,18 @@ export const HomePage = () => {
             <main>
                 <PromoCarousel
                     slides={[
-                        { image: "/home/promo-waiting.png", title: t.promoWaiting, href: "/register" },
-                        { image: "/home/promo-family.png", title: t.promoFamily, href: "/register" },
-                        { image: "/home/promo-screening.png", title: t.promoScreening, href: "/register" },
-                        { image: "/home/promo-hours.png", title: t.promoHours, href: "/register" },
+                        { image: "/home/promo-waiting.webp", title: t.promoWaiting, href: "/register" },
+                        { image: "/home/promo-family.webp", title: t.promoFamily, href: "/register" },
+                        { image: "/home/promo-screening.webp", title: t.promoScreening, href: "/register" },
+                        { image: "/home/promo-hours.webp", title: t.promoHours, href: "/register" },
                     ]}
                 />
                 <ServiceNav
                     items={[
                         { label: t.homeNavAppointment, hint: t.tourVisit, href: visitsHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
+                        { label: t.visitHistory, hint: t.visitHistoryHint, href: profile ? "/history" : "/login", Icon: Clock, tone: "bg-[#ecfeff] text-[#0e7490]" },
                         { label: t.homeNavBooking, hint: t.tourBook, href: bookHref, Icon: CalendarPlus01, tone: "bg-[#dbeafe] text-[#1d4ed8]" },
-                        { label: locale === "zh" ? "诊所排队" : "Clinic queue", hint: locale === "zh" ? "报到并查看实时排队进度" : "Check in and follow your live queue progress", href: queueHref, Icon: Clock, tone: "bg-[#e0f2fe] text-[#0369a1]" },
+                        { label: t.homeNavQueue, hint: t.tourQueue, href: queueHref, Icon: Clock, tone: "bg-[#e0f2fe] text-[#0369a1]" },
                         { label: t.homeNavMedicine, hint: t.tourMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
                         { label: t.ordersTrack, hint: t.tourOrders, href: ordersHref, Icon: Truck01, tone: "bg-[#e0e7ff] text-[#4338ca]" },
                         { label: t.homeNavFamily, hint: t.tourFamily, href: familyHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },
@@ -51,11 +52,11 @@ export const HomePage = () => {
                 />
                 <ClinicCoverflow
                     cards={[
-                        { image: "/home/clinic-reception.png", alt: t.clinicReception },
-                        { image: "/home/clinic-waiting-room.png", alt: t.clinicWaiting },
-                        { image: "/home/clinic-examination-room.png", alt: t.clinicExam },
-                        { image: "/home/clinic-corridor.png", alt: t.clinicCorridor },
-                        { image: "/home/clinic-entrance.png", alt: t.clinicEntrance },
+                        { image: "/home/clinic-reception.webp", alt: t.clinicReception },
+                        { image: "/home/clinic-waiting-room.webp", alt: t.clinicWaiting },
+                        { image: "/home/clinic-examination-room.webp", alt: t.clinicExam },
+                        { image: "/home/clinic-corridor.webp", alt: t.clinicCorridor },
+                        { image: "/home/clinic-entrance.webp", alt: t.clinicEntrance },
                     ]}
                 />
             </main>

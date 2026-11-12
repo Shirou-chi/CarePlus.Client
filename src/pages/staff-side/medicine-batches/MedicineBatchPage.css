@@ -1,5 +1,24 @@
 .medicine-batch-content { padding-top: 34px; }
 
+.medicine-batch-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 26px;
+  margin-bottom: 26px;
+}
+
+.medicine-batch-hero h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.medicine-batch-hero__copy { max-width: 590px; margin: 11px 0 0; color: var(--staff-muted); font-size: 0.94rem; }
+
 .medicine-batch-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin-bottom: 17px; }
 .medicine-batch-summary-card { display: grid; grid-template-columns: 33px 1fr; column-gap: 10px; align-items: center; min-height: 116px; padding: 15px 16px; border: 1px solid var(--staff-line); border-radius: 11px; background: var(--staff-card); }
 .medicine-batch-summary-card > span { display: grid; width: 33px; height: 33px; grid-row: span 2; place-items: center; border-radius: 9px; }
@@ -12,7 +31,7 @@
 :root[data-theme='dark'] .medicine-batch-summary-card--amber > span { background: rgba(229, 165, 75, 0.14); }
 :root[data-theme='dark'] .medicine-batch-summary-card--violet > span { background: rgba(139, 122, 244, 0.14); }
 .medicine-batch-summary-card small, .medicine-batch-summary-card em { color: var(--staff-muted); font-size: 0.65rem; font-style: normal; }
-.medicine-batch-summary-card strong { display: block; margin-top: 4px; color: var(--staff-ink); font-family: var(--site-font-display); font-size: 1.45rem; letter-spacing: -0.05em; line-height: 1; }
+.medicine-batch-summary-card strong { display: block; margin-top: 4px; color: var(--staff-ink); font-family: var(--font-display); font-size: 1.45rem; letter-spacing: -0.05em; line-height: 1; }
 .medicine-batch-summary-card em { grid-column: 2; margin-top: 8px; }
 
 .medicine-batch-stock-reminder { display: flex; gap: 10px; align-items: center; margin-bottom: 17px; padding: 11px 13px; border: 1px solid color-mix(in srgb, #e5a54b 42%, var(--staff-line)); border-radius: 8px; background: color-mix(in srgb, #e5a54b 9%, var(--staff-card)); color: var(--staff-muted); font-size: 0.68rem; }
@@ -68,7 +87,7 @@
 .medicine-batch-error button { margin-left: auto; white-space: nowrap; }
 .medicine-batch-empty { display: grid; justify-items: center; gap: 7px; padding: 48px 20px; color: var(--staff-muted); text-align: center; }
 .medicine-batch-empty .staff-icon { color: var(--staff-brand); }
-.medicine-batch-empty strong { color: var(--staff-ink); font-family: var(--site-font-display); font-size: 1rem; }
+.medicine-batch-empty strong { color: var(--staff-ink); font-family: var(--font-display); font-size: 1rem; }
 .medicine-batch-empty span { font-size: 0.68rem; }
 .medicine-batch-empty button { margin-top: 5px; }
 .medicine-batch-pagination { padding: 13px 17px; color: var(--staff-muted); font-size: 0.68rem; }

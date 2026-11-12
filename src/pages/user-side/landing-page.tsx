@@ -1,38 +1,45 @@
-import { type FormEvent, type ReactNode } from "react";
-import { useNavigate } from "react-router";
-import { ArrowRight, CalendarCheck01, File06, HeartHand, Mail01, ShieldTick } from "@untitledui/icons";
+import { type ReactNode, useEffect, useState } from "react";
+import { Heading } from "react-aria-components";
+import {
+    ArrowRight,
+    CalendarCheck01,
+    Check,
+    DotsVertical,
+    Download01,
+    MedicalCross,
+    Moon01,
+    Phone01,
+    Share07,
+    ShieldTick,
+    ShoppingCart01,
+    Sun,
+    Truck01,
+    Users01,
+} from "@untitledui/icons";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
-import { InputBase } from "@/components/base/input/input";
-import { InputGroup } from "@/components/base/input/input-group";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useI18n } from "@/providers/locale-provider";
+import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 
 export const LandingPage = () => {
-    const navigate = useNavigate();
-
-    const startWithEmail = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const email = String(new FormData(event.currentTarget).get("email") ?? "").trim();
-        navigate(email ? `/register?email=${encodeURIComponent(email)}` : "/register");
-    };
-
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden scroll-smooth pt-[4.5rem] text-primary md:pt-22">
             <LandingHeader />
             <PageBreadcrumb />
 
             <main>
-                <Hero startWithEmail={startWithEmail} />
-                <Features />
-                <HowItWorks />
-                <AtHome />
-                <PatientPaths />
+                <Hero />
+                <BookingSteps />
+                <MedicineSteps />
+                <FamilySteps />
+                <PhoneHome />
                 <FinalCta />
             </main>
 
@@ -43,7 +50,7 @@ export const LandingPage = () => {
 
 /* ponytail: footer lives in landing-footer.tsx so auth pages can reuse it. */
 
-const Hero = ({ startWithEmail }: { startWithEmail: (event: FormEvent<HTMLFormElement>) => void }) => {
+const Hero = () => {
     const { t } = useI18n();
 
     return (
@@ -52,23 +59,13 @@ const Hero = ({ startWithEmail }: { startWithEmail: (event: FormEvent<HTMLFormEl
                 <h1 className="text-display-md font-semibold tracking-tight text-primary md:text-display-lg">{t.heroTitle}</h1>
                 <p className="mt-5 max-w-lg text-lg text-tertiary md:mt-6 md:text-xl">{t.heroBody}</p>
 
-                <form id="get-started" onSubmit={startWithEmail} className="mt-8 max-w-md scroll-mt-28">
-                    <InputGroup
-                        name="email"
-                        type="email"
-                        size="md"
-                        isRequired
-                        aria-label={t.email}
-                        trailingAddon={
-                            <Button type="submit" size="md" className="careplus-ink">
-                                {t.getStarted}
-                            </Button>
-                        }
-                    >
-                        <InputBase placeholder={t.emailPlaceholder} icon={Mail01} autoComplete="email" />
-                    </InputGroup>
-                    <p className="mt-2.5 text-sm text-tertiary">{t.heroHint}</p>
-                </form>
+                <a
+                    href="/register"
+                    className="careplus-ink mt-8 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-md font-semibold text-white shadow-xs outline-focus-ring transition duration-150 hover:brightness-125 focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                    {t.createFreeAccount}
+                    <ArrowRight className="size-5" aria-hidden />
+                </a>
 
                 <p className="mt-10 text-sm font-medium text-tertiary">{t.comingAfter}</p>
                 <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
@@ -157,152 +154,574 @@ const HeroVisitScene = () => {
     );
 };
 
-const Features = () => {
+const chip = "rounded-xl bg-primary px-3 py-2 shadow-xs ring-1 ring-secondary";
+
+const SelectedTick = () => (
+    <span className="careplus-ink ml-auto flex size-5 shrink-0 items-center justify-center rounded-full text-white">
+        <Check className="size-3" aria-hidden />
+    </span>
+);
+
+type Step = { title: string; body: string; visual: ReactNode };
+
+const StepProcess = ({
+    id,
+    eyebrow,
+    title,
+    body,
+    steps,
+    columns = "lg:grid-cols-4",
+}: {
+    id: string;
+    eyebrow: string;
+    title: string;
+    body: string;
+    steps: Step[];
+    columns?: string;
+}) => {
     const { t } = useI18n();
-    const items = [
-        { icon: CalendarCheck01, title: t.featureVisit, body: t.featureVisitBody },
-        { icon: File06, title: t.featureRecords, body: t.featureRecordsBody },
-        { icon: HeartHand, title: t.featureFamily, body: t.featureFamilyBody },
-    ];
 
     return (
-        <section id="features" className="careplus-panel scroll-mt-24 bg-primary py-16 md:py-24">
-            <div className="mx-auto grid w-full max-w-container gap-10 px-4 md:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] md:items-end md:gap-16 md:px-8">
-                <h2 className="text-display-sm font-semibold text-primary md:text-display-md">{t.featuresTitle}</h2>
-                <p className="text-lg text-tertiary">{t.featuresBody}</p>
-            </div>
+        <section id={id} className="scroll-mt-24 py-16 md:py-24">
+            <div className="mx-auto w-full max-w-container px-4 md:px-8">
+                <span className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1 text-sm font-semibold text-secondary ring-1 ring-secondary">
+                    <span className="size-1.5 rounded-full bg-fg-primary" aria-hidden />
+                    {eyebrow}
+                </span>
+                <h2 className="mt-4 max-w-xl text-display-sm font-semibold text-primary md:text-display-md">{title}</h2>
+                <p className="mt-4 max-w-2xl text-lg text-tertiary">{body}</p>
 
-            <div className="mx-auto mt-12 grid w-full max-w-container gap-4 px-4 md:mt-16 md:grid-cols-3 md:gap-6 md:px-8">
-                {items.map((item) => (
-                    <article
-                        key={item.title}
-                        className="rounded-3xl bg-[#0b2036] p-8 shadow-xs ring-1 ring-white/10 [background-image:var(--careplus-ink)] md:p-10 dark:bg-white dark:[background-image:none] dark:ring-black/[0.06]"
-                    >
-                        <FeaturedIcon icon={item.icon} size="lg" color="brand" theme="light" />
-                        <h3 className="mt-5 text-lg font-semibold text-white dark:text-[#0b1f38]">{item.title}</h3>
-                        <p className="mt-2 text-md text-white/72 dark:text-[#456f75]">{item.body}</p>
-                    </article>
-                ))}
+                <ol className={cx("mt-10 grid gap-4 sm:grid-cols-2 md:mt-14 lg:gap-6", columns)}>
+                    {steps.map((step, index) => (
+                        <li key={step.title} className="flex flex-col overflow-hidden rounded-3xl bg-primary shadow-xs ring-1 ring-secondary">
+                            <div
+                                aria-hidden
+                                className="flex min-h-40 items-center justify-center bg-secondary_alt px-6 py-8 [background-image:radial-gradient(var(--color-border-secondary)_1px,transparent_1px)] [background-size:14px_14px]"
+                            >
+                                {step.visual}
+                            </div>
+                            <div className="p-6">
+                                <p className="text-sm font-medium text-tertiary">
+                                    {t.stepLabel} {index + 1}
+                                </p>
+                                <h3 className="mt-2 text-lg font-semibold text-primary">{step.title}</h3>
+                                <p className="mt-2 text-md text-tertiary">{step.body}</p>
+                            </div>
+                        </li>
+                    ))}
+                </ol>
             </div>
         </section>
     );
 };
 
-const HowItWorks = () => {
+const BookingSteps = () => {
     const { t } = useI18n();
-    const steps = [
-        { n: "1", title: t.step1, body: t.step1Body },
-        { n: "2", title: t.step2, body: t.step2Body },
-        { n: "3", title: t.step3, body: t.step3Body },
+    const steps: Step[] = [
+        {
+            title: t.step1,
+            body: t.step1Body,
+            visual: (
+                <div className="flex w-full max-w-56 flex-col gap-2">
+                    <div className={cx(chip, "flex items-center gap-2.5")}>
+                        <Avatar size="xs" initials="ME" />
+                        <span className="text-sm font-semibold text-primary">{t.stepVisualMe}</span>
+                        <SelectedTick />
+                    </div>
+                    <div className={cx(chip, "flex items-center gap-2.5 opacity-70")}>
+                        <Avatar size="xs" initials="FM" />
+                        <span className="text-sm font-medium text-secondary">{t.stepVisualFamily}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: t.step2,
+            body: t.step2Body,
+            visual: (
+                <div className="flex flex-col items-center gap-2">
+                    <span className="text-xs font-medium text-tertiary">Tue, 8 Sep</span>
+                    <div className="flex gap-2">
+                        {["9:00 am", "10:30 am", "11:00 am"].map((slot) => (
+                            <span
+                                key={slot}
+                                className={cx(
+                                    "rounded-lg px-2.5 py-1.5 text-xs font-semibold",
+                                    slot === "10:30 am" ? "careplus-ink text-white" : "bg-primary text-secondary ring-1 ring-secondary",
+                                )}
+                            >
+                                {slot}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: t.step3,
+            body: t.step3Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-72 items-center gap-3 py-2.5")}>
+                    <Avatar size="sm" initials="AL" />
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-primary">Dr Aisha Lim</p>
+                        <p className="truncate text-xs text-tertiary">{t.gpRoom}</p>
+                    </div>
+                    <SelectedTick />
+                </div>
+            ),
+        },
+        {
+            title: t.step4,
+            body: t.step4Body,
+            visual: (
+                <div className="flex w-full max-w-56 flex-col gap-2">
+                    <div className={cx(chip, "flex items-center gap-2.5")}>
+                        <span className="truncate text-sm font-semibold text-primary">{t.visitGeneral}</span>
+                        <SelectedTick />
+                    </div>
+                    <div className={cx(chip, "flex items-center gap-2.5 opacity-70")}>
+                        <span className="truncate text-sm font-medium text-secondary">{t.visitScreening}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: t.step5,
+            body: t.step5Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-72 items-center gap-3 py-2.5")}>
+                    <FeaturedIcon icon={CalendarCheck01} size="sm" color="success" theme="light" />
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-primary">{t.stepVisualBooked}</p>
+                        <p className="truncate text-xs text-tertiary">Tue, 8 Sep · 10:30 am</p>
+                    </div>
+                </div>
+            ),
+        },
     ];
 
     return (
-        <section id="how-it-works" className="careplus-ink scroll-mt-24 py-16 text-white md:py-24">
-            <div className="mx-auto w-full max-w-container px-4 md:px-8">
-                <h2 className="max-w-2xl text-display-sm font-semibold text-white md:text-display-md">{t.stepsTitle}</h2>
-                <div className="mt-12 grid gap-4 md:mt-16 md:grid-cols-3 md:gap-6">
-                    {steps.map((step) => (
-                        <article key={step.n} className="relative overflow-hidden rounded-3xl bg-primary p-8 pt-10 shadow-xs ring-1 ring-secondary md:p-10">
-                            <span className="pointer-events-none absolute -top-3 left-6 text-[7rem] leading-none font-semibold text-primary/10">
-                                {step.n}
-                            </span>
-                            <h3 className="relative text-lg font-semibold text-primary">{step.title}</h3>
-                            <p className="relative mt-3 text-md text-tertiary">{step.body}</p>
-                        </article>
-                    ))}
+        <StepProcess
+            id="how-it-works"
+            eyebrow={t.howEyebrow}
+            title={t.stepsTitle}
+            body={t.stepsBody}
+            steps={steps}
+            columns="lg:grid-cols-3"
+        />
+    );
+};
+
+const MedicineSteps = () => {
+    const { t } = useI18n();
+    const steps: Step[] = [
+        {
+            title: t.medStep1,
+            body: t.medStep1Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-60 items-center gap-3 py-2.5")}>
+                    <FeaturedIcon icon={MedicalCross} size="sm" color="brand" theme="light" />
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-primary">{t.medStepVisualBrowse}</p>
+                        <p className="truncate text-xs text-tertiary">{t.homeNavMedicine}</p>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: t.medStep2,
+            body: t.medStep2Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-60 items-center gap-3 py-2.5")}>
+                    <FeaturedIcon icon={ShoppingCart01} size="sm" color="brand" theme="light" />
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-primary">{t.medStepVisualCart}</p>
+                        <p className="truncate text-xs text-tertiary">2 × Amoxicillin</p>
+                    </div>
+                    <SelectedTick />
+                </div>
+            ),
+        },
+        {
+            title: t.medStep3,
+            body: t.medStep3Body,
+            visual: (
+                <div className="flex w-full max-w-56 flex-col gap-2">
+                    <div className={cx(chip, "flex items-center gap-2.5")}>
+                        <span className="truncate text-sm font-semibold text-primary">{t.medCartPickup}</span>
+                        <SelectedTick />
+                    </div>
+                    <div className={cx(chip, "flex items-center gap-2.5 opacity-70")}>
+                        <span className="truncate text-sm font-medium text-secondary">{t.medCartDelivery}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: t.medStep4,
+            body: t.medStep4Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-60 items-center gap-3 py-2.5")}>
+                    <FeaturedIcon icon={Truck01} size="sm" color="success" theme="light" />
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-primary">{t.medStepVisualTrack}</p>
+                        <p className="truncate text-xs text-tertiary">{t.ordersTrack}</p>
+                    </div>
+                </div>
+            ),
+        },
+    ];
+
+    return (
+        <StepProcess
+            id="medicine"
+            eyebrow={t.medHowEyebrow}
+            title={t.medStepsTitle}
+            body={t.medStepsBody}
+            steps={steps}
+        />
+    );
+};
+
+const FamilySteps = () => {
+    const { t } = useI18n();
+    const steps: Step[] = [
+        {
+            title: t.famStep1,
+            body: t.famStep1Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-60 flex-col gap-1.5 py-2.5")}>
+                    <p className="text-xs font-medium text-tertiary">{t.email}</p>
+                    <p className="truncate text-sm font-semibold text-primary">parent@email.com</p>
+                </div>
+            ),
+        },
+        {
+            title: t.famStep2,
+            body: t.famStep2Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-60 items-center gap-3 py-2.5")}>
+                    <Avatar size="sm" initials="FM" />
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-primary">{t.famStepVisualAccept}</p>
+                        <p className="truncate text-xs text-tertiary">{t.familyInvite}</p>
+                    </div>
+                    <SelectedTick />
+                </div>
+            ),
+        },
+        {
+            title: t.famStep3,
+            body: t.famStep3Body,
+            visual: (
+                <div className="flex w-full max-w-56 flex-col gap-2">
+                    <div className={cx(chip, "flex items-center gap-2.5")}>
+                        <span className="truncate text-sm font-semibold text-primary">{t.famStepVisualParent}</span>
+                        <SelectedTick />
+                    </div>
+                    <div className={cx(chip, "flex items-center gap-2.5 opacity-70")}>
+                        <span className="truncate text-sm font-medium text-secondary">{t.famStepVisualChild}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            title: t.famStep4,
+            body: t.famStep4Body,
+            visual: (
+                <div className={cx(chip, "flex w-full max-w-60 items-center gap-3 py-2.5")}>
+                    <FeaturedIcon icon={Users01} size="sm" color="success" theme="light" />
+                    <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-primary">{t.famStepVisualBook}</p>
+                        <p className="truncate text-xs text-tertiary">{t.stepVisualFamily}</p>
+                    </div>
+                </div>
+            ),
+        },
+    ];
+
+    return (
+        <StepProcess
+            id="family"
+            eyebrow={t.famHowEyebrow}
+            title={t.famStepsTitle}
+            body={t.famStepsBody}
+            steps={steps}
+        />
+    );
+};
+
+type BeforeInstallPromptEvent = Event & {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+const detectPhonePlatform = (): "ios" | "android" => {
+    if (typeof navigator === "undefined") return "android";
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ? "ios" : "android";
+};
+
+const PhoneHome = () => {
+    const { t } = useI18n();
+    const { theme, setTheme, textSize, setTextSize } = useTheme();
+    const [howOpen, setHowOpen] = useState(false);
+    const [platform, setPlatform] = useState<"ios" | "android">(detectPhonePlatform);
+    const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+    const [installBusy, setInstallBusy] = useState(false);
+    const previewDark = theme === "dark";
+    const previewLarge = textSize === "large";
+    const points = [t.phoneHomePointTheme, t.phoneHomePointTextSize, t.phoneHomePointTabs, t.phoneHomePointFullscreen];
+    const steps =
+        platform === "ios"
+            ? [
+                  { text: t.phoneHomeIosStep1, Icon: Share07 },
+                  { text: t.phoneHomeIosStep2, Icon: Download01 },
+                  { text: t.phoneHomeIosStep3, Icon: Check },
+              ]
+            : [
+                  { text: t.phoneHomeAndroidStep1, Icon: DotsVertical },
+                  { text: t.phoneHomeAndroidStep2, Icon: Download01 },
+                  { text: t.phoneHomeAndroidStep3, Icon: Check },
+              ];
+
+    useEffect(() => {
+        const onBeforeInstall = (event: Event) => {
+            event.preventDefault();
+            setInstallEvent(event as BeforeInstallPromptEvent);
+        };
+        window.addEventListener("beforeinstallprompt", onBeforeInstall);
+        return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+    }, []);
+
+    const handleInstall = async () => {
+        if (!installEvent) return;
+        setInstallBusy(true);
+        try {
+            await installEvent.prompt();
+            await installEvent.userChoice;
+            setInstallEvent(null);
+        } finally {
+            setInstallBusy(false);
+        }
+    };
+
+    return (
+        <section id="on-your-phone" className="scroll-mt-24 px-4 py-8 md:px-8 md:py-12">
+            <div className="mx-auto grid w-full max-w-container overflow-hidden rounded-[2rem] bg-primary shadow-xs ring-1 ring-secondary lg:grid-cols-2">
+                <div className="flex flex-col justify-center p-8 md:p-10 lg:p-12">
+                    <span className="inline-flex w-fit items-center gap-2 rounded-full bg-primary px-3 py-1 text-sm font-semibold text-secondary ring-1 ring-secondary">
+                        <span className="size-1.5 rounded-full bg-fg-primary" aria-hidden />
+                        {t.phoneHomeEyebrow}
+                    </span>
+                    <h2 className="mt-4 text-display-sm font-semibold text-primary md:text-display-md">{t.phoneHomeTitle}</h2>
+                    <p className="mt-4 max-w-md text-lg text-tertiary">{t.phoneHomeBody}</p>
+                    <ul className="mt-6 flex flex-col gap-3">
+                        {points.map((point) => (
+                            <li key={point} className="flex items-start gap-3 text-md text-secondary">
+                                <span className="careplus-ink mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-white">
+                                    <Check className="size-3" aria-hidden />
+                                </span>
+                                <span>{point}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <Button color="secondary" size="md" iconLeading={Phone01} className="mt-8 w-fit" onClick={() => setHowOpen(true)}>
+                        {t.phoneHomeHow}
+                    </Button>
+                </div>
+
+                <div className="flex items-center justify-center bg-secondary_alt p-8 [background-image:radial-gradient(var(--color-border-secondary)_1px,transparent_1px)] [background-size:14px_14px] md:p-10 lg:p-12">
+                    <div className="w-full max-w-sm rounded-3xl bg-primary p-4 shadow-xs ring-1 ring-secondary">
+                        <div className="grid grid-cols-2 gap-3" aria-hidden>
+                            <PhonePreview label={t.sheetLight} dark={false} active={!previewDark} large={previewLarge} />
+                            <PhonePreview label={t.sheetDark} dark active={previewDark} large={previewLarge} />
+                        </div>
+                        <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label={t.settingsAppearance}>
+                            <button
+                                type="button"
+                                onClick={() => setTheme("light")}
+                                className={cx(
+                                    "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    !previewDark ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                            >
+                                <Sun className="size-4" />
+                                {t.sheetLight}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTheme("dark")}
+                                className={cx(
+                                    "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    previewDark ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                            >
+                                <Moon01 className="size-4" />
+                                {t.sheetDark}
+                            </button>
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label={t.settingsTextSize}>
+                            <button
+                                type="button"
+                                onClick={() => setTextSize("normal")}
+                                className={cx(
+                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    !previewLarge ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                            >
+                                A
+                                <span className="sr-only"> {t.settingsTextSizeNormal}</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTextSize("large")}
+                                className={cx(
+                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    previewLarge ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                            >
+                                A+
+                                <span className="sr-only"> {t.settingsTextSizeLarge}</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
-    );
-};
 
-const AtHome = () => {
-    const { t } = useI18n();
-    const facts = [
-        { title: t.register, body: t.registerHint },
-        { title: t.logIn, body: t.logInHint },
-        { title: t.reset, body: t.resetHint },
-    ];
+            <ModalOverlay isDismissable isOpen={howOpen} onOpenChange={setHowOpen}>
+                <Modal className="w-full max-w-md">
+                    <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden dark:bg-[#0a0a0a]">
+                        <Heading slot="title" className="text-center text-lg font-semibold text-primary">
+                            {t.phoneHomeHowTitle}
+                        </Heading>
+                        <p className="mt-2 text-center text-sm text-tertiary">{t.phoneHomeHowSubtitle}</p>
 
-    return (
-        <section className="careplus-panel py-16 md:py-24">
-            <div className="mx-auto w-full max-w-container px-4 text-center md:px-8">
-                <h2 className="text-display-sm font-semibold text-primary md:text-display-md">{t.startTitle}</h2>
-                <p className="mx-auto mt-4 max-w-xl text-lg text-tertiary">{t.startBody}</p>
-                <dl className="mx-auto mt-12 grid max-w-5xl gap-4 sm:grid-cols-3 md:mt-16">
-                    {facts.map((fact) => (
-                        <div
-                            key={fact.title}
-                            className="rounded-3xl bg-[#0b2036] p-8 shadow-xs ring-1 ring-white/10 [background-image:var(--careplus-ink)] md:p-10 dark:bg-white dark:[background-image:none] dark:ring-black/[0.06]"
+                        <Button
+                            color="secondary"
+                            size="lg"
+                            iconLeading={Download01}
+                            className="mt-5 w-full"
+                            isDisabled={installBusy}
+                            onClick={() => void (installEvent ? handleInstall() : undefined)}
                         >
-                            <dt className="text-display-sm font-semibold text-white dark:text-[#0b1f38]">{fact.title}</dt>
-                            <dd className="mt-2 text-md text-white/72 dark:text-[#456f75]">{fact.body}</dd>
+                            {t.phoneHomeInstallNow}
+                        </Button>
+                        {!installEvent ? <p className="mt-2 text-center text-xs text-tertiary">{t.phoneHomeInstallUnavailable}</p> : null}
+
+                        <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="tablist" aria-label="Phone platform">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={platform === "ios"}
+                                className={cx(
+                                    "rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    platform === "ios" ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                                onClick={() => setPlatform("ios")}
+                            >
+                                {t.phoneHomeIphone}
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={platform === "android"}
+                                className={cx(
+                                    "rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    platform === "android" ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                                onClick={() => setPlatform("android")}
+                            >
+                                {t.phoneHomeAndroid}
+                            </button>
                         </div>
-                    ))}
-                </dl>
-            </div>
+
+                        <ol className="mt-4 flex flex-col gap-2">
+                            {steps.map((step, index) => (
+                                <li key={step.text} className="flex items-center gap-3 rounded-xl px-3 py-3 ring-1 ring-secondary">
+                                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary">
+                                        {index + 1}
+                                    </span>
+                                    <p className="min-w-0 flex-1 text-sm text-secondary">{step.text}</p>
+                                    <step.Icon className="size-5 shrink-0 text-fg-quaternary" aria-hidden />
+                                </li>
+                            ))}
+                        </ol>
+
+                        {platform === "android" ? <p className="mt-4 text-center text-xs text-tertiary">{t.phoneHomeSamsungNote}</p> : null}
+
+                        <div className="mt-5 flex justify-end">
+                            <Button color="primary" onClick={() => setHowOpen(false)}>
+                                {t.tourDone}
+                            </Button>
+                        </div>
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
         </section>
     );
 };
 
-const PatientPaths = () => {
-    const { t } = useI18n();
-
-    return (
-        <section id="for-patients" className="scroll-mt-24 pb-8 md:pb-12">
-            <div className="mx-auto grid w-full max-w-container gap-4 px-4 md:grid-cols-2 md:px-8">
-                <a
-                    href="/register"
-                    className="group flex items-end justify-between rounded-3xl bg-primary p-8 shadow-xs ring-1 ring-secondary outline-focus-ring transition hover:bg-[#456f75]/12 focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-56 md:p-10 dark:bg-white dark:ring-black/[0.06] dark:hover:bg-[#eef8fb]"
-                >
-                    <div>
-                        <p className="text-sm font-semibold text-tertiary dark:text-[#456f75]">{t.newHere}</p>
-                        <h3 className="mt-2 text-display-xs font-semibold text-primary dark:text-[#0b1f38]">{t.createYourAccount}</h3>
-                        <p className="mt-2 max-w-xs text-md text-tertiary dark:text-[#456f75]">{t.freeReg}</p>
-                    </div>
-                    <span className="careplus-ink flex size-12 items-center justify-center rounded-full text-white transition group-hover:brightness-125">
-                        <ArrowRight className="size-5" />
+const PhonePreview = ({ label, dark, active, large }: { label: string; dark: boolean; active: boolean; large: boolean }) => (
+    <div
+        className={cx(
+            "relative overflow-hidden rounded-2xl ring-1 transition",
+            dark ? "bg-[#0a0a0a] text-white ring-white/10" : "bg-white text-[#0b1f38] ring-secondary",
+            active ? "opacity-100 ring-[#0d9488]/70" : "opacity-55",
+        )}
+    >
+        {active ? (
+            <span
+                className={cx(
+                    "absolute top-1.5 right-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-[#0d9488] text-white shadow-xs ring-2",
+                    dark ? "ring-[#0a0a0a]" : "ring-white",
+                )}
+            >
+                <Check className="size-3" aria-hidden />
+            </span>
+        ) : null}
+        <div className={cx("border-b px-3 py-2 font-semibold", large ? "text-sm" : "text-xs", dark ? "border-white/10" : "border-secondary")}>{label}</div>
+        <div className="space-y-2 p-3">
+            <div className={cx("rounded-full transition-[height]", large ? "h-2.5" : "h-2", dark ? "bg-white/15" : "bg-secondary")} />
+            <div className={cx("w-2/3 rounded-full transition-[height]", large ? "h-2.5" : "h-2", dark ? "bg-white/10" : "bg-secondary")} />
+            <div className={cx("mt-3 grid grid-cols-5 gap-1 rounded-xl px-1 py-2", dark ? "bg-white/5" : "bg-secondary_alt")}>
+                {["H", "V", "+", "C", "M"].map((tab) => (
+                    <span
+                        key={tab}
+                        className={cx(
+                            "flex items-center justify-center rounded-md font-bold transition-[height,font-size]",
+                            large ? "h-7 text-xs" : "h-6 text-[10px]",
+                            tab === "+" ? "careplus-ink text-white" : dark ? "text-white/50" : "text-tertiary",
+                        )}
+                    >
+                        {tab}
                     </span>
-                </a>
-
-                <a
-                    href="/login"
-                    className="group flex items-end justify-between rounded-3xl bg-[#040f1c] p-8 text-white shadow-xs outline-focus-ring transition [background-image:var(--careplus-ink)] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 md:min-h-56 md:p-10 dark:bg-white dark:[background-image:none] dark:text-[#0b1f38] dark:ring-1 dark:ring-black/[0.06] dark:hover:bg-[#eef8fb] dark:hover:brightness-100"
-                >
-                    <div>
-                        <p className="text-sm font-semibold text-white/70 dark:text-[#456f75]">{t.already}</p>
-                        <h3 className="mt-2 text-display-xs font-semibold text-white dark:text-[#0b1f38]">{t.signIn}</h3>
-                        <p className="mt-2 max-w-xs text-md text-white/72 dark:text-[#456f75]">{t.sameEmail}</p>
-                    </div>
-                    <span className="flex size-12 items-center justify-center rounded-full bg-white text-[#0b1f38] transition group-hover:bg-brand-50 dark:bg-[#0b1f38] dark:text-white dark:group-hover:bg-[#122b4b]">
-                        <ArrowRight className="size-5" />
-                    </span>
-                </a>
+                ))}
             </div>
-        </section>
-    );
-};
+        </div>
+    </div>
+);
 
 const FinalCta = () => {
     const { t } = useI18n();
 
     return (
         <section className="px-4 py-8 md:px-8 md:py-12">
-            <div className="mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] bg-[#040f1c] px-8 py-10 [background-image:var(--careplus-ink)] md:flex-row md:items-center md:justify-between md:px-12 md:py-14 dark:bg-white dark:shadow-lg dark:[background-image:none]">
+            <div className="mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] bg-black px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14">
                 <div className="max-w-xl">
-                    <h2 className="text-display-sm font-semibold text-white dark:text-[#0b1f38]">{t.ctaTitle}</h2>
-                    <p className="mt-3 text-md text-white/72 dark:text-[#456f75]">{t.ctaBody}</p>
+                    <h2 className="text-display-sm font-semibold text-white">{t.ctaTitle}</h2>
+                    <p className="mt-3 text-md text-white/72">{t.ctaBody}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <a
                         href="/register"
-                        className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-white px-4 py-2.5 text-md font-semibold text-[#0b1f38] shadow-xs outline-focus-ring transition duration-150 hover:bg-[#456f75] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 dark:bg-[#0b1f38] dark:text-white dark:hover:bg-[#456f75]"
+                        className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-white px-4 py-2.5 text-md font-semibold text-black shadow-xs outline-focus-ring transition duration-150 hover:bg-[#456f75] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2"
                     >
                         {t.getStarted}
                     </a>
                     <a
                         href="/login"
-                        className="inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2.5 text-md font-semibold text-white ring-1 ring-white/80 outline-focus-ring transition duration-150 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-[#0b1f38] dark:ring-[#0b1f38]/30 dark:hover:bg-[#0b1f38]/5"
+                        className="inline-flex cursor-pointer items-center justify-center rounded-lg px-4 py-2.5 text-md font-semibold text-white ring-1 ring-white/80 outline-focus-ring transition duration-150 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2"
                     >
                         {t.logIn}
                     </a>
@@ -311,4 +730,3 @@ const FinalCta = () => {
         </section>
     );
 };
-

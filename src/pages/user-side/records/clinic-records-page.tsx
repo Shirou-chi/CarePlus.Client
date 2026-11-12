@@ -112,7 +112,37 @@ export const ClinicRecordsPage = () => {
                         <p className="mt-2 text-sm text-tertiary">{t.clinicRecordsEmptyBody}</p>
                     </div>
                 ) : null}
-                {!loading && !error && records.length > 0 ? <TableCard.Root className="mt-8 overflow-hidden">
+                {!loading && !error && records.length > 0 ? (
+                    <ul className="mt-6 flex flex-col gap-3 md:hidden">
+                        {filtered.map((record) => (
+                            <li key={record.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary">
+                                <div className="flex items-start gap-3">
+                                    <img src={record.doctorPhoto} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-semibold text-primary">{record.doctorName}</p>
+                                        <p className="text-sm text-tertiary">{record.visitType} · {formatWhen(record.visitedAt)}</p>
+                                        <p className="mt-1 text-sm text-tertiary">{record.patientName} · <span className="text-brand-secondary">#{record.id}</span></p>
+                                    </div>
+                                    {record.review ? (
+                                        <Badge color="brand" size="sm">{"★".repeat(record.review.rating)}</Badge>
+                                    ) : null}
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    <Button color="secondary" size="sm" className="flex-1" iconLeading={Eye} onClick={() => setPicked(record)}>
+                                        {t.clinicRecordsView}
+                                    </Button>
+                                    {!record.review ? (
+                                        <Button color="secondary" size="sm" className="flex-1" iconLeading={Star01} onClick={() => { setReviewSuccess(false); setReviewRecordId(record.id); }}>
+                                            {t.clinicRecordsReview}
+                                        </Button>
+                                    ) : null}
+                                    <Button color="tertiary" size="sm" iconLeading={Download01} aria-label={t.clinicRecordsDownloadPdf} onClick={() => downloadRecordPdf(record)} />
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : null}
+                {!loading && !error && records.length > 0 ? <TableCard.Root className="mt-8 hidden overflow-hidden md:block">
                     <Table aria-label={t.clinicRecordsTitle}>
                         <Table.Header>
                             <Table.Head id="id" label={t.clinicRecordsId} isRowHeader />
@@ -272,7 +302,7 @@ const DoctorReviewModal = ({
                             onChange={(event) => setDescription(event.target.value)}
                             maxLength={1000}
                             rows={4}
-                            className="mt-2 w-full resize-y rounded-lg border border-secondary bg-primary px-3 py-2 text-sm text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                            className="mt-2 w-full resize-y rounded-lg border border-secondary bg-primary px-3 py-2 text-md text-primary outline-none sm:text-sm focus:border-brand focus:ring-2 focus:ring-brand/20"
                         />
                         <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm text-secondary">
                             <input

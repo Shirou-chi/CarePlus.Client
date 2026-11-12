@@ -1,52 +1,113 @@
-import { StrictMode, useLayoutEffect } from "react";
+import { type ComponentType, StrictMode, Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import { useAuth } from "@/providers/auth-provider";
-import { StaffHomePage } from "@/pages/staff-side/StaffHomePage";
-import { StaffLoginPage } from "@/pages/staff-side/login/StaffLoginPage";
-import { AppointmentsPage as StaffAppointmentsPage } from "@/pages/staff-side/appointments/AppointmentsPage";
-import { AuditLogsPage } from "@/pages/staff-side/audit/AuditLogsPage";
-import { LeavePage } from "@/pages/staff-side/leave/LeavePage";
-import { NotificationsPage as StaffNotificationsPage } from "@/pages/staff-side/notifications/NotificationsPage";
-import { PatientsPage } from "@/pages/staff-side/patients/PatientsPage";
-import { ClinicRoomsPage } from "@/pages/staff-side/rooms/ClinicRoomsPage";
-import { MedicinePage } from "@/pages/staff-side/medicine/MedicinePage";
-import { MedicineBatchPage } from "@/pages/staff-side/medicine-batches/MedicineBatchPage";
-import { SchedulePage } from "@/pages/staff-side/schedule/SchedulePage";
-import { StaffManagementPage } from "@/pages/staff-side/staff/StaffManagementPage";
-import { SettingsPage } from "@/pages/staff-side/settings/SettingsPage";
-import { MedicalRecordsPage } from "@/pages/staff-side/medical-records/MedicalRecordsPage";
-import { StaffQueuePage } from "@/pages/staff-side/queue/StaffQueuePage";
-import { PrescriptionsPage } from "@/pages/staff-side/prescriptions/PrescriptionsPage";
-import { AccountPage } from "@/pages/user-side/account/account-page";
-import { AboutPage } from "@/pages/user-side/about-page";
-import { InvoicePaymentPage } from "@/pages/user-side/bills/invoice-payment-page";
-import { OutstandingInvoicesPage } from "@/pages/user-side/bills/outstanding-invoices-page";
-import { PaymentHistoryPage } from "@/pages/user-side/bills/payment-history-page";
-import { BookingPage } from "@/pages/user-side/visits/booking-page";
-import { UpcomingVisitsPage } from "@/pages/user-side/visits/upcoming-visits-page";
-import { QueuePage } from "@/pages/user-side/visits/queue-page";
-import { ForgotPasswordPage } from "@/pages/user-side/auth/forgot-password-page";
-import { FamilyPage } from "@/pages/user-side/family/family-page";
-import { HealthRecordsPage } from "@/pages/user-side/records/health-records-page";
+import { MobileBottomNav, shouldHideMobileBottomNav } from "@/components/marketing/header-navigation/mobile-bottom-nav";
+import { NotificationToasts } from "@/components/marketing/notifications/notification-toasts";
 import { HomePage } from "@/pages/user-side/home-page";
 import { LandingPage } from "@/pages/user-side/landing-page";
-import { LoginPage } from "@/pages/user-side/auth/login-page";
-import { ClinicRecordsPage } from "@/pages/user-side/records/clinic-records-page";
-import { NotFound } from "@/pages/user-side/not-found";
-import { OrderHistoryPage } from "@/pages/user-side/medicine/order-history-page";
-import { PrescribedMedicineBrowsePage } from "@/pages/user-side/medicine/prescribed-medicine-browse-page";
-import { PrescribedMedicinePage } from "@/pages/user-side/medicine/prescribed-medicine-page";
-import { CartPage } from "@/pages/user-side/medicine/cart-page";
-import { CheckoutPage } from "@/pages/user-side/medicine/checkout-page";
-import { ContactPage } from "@/pages/user-side/contact-page";
-import { DoctorDetailPage } from "@/pages/user-side/doctors/doctor-detail-page";
-import { DoctorsPage } from "@/pages/user-side/doctors/doctors-page";
-import { ChatPage } from "@/pages/user-side/chat/chat-page";
-import { AnnouncementsPage } from "@/pages/user-side/announcements/announcements-page";
-import { NotificationsPage } from "@/pages/user-side/notifications/notifications-page";
-import { RegisterPage } from "@/pages/user-side/auth/register-page";
 import { AuthProvider } from "@/providers/auth-provider";
+
+// Every other page is its own chunk, so the first visit only downloads Landing/Home.
+const page = <K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) =>
+    lazy(() => loader().then((module) => ({ default: module[name] })));
+
+const staffPageLoaders = [
+    () => import("@/pages/staff-side/StaffHomePage"),
+    () => import("@/pages/staff-side/login/StaffLoginPage"),
+    () => import("@/pages/staff-side/appointments/AppointmentsPage"),
+    () => import("@/pages/staff-side/audit/AuditLogsPage"),
+    () => import("@/pages/staff-side/leave/LeavePage"),
+    () => import("@/pages/staff-side/notifications/NotificationsPage"),
+    () => import("@/pages/staff-side/patients/PatientsPage"),
+    () => import("@/pages/staff-side/rooms/ClinicRoomsPage"),
+    () => import("@/pages/staff-side/medicine/MedicinePage"),
+    () => import("@/pages/staff-side/medicine-batches/MedicineBatchPage"),
+    () => import("@/pages/staff-side/schedule/SchedulePage"),
+    () => import("@/pages/staff-side/staff/StaffManagementPage"),
+    () => import("@/pages/staff-side/settings/SettingsPage"),
+    () => import("@/pages/staff-side/medical-records/MedicalRecordsPage"),
+] as const;
+
+const prefetchStaffPages = () => {
+    for (const load of staffPageLoaders) void load();
+};
+
+const patientPageLoaders = [
+    () => import("@/pages/user-side/account/account-page"),
+    () => import("@/pages/user-side/about-page"),
+    () => import("@/pages/user-side/bills/invoice-payment-page"),
+    () => import("@/pages/user-side/bills/outstanding-invoices-page"),
+    () => import("@/pages/user-side/bills/payment-history-page"),
+    () => import("@/pages/user-side/visits/booking-page"),
+    () => import("@/pages/user-side/visits/upcoming-visits-page"),
+    () => import("@/pages/user-side/visits/visit-history-page"),
+    () => import("@/pages/user-side/visits/queue-page"),
+    () => import("@/pages/user-side/auth/forgot-password-page"),
+    () => import("@/pages/user-side/family/family-page"),
+    () => import("@/pages/user-side/records/health-records-page"),
+    () => import("@/pages/user-side/auth/login-page"),
+    () => import("@/pages/user-side/records/clinic-records-page"),
+    () => import("@/pages/user-side/not-found"),
+    () => import("@/pages/user-side/medicine/order-history-page"),
+    () => import("@/pages/user-side/medicine/prescribed-medicine-browse-page"),
+    () => import("@/pages/user-side/medicine/prescribed-medicine-page"),
+    () => import("@/pages/user-side/medicine/cart-page"),
+    () => import("@/pages/user-side/medicine/checkout-page"),
+    () => import("@/pages/user-side/contact-page"),
+    () => import("@/pages/user-side/doctors/doctor-detail-page"),
+    () => import("@/pages/user-side/doctors/doctors-page"),
+    () => import("@/pages/user-side/chat/chat-page"),
+    () => import("@/pages/user-side/announcements/announcements-page"),
+    () => import("@/pages/user-side/notifications/notifications-page"),
+    () => import("@/pages/user-side/auth/register-page"),
+] as const;
+
+const prefetchPatientPages = () => {
+    for (const load of patientPageLoaders) void load();
+};
+
+const StaffHomePage = page(() => import("@/pages/staff-side/StaffHomePage"), "StaffHomePage");
+const StaffLoginPage = page(() => import("@/pages/staff-side/login/StaffLoginPage"), "StaffLoginPage");
+const StaffAppointmentsPage = page(() => import("@/pages/staff-side/appointments/AppointmentsPage"), "AppointmentsPage");
+const AuditLogsPage = page(() => import("@/pages/staff-side/audit/AuditLogsPage"), "AuditLogsPage");
+const LeavePage = page(() => import("@/pages/staff-side/leave/LeavePage"), "LeavePage");
+const StaffNotificationsPage = page(() => import("@/pages/staff-side/notifications/NotificationsPage"), "NotificationsPage");
+const PatientsPage = page(() => import("@/pages/staff-side/patients/PatientsPage"), "PatientsPage");
+const ClinicRoomsPage = page(() => import("@/pages/staff-side/rooms/ClinicRoomsPage"), "ClinicRoomsPage");
+const MedicinePage = page(() => import("@/pages/staff-side/medicine/MedicinePage"), "MedicinePage");
+const MedicineBatchPage = page(() => import("@/pages/staff-side/medicine-batches/MedicineBatchPage"), "MedicineBatchPage");
+const SchedulePage = page(() => import("@/pages/staff-side/schedule/SchedulePage"), "SchedulePage");
+const StaffManagementPage = page(() => import("@/pages/staff-side/staff/StaffManagementPage"), "StaffManagementPage");
+const SettingsPage = page(() => import("@/pages/staff-side/settings/SettingsPage"), "SettingsPage");
+const MedicalRecordsPage = page(() => import("@/pages/staff-side/medical-records/MedicalRecordsPage"), "MedicalRecordsPage");
+const AccountPage = page(() => import("@/pages/user-side/account/account-page"), "AccountPage");
+const AboutPage = page(() => import("@/pages/user-side/about-page"), "AboutPage");
+const InvoicePaymentPage = page(() => import("@/pages/user-side/bills/invoice-payment-page"), "InvoicePaymentPage");
+const OutstandingInvoicesPage = page(() => import("@/pages/user-side/bills/outstanding-invoices-page"), "OutstandingInvoicesPage");
+const PaymentHistoryPage = page(() => import("@/pages/user-side/bills/payment-history-page"), "PaymentHistoryPage");
+const BookingPage = page(() => import("@/pages/user-side/visits/booking-page"), "BookingPage");
+const UpcomingVisitsPage = page(() => import("@/pages/user-side/visits/upcoming-visits-page"), "UpcomingVisitsPage");
+const VisitHistoryPage = page(() => import("@/pages/user-side/visits/visit-history-page"), "VisitHistoryPage");
+const QueuePage = page(() => import("@/pages/user-side/visits/queue-page"), "QueuePage");
+const ForgotPasswordPage = page(() => import("@/pages/user-side/auth/forgot-password-page"), "ForgotPasswordPage");
+const FamilyPage = page(() => import("@/pages/user-side/family/family-page"), "FamilyPage");
+const HealthRecordsPage = page(() => import("@/pages/user-side/records/health-records-page"), "HealthRecordsPage");
+const LoginPage = page(() => import("@/pages/user-side/auth/login-page"), "LoginPage");
+const ClinicRecordsPage = page(() => import("@/pages/user-side/records/clinic-records-page"), "ClinicRecordsPage");
+const NotFound = page(() => import("@/pages/user-side/not-found"), "NotFound");
+const OrderHistoryPage = page(() => import("@/pages/user-side/medicine/order-history-page"), "OrderHistoryPage");
+const PrescribedMedicineBrowsePage = page(() => import("@/pages/user-side/medicine/prescribed-medicine-browse-page"), "PrescribedMedicineBrowsePage");
+const PrescribedMedicinePage = page(() => import("@/pages/user-side/medicine/prescribed-medicine-page"), "PrescribedMedicinePage");
+const CartPage = page(() => import("@/pages/user-side/medicine/cart-page"), "CartPage");
+const CheckoutPage = page(() => import("@/pages/user-side/medicine/checkout-page"), "CheckoutPage");
+const ContactPage = page(() => import("@/pages/user-side/contact-page"), "ContactPage");
+const DoctorDetailPage = page(() => import("@/pages/user-side/doctors/doctor-detail-page"), "DoctorDetailPage");
+const DoctorsPage = page(() => import("@/pages/user-side/doctors/doctors-page"), "DoctorsPage");
+const ChatPage = page(() => import("@/pages/user-side/chat/chat-page"), "ChatPage");
+const AnnouncementsPage = page(() => import("@/pages/user-side/announcements/announcements-page"), "AnnouncementsPage");
+const NotificationsPage = page(() => import("@/pages/user-side/notifications/notifications-page"), "NotificationsPage");
+const RegisterPage = page(() => import("@/pages/user-side/auth/register-page"), "RegisterPage");
 import { OutstandingInvoicesProvider, useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { CartProvider } from "@/providers/cart-provider";
 import { MedicineCatalogProvider } from "@/providers/medicine-catalog";
@@ -69,8 +130,12 @@ function StaffRouteGuard({ roles }: { roles?: StaffRole[] }) {
     const { user, isReady } = useAuth();
     const location = useLocation();
 
+    useEffect(() => {
+        if (isReady && user && isStaffRole(user.role)) prefetchStaffPages();
+    }, [isReady, user]);
+
     if (!isReady) {
-        return null;
+        return <div className="staff-route-fallback" aria-hidden />;
     }
 
     if (!user) {
@@ -103,7 +168,7 @@ function StaffLoginRoute() {
 }
 
 const featurePath = (pathname: string) =>
-    ["/home", "/book", "/visits", "/queue", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
+    ["/home", "/book", "/visits", "/history", "/queue", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
         (path) => pathname === path || pathname.startsWith(`${path}/`),
     );
 
@@ -113,6 +178,7 @@ const AppRoutes = () => {
     const { overdue, ready: invoicesReady } = useOutstandingInvoices();
     const bookStickyBar = location.pathname === "/book";
     const isStaffRoute = location.pathname.toLowerCase().startsWith("/staff");
+    const showMobileBottomNav = Boolean(profile) && !isStaffRoute && !shouldHideMobileBottomNav(location.pathname);
 
     useLayoutEffect(() => {
         const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
@@ -125,13 +191,20 @@ const AppRoutes = () => {
         window.scrollTo({ top: 0, behavior });
     }, [location.pathname, location.hash, location.key]);
 
+    useEffect(() => {
+        if (!isReady || isStaffRoute) return;
+        prefetchPatientPages();
+    }, [isReady, isStaffRoute]);
+
     if (isReady && profile && location.pathname === "/") return <Navigate to="/home" replace />;
     if (isReady && !profile && location.pathname === "/home") return <Navigate to="/" replace />;
     if (invoicesReady && overdue && featurePath(location.pathname)) return <Navigate to="/invoices" replace />;
 
     return (
         <>
-            <div key={location.pathname} className="careplus-page">
+            {/* ponytail: stable shell key keeps Suspense from blanking to black between lazy pages */}
+            <div key={isStaffRoute ? "staff" : "patient"} className={showMobileBottomNav ? "careplus-page careplus-has-mobile-nav" : "careplus-page"}>
+                <Suspense fallback={isStaffRoute ? <div className="staff-route-fallback" aria-hidden /> : <div className="min-h-dvh bg-primary" aria-hidden />}>
                 <Routes location={location}>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/home" element={<HomePage />} />
@@ -142,6 +215,7 @@ const AppRoutes = () => {
                     <Route path="/account" element={<AccountPage />} />
                     <Route path="/book" element={<BookingPage />} />
                     <Route path="/visits" element={<UpcomingVisitsPage />} />
+                    <Route path="/history" element={<VisitHistoryPage />} />
                     <Route path="/queue" element={<QueuePage />} />
                     <Route path="/invoices" element={<OutstandingInvoicesPage />} />
                     <Route path="/invoices/:id/pay" element={<InvoicePaymentPage />} />
@@ -190,9 +264,22 @@ const AppRoutes = () => {
                     </Route>
                     <Route path="*" element={<NotFound />} />
                 </Routes>
+                </Suspense>
             </div>
-            {!isStaffRoute && location.pathname !== "/chat" && !overdue ? <ChatWidget liftAboveStickyBar={bookStickyBar} /> : null}
-            {!isStaffRoute ? <BackToTop offsetForChat={location.pathname !== "/chat"} liftAboveStickyBar={bookStickyBar} /> : null}
+            {!isStaffRoute && location.pathname !== "/chat" && !overdue ? (
+                <div className={profile ? "max-lg:hidden" : undefined}>
+                    <ChatWidget liftAboveStickyBar={bookStickyBar} />
+                </div>
+            ) : null}
+            {!isStaffRoute ? (
+                <BackToTop
+                    offsetForChat={location.pathname !== "/chat" && !profile}
+                    liftAboveStickyBar={bookStickyBar}
+                    liftAboveMobileNav={showMobileBottomNav}
+                />
+            ) : null}
+            {showMobileBottomNav ? <MobileBottomNav /> : null}
+            {!isStaffRoute ? <NotificationToasts /> : null}
         </>
     );
 };
@@ -222,3 +309,10 @@ createRoot(document.getElementById("root")!).render(
         </ThemeProvider>
     </StrictMode>,
 );
+
+// ponytail: tiny SW so Chrome can offer Install / Add to Home Screen
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    });
+}

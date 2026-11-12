@@ -199,10 +199,14 @@ export function AuditLogsPage() {
         />
 
         <div className="staff-content audit-content">
-          <header className="staff-page-heading">
-            <StaffPageEyebrow label="Audit logs" />
-            <button className="staff-button staff-button--secondary audit-export-button" disabled={!canExport} type="button" onClick={exportAuditLogs}><Icon name="download" size={16} /> Export audit log</button>
-          </header>
+          <section className="audit-hero">
+            <div>
+              <p className="staff-eyebrow">Governance</p>
+              <h1>Audit logs</h1>
+              <p className="audit-hero__copy">Who changed what, when it happened, and where it came from.</p>
+            </div>
+            <button className="staff-button staff-button--secondary audit-export-button" type="button" onClick={() => void exportAuditLogs()}><Icon name="download" size={16} /> Export audit log</button>
+          </section>
 
           <section aria-label="Audit summary" className="audit-summary">
             <article className="audit-summary-card audit-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Loaded events</small><strong>{auditEntries.length}</strong><em>Latest records from the API</em></article>

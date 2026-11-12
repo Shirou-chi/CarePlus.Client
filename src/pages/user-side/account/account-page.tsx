@@ -659,8 +659,8 @@ export const AccountPage = () => {
                 </div>
 
                 <div className="mt-8 grid min-w-0 items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
-                    <aside className="sticky top-[4.5rem] z-20 -mx-4 min-w-0 border-b border-secondary bg-brand-primary px-4 py-2 md:top-22 md:bg-primary/95 md:backdrop-blur-md lg:top-28 lg:mx-0 lg:max-h-[calc(100dvh-8rem)] lg:border-b-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-                        <nav aria-label={t.settingsPageTitle} className="grid min-w-0 grid-cols-4 gap-1 md:flex md:gap-2 lg:flex-col lg:gap-1">
+                    <aside className="sticky top-[4.5rem] z-20 -mx-4 min-w-0 border-b border-secondary bg-primary/90 px-4 py-2 backdrop-blur-md md:top-22 lg:top-28 lg:mx-0 lg:max-h-[calc(100dvh-8rem)] lg:border-b-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none dark:bg-[#0a0a0a]/92 lg:dark:bg-transparent">
+                        <nav aria-label={t.settingsPageTitle} className="flex min-w-0 gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 lg:flex-col lg:gap-1 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
                             <SidebarLink
                                 label={t.settingsNavProfile}
                                 icon={User01}
@@ -698,8 +698,8 @@ export const AccountPage = () => {
                         >
                             <SectionHeader title={t.settingsNavProfile} />
                             <FormStatus success={profileNotice?.success} error={profileNotice?.error} className="mt-4" />
-                            <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-start">
-                                <div className="flex flex-col items-start gap-3">
+                            <div className="mt-6 flex flex-col gap-4">
+                                <div className="flex min-w-0 items-center gap-4">
                                     <button
                                         type="button"
                                         aria-label={profile.avatarUrl ? t.settingsViewPhoto : t.settingsChangePhoto}
@@ -720,6 +720,12 @@ export const AccountPage = () => {
                                             verified
                                         />
                                     </button>
+                                    <div className="min-w-0 flex-1">
+                                        <h2 className="line-clamp-2 text-xl font-semibold break-words text-primary">{profile.fullName}</h2>
+                                        <p className="mt-1 text-md break-all text-tertiary">{profile.email}</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                                     <Button color="secondary" size="sm" onClick={() => photoInputRef.current?.click()}>
                                         {t.settingsChangePhoto}
                                     </Button>
@@ -734,10 +740,6 @@ export const AccountPage = () => {
                                             event.target.value = "";
                                         }}
                                     />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="line-clamp-2 text-xl font-semibold text-primary">{profile.fullName}</h2>
-                                    <p className="mt-1 truncate text-md text-tertiary">{profile.email}</p>
                                 </div>
                             </div>
 
@@ -869,13 +871,6 @@ export const AccountPage = () => {
                                         >
                                             {t.settingsTextSizeLarge}
                                         </Button>
-                                        <Button
-                                            color={textSize === "larger" ? "primary" : "secondary"}
-                                            size="sm"
-                                            onClick={() => setTextSize("larger")}
-                                        >
-                                            {t.settingsTextSizeLarger}
-                                        </Button>
                                     </div>
                                 </PreferenceBlock>
 
@@ -976,15 +971,31 @@ export const AccountPage = () => {
                                         isSelected={settings.twoFactorEnabled}
                                         isDisabled={twoFactorBusy}
                                         onChange={(enabled) => void requestTwoFactorCode(enabled ? "enable" : "disable")}
-                                        label={t.settingsTwoFactor}
+                                        aria-label={t.settingsTwoFactor}
                                         hint={t.settingsTwoFactorHint}
                                         size="md"
                                     />
                                 </PreferenceBlock>
 
-                                <PreferenceBlock title={t.settingsAccountActivity}>
+                                <PreferenceBlock title={t.settingsAccountActivity} hint={t.settingsAccountActivityHint}>
                                     {activity.length === 0 ? <p className="text-sm text-tertiary">{t.activityEmpty}</p> : (
-                                    <TableCard.Root className="overflow-hidden">
+                                    <>
+                                    <ul className="divide-y divide-secondary md:hidden">
+                                        {activity.map((item) => (
+                                            <li key={item.id} className="py-3">
+                                                <p className="flex flex-wrap items-center gap-2 font-medium text-primary">
+                                                    {item.device}
+                                                    {item.current ? (
+                                                        <Badge color="success" size="sm">
+                                                            {locale === "zh" ? "当前" : "Current"}
+                                                        </Badge>
+                                                    ) : null}
+                                                </p>
+                                                <p className="mt-0.5 text-sm break-all text-tertiary">{item.location} · {item.when}</p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <TableCard.Root className="hidden overflow-hidden md:block">
                                         <Table aria-label={t.settingsAccountActivity}>
                                             <Table.Header>
                                                 <Table.Head label={t.settingsActivityDevice} isRowHeader />
@@ -1009,6 +1020,7 @@ export const AccountPage = () => {
                                             </Table.Body>
                                         </Table>
                                     </TableCard.Root>
+                                    </>
                                     )}
                                 </PreferenceBlock>
 
@@ -1365,12 +1377,12 @@ const SidebarLink = ({
         onClick={onClick}
         aria-current={active ? "true" : undefined}
         className={cx(
-            "flex min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs font-medium transition duration-100 md:w-auto md:shrink-0 md:flex-row md:justify-start md:gap-2 md:px-3 md:text-left md:text-sm",
+            "flex min-w-[4.5rem] flex-1 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-center text-xs font-medium transition duration-100 md:w-auto md:flex-none md:flex-row md:justify-start md:gap-2 md:px-3 md:text-left md:text-sm",
             active ? "bg-[#456f75] text-white" : "text-tertiary hover:bg-[#456f75] hover:text-white",
         )}
     >
         <Icon aria-hidden className="size-4 shrink-0" />
-        <span className="max-w-full leading-tight md:whitespace-nowrap">{label}</span>
+        <span className="leading-tight whitespace-nowrap">{label}</span>
     </button>
 );
 
@@ -1381,9 +1393,10 @@ const SectionHeader = ({ title, description }: { title: string; description?: st
     </div>
 );
 
-const PreferenceBlock = ({ title, children }: { title: string; children: ReactNode }) => (
+const PreferenceBlock = ({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) => (
     <div className="rounded-2xl bg-primary p-5 shadow-xs ring-1 ring-secondary">
         <h3 className="text-md font-semibold text-primary">{title}</h3>
+        {hint ? <p className="mt-1 text-sm text-tertiary">{hint}</p> : null}
         <div className="mt-4">{children}</div>
     </div>
 );
@@ -1399,15 +1412,15 @@ const DetailRow = ({
     hint?: string;
     onEdit?: () => void;
 }) => (
-    <div className="flex items-start justify-between gap-4 py-4">
-        <dt className="w-36 shrink-0 text-sm font-medium text-tertiary">{label}</dt>
-        <dd className="flex min-w-0 flex-1 items-start justify-end gap-2 text-right text-sm font-medium text-primary">
-            <span className="min-w-0 max-w-md break-words">
+    <div className="flex items-start gap-3 py-4">
+        <div className="min-w-0 flex-1 sm:flex sm:items-start sm:justify-between sm:gap-4">
+            <dt className="text-sm font-medium text-tertiary sm:w-36 sm:shrink-0">{label}</dt>
+            <dd className="mt-1 min-w-0 text-sm font-medium break-words text-primary sm:mt-0 sm:max-w-md sm:text-right">
                 {typeof value === "string" ? <span className="line-clamp-3">{value}</span> : value}
                 {hint ? <span className="mt-1 block text-xs font-normal text-tertiary">{hint}</span> : null}
-            </span>
-            {onEdit ? <ButtonUtility color="tertiary" size="sm" icon={Edit01} tooltip={label} aria-label={label} onClick={onEdit} /> : null}
-        </dd>
+            </dd>
+        </div>
+        {onEdit ? <ButtonUtility color="tertiary" size="sm" icon={Edit01} tooltip={label} aria-label={label} onClick={onEdit} className="shrink-0" /> : null}
     </div>
 );
 
@@ -1428,7 +1441,7 @@ const SaveAsk = ({ t, body, onCancel, onConfirm }: { t: Copy; body?: string; onC
 const FormDialog = ({ title, error, onClose, children }: { title: string; error?: string | null; onClose: () => void; children: ReactNode }) => (
     <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
         <Modal className="w-full max-w-xl">
-            <Dialog className="flex max-h-[85vh] w-full flex-col items-stretch overflow-y-auto rounded-2xl bg-primary p-6 shadow-xl outline-hidden ring-1 ring-secondary">
+            <Dialog className="flex max-h-[85dvh] w-full flex-col items-stretch overflow-y-auto rounded-2xl bg-primary p-6 shadow-xl outline-hidden ring-1 ring-secondary">
                 <Heading slot="title" className="text-lg font-semibold text-primary">
                     {title}
                 </Heading>

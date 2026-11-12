@@ -21,7 +21,7 @@
   background: transparent;
   color: var(--staff-ink);
   color-scheme: light;
-  font-family: var(--site-font-body);
+  font-family: var(--font-body);
   font-size: 0.7rem;
   font-weight: 400;
   letter-spacing: normal;
@@ -109,6 +109,16 @@
 @media (max-width: 640px) {
   .staff-list-sort,
   .staff-list-reset {
-    flex: 1;
+    flex: 1 1 calc(50% - 4px);
+    min-height: 44px;
+  }
+
+  .staff-list-sort select {
+    height: 42px;
+    font-size: 0.75rem;
+  }
+
+  .staff-list-reset {
+    font-size: 0.75rem;
   }
 }

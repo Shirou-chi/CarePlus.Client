@@ -226,7 +226,13 @@ export function PatientsPage() {
         />
 
         <div className="staff-content patients-content">
-          <StaffPageEyebrow label="Patient management" />
+          <section className="patients-hero">
+            <div>
+              <p className="staff-eyebrow">Patient management</p>
+              <h1>Patients</h1>
+              <p className="patients-hero__copy">Patient accounts, contact details, demographics, and access status.</p>
+            </div>
+          </section>
 
           <section aria-label="Patient summary" className="patients-summary">
             <article className="patients-summary-card patients-summary-card--teal"><span><Icon name="users" size={18} /></span><small>Total patients</small><strong>{patients.length}</strong><em>Registered accounts</em></article>

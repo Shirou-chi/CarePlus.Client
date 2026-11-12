@@ -332,13 +332,13 @@ export const CartPage = () => {
                                             items={deliveryOptions.map((option) => ({
                                                 id: option.id,
                                                 label: deliveryOptionLabel(option, t),
-                                                description: `${formatDeliveryLine(option)} · ${regionLabel(option.region, t)}`,
+                                                supportingText: `${formatDeliveryLine(option)} · ${regionLabel(option.region, t)}`,
                                             }))}
                                         >
                                             {(item) => (
                                                 <SelectItem id={item.id} textValue={item.label}>
                                                     <span className="block font-medium">{item.label}</span>
-                                                    <span className="block text-xs text-tertiary">{item.description}</span>
+                                                    <span className="block text-xs text-tertiary">{item.supportingText}</span>
                                                 </SelectItem>
                                             )}
                                         </Select>
@@ -382,13 +382,13 @@ export const CartPage = () => {
                                             items={settings.paymentCards.map((card) => ({
                                                 id: card.id,
                                                 label: `${card.brand} · ${card.holderName}`,
-                                                description: `•••• ${card.last4} · ${card.expiry}`,
+                                                supportingText: `•••• ${card.last4} · ${card.expiry}`,
                                             }))}
                                         >
                                             {(item) => (
                                                 <SelectItem id={item.id} textValue={item.label}>
                                                     <span className="block font-medium">{item.label}</span>
-                                                    <span className="block text-xs text-tertiary">{item.description}</span>
+                                                    <span className="block text-xs text-tertiary">{item.supportingText}</span>
                                                 </SelectItem>
                                             )}
                                         </Select>
@@ -472,7 +472,7 @@ const CartLineCard = ({
             <Checkbox aria-label={medicine?.name ?? line.name} isSelected={checked} onChange={onCheckedChange} className="mt-1 shrink-0" />
             <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-center">
                 <Link to={`/medicine/${line.medicineId}`} className="shrink-0 outline-focus-ring">
-                    <div className="size-24 overflow-hidden rounded-xl bg-[#f4f6f8] dark:bg-[#122b4b] sm:size-28">
+                    <div className="size-24 overflow-hidden rounded-xl bg-[#f4f6f8] dark:bg-[#171717] sm:size-28">
                         {medicine ? <MedicineShot medicine={medicine} view="box" className="!object-contain p-2" /> : null}
                     </div>
                 </Link>
@@ -509,26 +509,29 @@ const CartLineCard = ({
     </li>
 );
 
-const QtyStepper = ({ qty, maxQty, onChange }: { qty: number; maxQty: number; onChange: (qty: number) => void }) => (
-    <div className="inline-flex items-center rounded-lg bg-primary shadow-xs ring-1 ring-primary ring-inset">
-        <button
-            type="button"
-            aria-label="Decrease quantity"
-            className="inline-flex size-9 items-center justify-center rounded-l-lg text-fg-quaternary hover:bg-primary_hover disabled:opacity-40"
-            disabled={qty <= 1}
-            onClick={() => onChange(qty - 1)}
-        >
-            <Minus className="size-4" />
-        </button>
-        <span className="min-w-8 text-center text-sm font-semibold text-primary">{qty}</span>
-        <button
-            type="button"
-            aria-label="Increase quantity"
-            className="inline-flex size-9 items-center justify-center rounded-r-lg text-fg-quaternary hover:bg-primary_hover disabled:opacity-40"
-            disabled={qty >= maxQty}
-            onClick={() => onChange(qty + 1)}
-        >
-            <Plus className="size-4" />
-        </button>
-    </div>
-);
+const QtyStepper = ({ qty, maxQty, onChange }: { qty: number; maxQty: number; onChange: (qty: number) => void }) => {
+    const { t } = useI18n();
+    return (
+        <div className="inline-flex items-center rounded-lg bg-primary shadow-xs ring-1 ring-primary ring-inset">
+            <button
+                type="button"
+                aria-label={t.medCartQtyDown}
+                className="inline-flex size-10 items-center justify-center rounded-l-lg text-fg-quaternary hover:bg-primary_hover disabled:opacity-40"
+                disabled={qty <= 1}
+                onClick={() => onChange(qty - 1)}
+            >
+                <Minus className="size-4" />
+            </button>
+            <span className="min-w-8 text-center text-sm font-semibold text-primary">{qty}</span>
+            <button
+                type="button"
+                aria-label={t.medCartQtyUp}
+                className="inline-flex size-10 items-center justify-center rounded-r-lg text-fg-quaternary hover:bg-primary_hover disabled:opacity-40"
+                disabled={qty >= maxQty}
+                onClick={() => onChange(qty + 1)}
+            >
+                <Plus className="size-4" />
+            </button>
+        </div>
+    );
+};

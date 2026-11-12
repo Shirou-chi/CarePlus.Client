@@ -42,7 +42,7 @@ export const ToggleBase = ({ className, isHovered, isDisabled, isFocusVisible, i
     return (
         <div
             className={cx(
-                "cursor-pointer rounded-full ring-[0.5px] ring-secondary outline-focus-ring transition duration-150 ease-linear ring-inset",
+                "shrink-0 cursor-pointer rounded-full ring-[0.5px] ring-secondary outline-focus-ring transition duration-150 ease-linear ring-inset",
                 !isSelected && "bg-neutral-600 dark:bg-neutral-500",
                 isSelected && "bg-neutral-900 dark:bg-neutral-300",
                 isSelected && isHovered && "bg-neutral-800 dark:bg-neutral-200",
@@ -102,7 +102,7 @@ export const Toggle = ({ label, hint, className, size = "sm", slim, ...ariaSwitc
             {...ariaSwitchProps}
             className={(state) =>
                 cx(
-                    "flex w-max items-start",
+                    "flex w-max max-w-full items-start",
                     state.isDisabled && "cursor-not-allowed",
                     styles[size].root,
                     typeof className === "function" ? className(state) : className,
@@ -122,7 +122,7 @@ export const Toggle = ({ label, hint, className, size = "sm", slim, ...ariaSwitc
                     />
 
                     {(label || hint) && (
-                        <div className={cx("flex flex-col", styles[size].textWrapper)}>
+                        <div className={cx("flex min-w-0 flex-col", styles[size].textWrapper)}>
                             {label && <p className={cx("text-secondary select-none", styles[size].label)}>{label}</p>}
                             {hint && (
                                 <span className={cx("text-tertiary", styles[size].hint)} onClick={(event) => event.stopPropagation()}>

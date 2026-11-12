@@ -260,8 +260,12 @@ export function MedicineBatchPage() {
         <StaffNavbar activeNav="Medicine batches" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setSearchTerm} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={searchTerm} selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
 
         <div className="staff-content medicine-batch-content">
-          <header className="staff-page-heading">
-            <StaffPageEyebrow label="Medicine batch tracking" />
+          <section className="medicine-batch-hero">
+            <div>
+              <p className="staff-eyebrow">Pharmacy inventory</p>
+              <h1>{medicineIdFilter ? `${medicines.find((medicine) => medicine.medicineId === medicineIdFilter)?.medicineName || 'Medicine'} batches` : 'Medicine batches'}</h1>
+              <p className="medicine-batch-hero__copy">Stock quantities and expiry dates by delivery.</p>
+            </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add batch</button>
           </header>
 
