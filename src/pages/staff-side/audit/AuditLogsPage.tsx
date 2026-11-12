@@ -181,9 +181,9 @@ export function AuditLogsPage() {
         <div className="staff-content audit-content">
           <section className="audit-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Governance</p>
-              <h1>Trace every change with confidence.</h1>
-              <p className="audit-hero__copy">Review who changed what, when it happened, and where the action came from.</p>
+              <p className="staff-eyebrow">Governance</p>
+              <h1>Audit logs</h1>
+              <p className="audit-hero__copy">Who changed what, when it happened, and where it came from.</p>
             </div>
             <button className="staff-button staff-button--secondary audit-export-button" type="button" onClick={() => void exportAuditLogs()}><Icon name="download" size={16} /> Export audit log</button>
           </section>

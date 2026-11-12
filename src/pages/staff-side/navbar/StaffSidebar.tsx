@@ -1,3 +1,4 @@
+import { startTransition } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { StaffAccountMenu } from '../components/StaffAccountMenu'
@@ -14,7 +15,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Overview', icon: 'grid', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Appointments', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Patients', icon: 'users', roles: ['Admin'] },
-      { label: 'Queue', icon: 'clock', roles: ['Admin', 'Doctor', 'Pharmacist'] },
     ],
   },
   {
@@ -26,7 +26,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Clinic rooms', icon: 'activity', roles: ['Admin'] },
       { label: 'Medicine', icon: 'box', roles: ['Pharmacist'] },
       { label: 'Medicine batches', icon: 'box', roles: ['Pharmacist'] },
-      { label: 'Prescriptions', icon: 'check', roles: ['Doctor', 'Pharmacist'] },
       { label: 'Medical records', icon: 'shield', roles: ['Doctor'] },
     ],
   },
@@ -34,7 +33,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Administration',
     items: [
       { label: 'Notifications', icon: 'bell', roles: ['Admin', 'Doctor', 'Pharmacist'] },
-      { label: 'Reports & analytics', icon: 'chart', roles: ['Admin'] },
       { label: 'Audit & logs', icon: 'activity', roles: ['Admin'] },
       { label: 'Settings', icon: 'settings', roles: ['Admin', 'Doctor', 'Pharmacist'] },
     ],
@@ -79,7 +77,7 @@ export function StaffSidebar({ activeNav, announce, onClose, sidebarOpen }: Staf
   const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
   const openAccountSettings = () => {
-    navigate('/staff/settings')
+    startTransition(() => navigate('/staff/settings'))
     announce('Account settings selected.')
     onClose()
   }
@@ -88,7 +86,7 @@ export function StaffSidebar({ activeNav, announce, onClose, sidebarOpen }: Staf
     const route = staffRoutes[label]
 
     if (route) {
-      navigate(route)
+      startTransition(() => navigate(route))
       return
     }
 

@@ -227,9 +227,9 @@ export function PatientsPage() {
         <div className="staff-content patients-content">
           <section className="patients-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Patient management</p>
-              <h1>Manage your patients.</h1>
-              <p className="patients-hero__copy">Review patient accounts, contact details, demographics, and access status from one directory.</p>
+              <p className="staff-eyebrow">Patient management</p>
+              <h1>Patients</h1>
+              <p className="patients-hero__copy">Patient accounts, contact details, demographics, and access status.</p>
             </div>
           </section>
 

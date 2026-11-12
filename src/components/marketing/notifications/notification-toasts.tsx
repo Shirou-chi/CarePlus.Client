@@ -10,7 +10,8 @@ import { TOASTED_NOTICES_KEY, type ClinicNotice } from "@/utils/notifications";
 import { readProfileSettings } from "@/utils/profile-settings";
 
 const MAX_TOASTS = 3;
-const TOAST_MS = 8000;
+const TOAST_MS = 5000;
+const FADE_MS = 700;
 
 type Toast = { id: string; notice: ClinicNotice } | { id: string; count: number };
 
@@ -23,18 +24,35 @@ const readSeen = () => {
 };
 
 export const NotificationToasts = () => {
-    const { profile } = useAuth();
+    const { profile, isReady } = useAuth();
     const { unread, loading, markRead } = useNotices();
     const { pathname } = useLocation();
     const [toasts, setToasts] = useState<Toast[]>([]);
+    const [settingsTick, setSettingsTick] = useState(0);
+    const notificationLevel = profile ? readProfileSettings(profile.id).notificationLevel : "none";
 
     useEffect(() => {
-        if (!profile || loading) return;
-        const level = readProfileSettings(profile.id).notificationLevel;
-        if (level === "none") return;
+        const sync = (event: Event) => {
+            const detail = (event as CustomEvent<{ profileId?: string }>).detail;
+            if (detail?.profileId && profile && detail.profileId !== profile.id) return;
+            setSettingsTick((tick) => tick + 1);
+        };
+        window.addEventListener("careplus-settings", sync);
+        return () => window.removeEventListener("careplus-settings", sync);
+    }, [profile]);
+
+    // Wait until auth preferences are loaded so "No notifications" is not skipped on login.
+    useEffect(() => {
+        if (!isReady || !profile) return;
+        if (notificationLevel === "none") setToasts([]);
+    }, [isReady, notificationLevel, profile, settingsTick]);
+
+    useEffect(() => {
+        if (!isReady || !profile || loading) return;
+        if (notificationLevel === "none") return;
 
         const seen = readSeen();
-        const fresh = unread.filter((notice) => !seen.has(notice.id) && (level === "all" || notice.kind === "visit" || notice.kind === "payment"));
+        const fresh = unread.filter((notice) => !seen.has(notice.id) && (notificationLevel === "all" || notice.kind === "visit" || notice.kind === "payment"));
         if (fresh.length === 0) return;
 
         fresh.forEach((notice) => seen.add(notice.id));
@@ -44,17 +62,21 @@ export const NotificationToasts = () => {
         const next: Toast[] =
             fresh.length > MAX_TOASTS ? [{ id: `many-${Date.now()}`, count: fresh.length }] : fresh.map((notice) => ({ id: notice.id, notice }));
         setToasts((current) => [...next, ...current].slice(0, MAX_TOASTS));
-    }, [loading, pathname, profile, unread]);
+    }, [isReady, loading, notificationLevel, pathname, profile, settingsTick, unread]);
 
     const dismiss = useCallback((id: string) => setToasts((current) => current.filter((toast) => toast.id !== id)), []);
 
-    if (!profile || toasts.length === 0) return null;
+    if (!profile || notificationLevel === "none" || toasts.length === 0) return null;
 
     return (
-        <div className="pointer-events-none fixed top-[5rem] right-4 z-[60] flex w-[22rem] max-w-[calc(100vw-2rem)] flex-col gap-2 md:top-24 md:right-8" role="status" aria-live="polite">
-            {toasts.map((toast) => (
-                <ToastCard key={toast.id} toast={toast} onDismiss={dismiss} onRead={markRead} />
-            ))}
+        <div className="pointer-events-none fixed inset-x-0 top-[4.5rem] z-[60] md:top-22" role="status" aria-live="polite">
+            <div className="mx-auto flex w-full max-w-container justify-end px-4 pt-3 md:px-8">
+                <div className="flex w-[22rem] max-w-full flex-col gap-2">
+                    {toasts.map((toast) => (
+                        <ToastCard key={toast.id} toast={toast} onDismiss={dismiss} onRead={markRead} />
+                    ))}
+                </div>
+            </div>
         </div>
     );
 };
@@ -62,22 +84,40 @@ export const NotificationToasts = () => {
 const ToastCard = ({ toast, onDismiss, onRead }: { toast: Toast; onDismiss: (id: string) => void; onRead: (id: string) => void }) => {
     const { t, locale } = useI18n();
     const navigate = useNavigate();
+    const [leaving, setLeaving] = useState(false);
 
     useEffect(() => {
-        const timer = window.setTimeout(() => onDismiss(toast.id), TOAST_MS);
+        const timer = window.setTimeout(() => setLeaving(true), TOAST_MS);
         return () => window.clearTimeout(timer);
-    }, [onDismiss, toast.id]);
+    }, [toast.id]);
+
+    useEffect(() => {
+        if (!leaving) return;
+        const timer = window.setTimeout(() => onDismiss(toast.id), FADE_MS);
+        return () => window.clearTimeout(timer);
+    }, [leaving, onDismiss, toast.id]);
 
     const notice = "notice" in toast ? toast.notice : null;
     const count = "count" in toast ? toast.count : 0;
+
+    const beginLeave = () => {
+        if (!leaving) setLeaving(true);
+    };
+
     const open = () => {
         if (notice) onRead(notice.id);
-        onDismiss(toast.id);
+        beginLeave();
         navigate(notice?.href || "/notifications");
     };
 
     return (
-        <div className="pointer-events-auto flex animate-in items-start gap-3 rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary duration-200 fade-in slide-in-from-top-2 dark:bg-[#171717] dark:ring-white/10">
+        <div
+            className={
+                leaving
+                    ? "pointer-events-none flex animate-out items-start gap-3 rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary duration-700 fade-out slide-out-to-top-2 fill-mode-forwards dark:bg-[#171717] dark:ring-white/10"
+                    : "pointer-events-auto flex animate-in items-start gap-3 rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary duration-300 fade-in slide-in-from-top-2 dark:bg-[#171717] dark:ring-white/10"
+            }
+        >
             <button type="button" onClick={open} className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left outline-focus-ring focus-visible:outline-2">
                 <Avatar size="md" initials={notice ? notice.initials : String(Math.min(count, 99))} alt={notice?.actor ?? ""} />
                 <span className="min-w-0 flex-1">
@@ -89,7 +129,7 @@ const ToastCard = ({ toast, onDismiss, onRead }: { toast: Toast; onDismiss: (id:
             <button
                 type="button"
                 aria-label={t.notifToastClose}
-                onClick={() => onDismiss(toast.id)}
+                onClick={beginLeave}
                 className="-m-1 flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-fg-quaternary outline-focus-ring hover:bg-primary_hover focus-visible:outline-2"
             >
                 <XClose className="size-4" />

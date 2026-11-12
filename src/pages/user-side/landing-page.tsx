@@ -1,12 +1,15 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Heading } from "react-aria-components";
 import {
     ArrowRight,
     CalendarCheck01,
     Check,
+    DotsVertical,
+    Download01,
     MedicalCross,
     Moon01,
     Phone01,
+    Share07,
     ShieldTick,
     ShoppingCart01,
     Sun,
@@ -449,13 +452,59 @@ const FamilySteps = () => {
     );
 };
 
+type BeforeInstallPromptEvent = Event & {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+const detectPhonePlatform = (): "ios" | "android" => {
+    if (typeof navigator === "undefined") return "android";
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ? "ios" : "android";
+};
+
 const PhoneHome = () => {
     const { t } = useI18n();
     const { theme, setTheme, textSize, setTextSize } = useTheme();
     const [howOpen, setHowOpen] = useState(false);
+    const [platform, setPlatform] = useState<"ios" | "android">(detectPhonePlatform);
+    const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+    const [installBusy, setInstallBusy] = useState(false);
     const previewDark = theme === "dark";
     const previewLarge = textSize === "large";
     const points = [t.phoneHomePointTheme, t.phoneHomePointTextSize, t.phoneHomePointTabs, t.phoneHomePointFullscreen];
+    const steps =
+        platform === "ios"
+            ? [
+                  { text: t.phoneHomeIosStep1, Icon: Share07 },
+                  { text: t.phoneHomeIosStep2, Icon: Download01 },
+                  { text: t.phoneHomeIosStep3, Icon: Check },
+              ]
+            : [
+                  { text: t.phoneHomeAndroidStep1, Icon: DotsVertical },
+                  { text: t.phoneHomeAndroidStep2, Icon: Download01 },
+                  { text: t.phoneHomeAndroidStep3, Icon: Check },
+              ];
+
+    useEffect(() => {
+        const onBeforeInstall = (event: Event) => {
+            event.preventDefault();
+            setInstallEvent(event as BeforeInstallPromptEvent);
+        };
+        window.addEventListener("beforeinstallprompt", onBeforeInstall);
+        return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+    }, []);
+
+    const handleInstall = async () => {
+        if (!installEvent) return;
+        setInstallBusy(true);
+        try {
+            await installEvent.prompt();
+            await installEvent.userChoice;
+            setInstallEvent(null);
+        } finally {
+            setInstallBusy(false);
+        }
+    };
 
     return (
         <section id="on-your-phone" className="scroll-mt-24 px-4 py-8 md:px-8 md:py-12">
@@ -542,21 +591,66 @@ const PhoneHome = () => {
 
             <ModalOverlay isDismissable isOpen={howOpen} onOpenChange={setHowOpen}>
                 <Modal className="w-full max-w-md">
-                    <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
-                        <Heading slot="title" className="text-lg font-semibold text-primary">
+                    <Dialog className="flex w-full flex-col rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden dark:bg-[#0a0a0a]">
+                        <Heading slot="title" className="text-center text-lg font-semibold text-primary">
                             {t.phoneHomeHowTitle}
                         </Heading>
-                        <div className="mt-4 flex flex-col gap-4 text-sm text-secondary">
-                            <div>
-                                <p className="font-semibold text-primary">{t.phoneHomeIosTitle}</p>
-                                <p className="mt-1 text-tertiary">{t.phoneHomeIosBody}</p>
-                            </div>
-                            <div>
-                                <p className="font-semibold text-primary">{t.phoneHomeAndroidTitle}</p>
-                                <p className="mt-1 text-tertiary">{t.phoneHomeAndroidBody}</p>
-                            </div>
+                        <p className="mt-2 text-center text-sm text-tertiary">{t.phoneHomeHowSubtitle}</p>
+
+                        <Button
+                            color="secondary"
+                            size="lg"
+                            iconLeading={Download01}
+                            className="mt-5 w-full"
+                            isDisabled={installBusy}
+                            onClick={() => void (installEvent ? handleInstall() : undefined)}
+                        >
+                            {t.phoneHomeInstallNow}
+                        </Button>
+                        {!installEvent ? <p className="mt-2 text-center text-xs text-tertiary">{t.phoneHomeInstallUnavailable}</p> : null}
+
+                        <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="tablist" aria-label="Phone platform">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={platform === "ios"}
+                                className={cx(
+                                    "rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    platform === "ios" ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                                onClick={() => setPlatform("ios")}
+                            >
+                                {t.phoneHomeIphone}
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={platform === "android"}
+                                className={cx(
+                                    "rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    platform === "android" ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                                onClick={() => setPlatform("android")}
+                            >
+                                {t.phoneHomeAndroid}
+                            </button>
                         </div>
-                        <div className="mt-6 flex justify-end">
+
+                        <ol className="mt-4 flex flex-col gap-2">
+                            {steps.map((step, index) => (
+                                <li key={step.text} className="flex items-center gap-3 rounded-xl px-3 py-3 ring-1 ring-secondary">
+                                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary">
+                                        {index + 1}
+                                    </span>
+                                    <p className="min-w-0 flex-1 text-sm text-secondary">{step.text}</p>
+                                    <step.Icon className="size-5 shrink-0 text-fg-quaternary" aria-hidden />
+                                </li>
+                            ))}
+                        </ol>
+
+                        {platform === "android" ? <p className="mt-4 text-center text-xs text-tertiary">{t.phoneHomeSamsungNote}</p> : null}
+
+                        <div className="mt-5 flex justify-end">
                             <Button color="primary" onClick={() => setHowOpen(false)}>
                                 {t.tourDone}
                             </Button>

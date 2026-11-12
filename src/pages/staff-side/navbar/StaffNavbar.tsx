@@ -1,3 +1,4 @@
+import { startTransition } from 'react'
 import type { Theme } from '../../../components/theme/useTheme'
 import { useAuth } from '@/providers/auth-provider'
 import { useNotices } from '@/providers/notification-provider'
@@ -44,7 +45,7 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
         <div className="staff-notification-wrap">
           <button aria-expanded={notificationsOpen} aria-label="Open notifications" className="staff-icon-button" type="button" onClick={onToggleNotifications}>
             <Icon name="bell" size={20} />
-            <span className="staff-notification-dot" />
+            {unread.length > 0 ? <span className="staff-notification-dot" aria-hidden /> : null}
           </button>
           {notificationsOpen ? (
             <div className="staff-notifications" role="status">
@@ -54,9 +55,23 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
               {!notificationsLoading && !notificationsError && !unread.length ? <div className="staff-notification-empty">No unread notifications.</div> : null}
               {!notificationsLoading ? unread.slice(0, 3).map((item) => {
                 const tone = item.kind === 'medicine' ? 'amber' : 'teal'
-                return <button className="staff-notification" key={item.id} type="button" onClick={() => { markRead(item.id); navigate(item.href || '/staff/notifications'); onToggleNotifications() }}><span className={`staff-notification__bullet staff-notification__bullet--${tone}`} /><span><strong>{item.title}</strong><small>{item.message}</small></span><time>{notificationAge(item.createdAt)}</time></button>
+                return (
+                  <button className="staff-notification" key={item.id} type="button" onClick={() => { markRead(item.id); startTransition(() => navigate(item.href || '/staff/notifications')); onToggleNotifications() }}>
+                    <span className={`staff-notification__bullet staff-notification__bullet--${tone}`} />
+                    <span className="staff-notification__body">
+                      <span className="staff-notification__top">
+                        <strong>{item.title}</strong>
+                        <time>{notificationAge(item.createdAt)}</time>
+                      </span>
+                      <small>{item.message}</small>
+                    </span>
+                  </button>
+                )
               }) : null}
-              <button className="staff-notifications__view-all" type="button" onClick={() => { navigate('/staff/notifications'); onToggleNotifications() }}>View all notifications</button>
+              <button className="staff-notifications__view-all" type="button" onClick={() => { startTransition(() => navigate('/staff/notifications')); onToggleNotifications() }}>
+                View all notifications
+                <Icon name="chevronRight" size={14} />
+              </button>
             </div>
           ) : null}
         </div>
@@ -64,7 +79,7 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
           <span aria-hidden="true" className="staff-theme-toggle__track"><span className="staff-theme-toggle__thumb"><Icon name={theme === 'dark' ? 'moon' : 'sun'} size={13} /></span></span>
           <span className="sr-only">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
         </button>
-        <StaffAccountMenu className="staff-account-menu-wrap--topbar" onSettings={() => navigate('/staff/settings')} triggerClassName="staff-topbar__avatar" triggerLabel="Open account menu"><span className="staff-avatar">{initials}</span><Icon name="chevronDown" size={16} /></StaffAccountMenu>
+        <StaffAccountMenu className="staff-account-menu-wrap--topbar" onSettings={() => startTransition(() => navigate('/staff/settings'))} triggerClassName="staff-topbar__avatar" triggerLabel="Open account menu"><span className="staff-avatar">{initials}</span><Icon name="chevronDown" size={16} /></StaffAccountMenu>
       </div>
     </header>
   )
