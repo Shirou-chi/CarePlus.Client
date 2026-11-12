@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '../../components/theme/useTheme'
 import { Icon, type IconName } from './navbar/StaffIcon'
@@ -206,7 +207,16 @@ const roleOverviewData: Record<StaffRole, RoleOverview> = {
   },
 }
 
+type QuickAction = {
+  label: string
+  detail: string
+  href: string
+  icon: IconName
+  tone: 'teal' | 'violet' | 'amber' | 'blue'
+}
+
 export function StaffHomePage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [activeNav] = useState('Overview')
@@ -218,6 +228,26 @@ export function StaffHomePage() {
   const [notice, setNotice] = useState('')
   const overview = roleOverviewData[currentRole]
   const displayName = user?.name || 'Staff member'
+  const todayLabel = useMemo(
+    () => new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()),
+    [],
+  )
+  const quickActions = useMemo<QuickAction[]>(() => {
+    const actions: QuickAction[] = [
+      { label: 'Appointments', detail: "Open today's visit list", href: '/staff/appointments', icon: 'calendar', tone: 'teal' },
+      { label: 'Schedules', detail: 'Check staff availability', href: '/staff/schedules', icon: 'staff', tone: 'violet' },
+    ]
+    if (currentRole === 'Admin') {
+      actions.push({ label: 'Patients', detail: 'Browse clinic patients', href: '/staff/patients', icon: 'users', tone: 'blue' })
+    }
+    if (currentRole === 'Pharmacist') {
+      actions.push({ label: 'Medicine', detail: 'Stock and catalogue', href: '/staff/medicine', icon: 'box', tone: 'amber' })
+    }
+    if (currentRole === 'Doctor') {
+      actions.push({ label: 'Medical records', detail: 'Open clinical notes', href: '/staff/medical-records', icon: 'shield', tone: 'amber' })
+    }
+    return actions
+  }, [currentRole])
 
   const filteredActivity = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -264,18 +294,28 @@ export function StaffHomePage() {
           <section className="staff-hero">
             <div>
               <p className="staff-eyebrow">
-                {overview.eyebrow} · {currentRole}
+                {todayLabel} · {currentRole}
                 {user?.staffId ? ` · ${user.staffId}` : ''}
               </p>
               <h1>Welcome back, {displayName}<span>.</span></h1>
               <p className="staff-hero__copy">{overview.copy}</p>
+            </div>
+            <div className="staff-hero__actions">
+              <button className="staff-button staff-button--secondary" type="button" onClick={() => navigate('/staff/appointments')}>
+                <Icon name="calendar" size={16} /> Appointments
+              </button>
+              <button className="staff-button staff-button--primary" type="button" onClick={() => navigate('/staff/schedules')}>
+                <Icon name="staff" size={16} /> Schedules
+              </button>
             </div>
           </section>
 
           <section aria-label="Clinic metrics" className="staff-metrics">
             {overview.metrics.map((metric) => (
               <article className={`staff-metric-card staff-metric-card--${metric.tone}`} key={metric.label}>
-                <div className="staff-metric-card__top"><span className="staff-metric-card__icon"><Icon name={metric.icon} size={19} /></span><button aria-label={`More options for ${metric.label}`} type="button" onClick={() => announce(`${metric.label} options are ready.`)}><Icon name="more" size={20} /></button></div>
+                <div className="staff-metric-card__top">
+                  <span className="staff-metric-card__icon"><Icon name={metric.icon} size={19} /></span>
+                </div>
                 <p>{metric.label}</p>
                 <strong>{metric.value}</strong>
                 <span className="staff-metric-card__delta"><Icon name="arrowUpRight" size={14} /> {metric.delta} <small>{metric.note}</small></span>
@@ -305,10 +345,15 @@ export function StaffHomePage() {
             </section>
 
             <section aria-labelledby="today-schedule" className="staff-card staff-schedule-card">
-              <div className="staff-card__header"><div><p className="staff-card__eyebrow">{overview.scheduleEyebrow}</p><h2 id="today-schedule">{overview.scheduleTitle}</h2></div><button className="staff-text-button" type="button" onClick={() => announce(`${overview.scheduleTitle} opened.`)}>View calendar <Icon name="arrowUpRight" size={15} /></button></div>
+              <div className="staff-card__header">
+                <div><p className="staff-card__eyebrow">{overview.scheduleEyebrow}</p><h2 id="today-schedule">{overview.scheduleTitle}</h2></div>
+                <button className="staff-text-button" type="button" onClick={() => navigate('/staff/schedules')}>
+                  View calendar <Icon name="arrowUpRight" size={15} />
+                </button>
+              </div>
               <div className="staff-schedule-list">
                 {overview.schedule.map((item) => (
-                  <button className="staff-schedule-item" key={`${item.time}-${item.patient}`} type="button" onClick={() => announce(`${item.patient}'s appointment selected.`)}>
+                  <button className="staff-schedule-item" key={`${item.time}-${item.patient}`} type="button" onClick={() => navigate('/staff/appointments')}>
                     <span className="staff-schedule-item__time"><strong>{item.time}</strong><small>{item.meridiem}</small></span>
                     <span className={`staff-schedule-item__marker staff-schedule-item__marker--${item.tone}`} />
                     <span className="staff-schedule-item__details"><strong>{item.patient}</strong><small>{item.detail}</small><span>{item.doctor} · {item.room}</span></span>
@@ -321,14 +366,19 @@ export function StaffHomePage() {
 
           <div className="staff-bottom-grid">
             <section aria-labelledby="recent-activity" className="staff-card staff-activity-card">
-              <div className="staff-card__header"><div><p className="staff-card__eyebrow">Live workspace</p><h2 id="recent-activity">{overview.activityTitle}</h2></div><button className="staff-text-button" type="button" onClick={() => announce('Activity history opened.')}>View all <Icon name="arrowUpRight" size={15} /></button></div>
+              <div className="staff-card__header">
+                <div><p className="staff-card__eyebrow">Live workspace</p><h2 id="recent-activity">{overview.activityTitle}</h2></div>
+                <button className="staff-text-button" type="button" onClick={() => navigate('/staff/notifications')}>
+                  View all <Icon name="arrowUpRight" size={15} />
+                </button>
+              </div>
               <div className="staff-activity-table" role="table">
                 <div className="staff-activity-table__head" role="row"><span role="columnheader">Activity</span><span role="columnheader">Time</span><span role="columnheader">Action</span></div>
                 {filteredActivity.length ? filteredActivity.map((item) => (
                   <div className="staff-activity-row" key={item.title} role="row">
                     <span className="staff-activity-row__event" role="cell"><i className={`staff-activity-row__icon staff-activity-row__icon--${item.tone}`}><Icon name={item.icon} size={16} /></i><span><strong>{item.title}</strong><small>{item.meta}</small></span></span>
                     <time role="cell">{item.time}</time>
-                    <button aria-label={`Open ${item.title}`} role="cell" type="button" onClick={() => announce(`${item.title} details opened.`)}><Icon name="chevronRight" size={17} /></button>
+                    <button aria-label={`Open ${item.title}`} role="cell" type="button" onClick={() => navigate('/staff/notifications')}><Icon name="chevronRight" size={17} /></button>
                   </div>
                 )) : <div className="staff-empty-state">No activity matches “{searchTerm}”.</div>}
               </div>
@@ -343,7 +393,15 @@ export function StaffHomePage() {
 
               <section aria-labelledby="quick-actions" className="staff-card staff-quick-card">
                 <div className="staff-card__header"><div><p className="staff-card__eyebrow">Shortcuts</p><h2 id="quick-actions">Quick actions</h2></div></div>
-                <div className="staff-quick-actions"><button type="button" onClick={() => announce('Staff availability opened.')}><span className="staff-quick-icon staff-quick-icon--violet"><Icon name="staff" size={17} /></span><span><strong>Check availability</strong><small>View staff schedules</small></span><Icon name="chevronRight" size={16} /></button></div>
+                <div className="staff-quick-actions">
+                  {quickActions.map((action) => (
+                    <button key={action.href} type="button" onClick={() => navigate(action.href)}>
+                      <span className={`staff-quick-icon staff-quick-icon--${action.tone}`}><Icon name={action.icon} size={17} /></span>
+                      <span><strong>{action.label}</strong><small>{action.detail}</small></span>
+                      <Icon name="chevronRight" size={16} />
+                    </button>
+                  ))}
+                </div>
               </section>
             </div>
           </div>

@@ -264,9 +264,9 @@ export function StaffManagementPage() {
         <div className="staff-content staff-management-content">
           <section className="staff-management-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Administration</p>
-              <h1>Manage your staff.</h1>
-              <p className="staff-management-hero__copy">Create staff accounts, update roles, and keep access status current across the clinic.</p>
+              <p className="staff-eyebrow">Administration</p>
+              <h1>Staff</h1>
+              <p className="staff-management-hero__copy">Create accounts, update roles, and manage access status.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add staff</button>
           </section>

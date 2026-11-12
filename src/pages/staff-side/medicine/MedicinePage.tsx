@@ -247,9 +247,9 @@ export function MedicinePage() {
         <div className="staff-content medicine-content">
           <section className="medicine-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Pharmacy inventory</p>
-              <h1>Keep medicines ready.</h1>
-              <p className="medicine-hero__copy">Manage the medicine catalogue used by the pharmacy and patient ordering flow.</p>
+              <p className="staff-eyebrow">Pharmacy inventory</p>
+              <h1>Medicine</h1>
+              <p className="medicine-hero__copy">Catalogue used by pharmacy and patient ordering.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medicine</button>
           </section>

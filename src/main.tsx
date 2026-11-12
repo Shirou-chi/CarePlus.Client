@@ -1,4 +1,4 @@
-import { type ComponentType, StrictMode, Suspense, lazy, useLayoutEffect } from "react";
+import { type ComponentType, StrictMode, Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import { useAuth } from "@/providers/auth-provider";
@@ -11,6 +11,27 @@ import { AuthProvider } from "@/providers/auth-provider";
 // Every other page is its own chunk, so the first visit only downloads Landing/Home.
 const page = <K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) =>
     lazy(() => loader().then((module) => ({ default: module[name] })));
+
+const staffPageLoaders = [
+    () => import("@/pages/staff-side/StaffHomePage"),
+    () => import("@/pages/staff-side/login/StaffLoginPage"),
+    () => import("@/pages/staff-side/appointments/AppointmentsPage"),
+    () => import("@/pages/staff-side/audit/AuditLogsPage"),
+    () => import("@/pages/staff-side/leave/LeavePage"),
+    () => import("@/pages/staff-side/notifications/NotificationsPage"),
+    () => import("@/pages/staff-side/patients/PatientsPage"),
+    () => import("@/pages/staff-side/rooms/ClinicRoomsPage"),
+    () => import("@/pages/staff-side/medicine/MedicinePage"),
+    () => import("@/pages/staff-side/medicine-batches/MedicineBatchPage"),
+    () => import("@/pages/staff-side/schedule/SchedulePage"),
+    () => import("@/pages/staff-side/staff/StaffManagementPage"),
+    () => import("@/pages/staff-side/settings/SettingsPage"),
+    () => import("@/pages/staff-side/medical-records/MedicalRecordsPage"),
+] as const;
+
+const prefetchStaffPages = () => {
+    for (const load of staffPageLoaders) void load();
+};
 
 const StaffHomePage = page(() => import("@/pages/staff-side/StaffHomePage"), "StaffHomePage");
 const StaffLoginPage = page(() => import("@/pages/staff-side/login/StaffLoginPage"), "StaffLoginPage");
@@ -75,8 +96,12 @@ function StaffRouteGuard({ roles }: { roles?: StaffRole[] }) {
     const { user, isReady } = useAuth();
     const location = useLocation();
 
+    useEffect(() => {
+        if (isReady && user && isStaffRole(user.role)) prefetchStaffPages();
+    }, [isReady, user]);
+
     if (!isReady) {
-        return null;
+        return <div className="staff-route-fallback" aria-hidden />;
     }
 
     if (!user) {
@@ -138,8 +163,9 @@ const AppRoutes = () => {
 
     return (
         <>
-            <div key={location.pathname} className={showMobileBottomNav ? "careplus-page careplus-has-mobile-nav" : "careplus-page"}>
-                <Suspense fallback={isStaffRoute ? null : <div className="careplus-landing min-h-dvh" />}>
+            {/* ponytail: staff keeps a stable key so Suspense does not blank to black between lazy pages */}
+            <div key={isStaffRoute ? "staff" : location.pathname} className={showMobileBottomNav ? "careplus-page careplus-has-mobile-nav" : "careplus-page"}>
+                <Suspense fallback={isStaffRoute ? <div className="staff-route-fallback" aria-hidden /> : <div className="careplus-landing min-h-dvh" />}>
                 <Routes location={location}>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/home" element={<HomePage />} />
@@ -238,3 +264,10 @@ createRoot(document.getElementById("root")!).render(
         </ThemeProvider>
     </StrictMode>,
 );
+
+// ponytail: tiny SW so Chrome can offer Install / Add to Home Screen
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    });
+}

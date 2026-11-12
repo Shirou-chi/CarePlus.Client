@@ -15,7 +15,7 @@
   border-radius: 7px;
   background: var(--staff-card);
   color: var(--staff-ink);
-  font-family: var(--site-font-body);
+  font-family: var(--font-body);
   font-size: 0.7rem;
   font-weight: 400;
   letter-spacing: normal;
@@ -39,7 +39,7 @@
 }
 
 .staff-page .staff-date-filter__trigger {
-  font-family: var(--site-font-body);
+  font-family: var(--font-body);
   font-size: 0.7rem;
   font-weight: 400;
   letter-spacing: normal;
@@ -210,7 +210,7 @@
 }
 
 .staff-page .staff-date-filter__day {
-  font-family: var(--site-font-body);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   font-weight: 400;
   letter-spacing: normal;

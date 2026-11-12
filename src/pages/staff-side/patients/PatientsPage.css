@@ -13,7 +13,7 @@
 .patients-hero h1 {
   margin: 0;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: clamp(2rem, 3.5vw, 3rem);
   letter-spacing: -0.055em;
   line-height: 1;
@@ -81,7 +81,7 @@
   display: block;
   margin-top: 4px;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1.45rem;
   letter-spacing: -0.05em;
   line-height: 1;
@@ -505,7 +505,7 @@
 
 .patients-empty strong {
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1rem;
 }
 
@@ -604,7 +604,7 @@
 .patient-detail-drawer__header h2 {
   margin: 0;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1.45rem;
   letter-spacing: -0.04em;
 }
@@ -713,16 +713,21 @@
 
 @media (max-width: 640px) {
   .patients-content {
-    padding-top: 28px;
+    padding-top: 24px;
   }
 
   .patients-hero {
     display: grid;
-    gap: 16px;
+    gap: 14px;
   }
 
   .patients-hero h1 {
-    font-size: 2.25rem;
+    font-size: clamp(1.85rem, 8vw, 2.25rem);
+  }
+
+  .patients-add-button {
+    width: 100%;
+    min-height: 44px;
   }
 
   .patients-summary {
@@ -730,17 +735,27 @@
   }
 
   .patients-summary-card {
-    min-height: 128px;
+    min-height: 118px;
     padding: 12px;
   }
 
   .patients-toolbar {
     align-items: stretch;
     padding: 12px;
+    gap: 8px;
+  }
+
+  .patients-search,
+  .patients-select {
+    min-height: 44px;
   }
 
   .patients-select {
     flex: 1;
+  }
+
+  .patients-select select {
+    height: 42px;
   }
 
   .patients-result-count {
@@ -754,7 +769,7 @@
   }
 
   .patient-detail-drawer {
-    padding: 20px 17px;
+    padding: 20px 17px calc(20px + env(safe-area-inset-bottom));
   }
 
   .patient-edit-form-grid {
@@ -767,6 +782,13 @@
 
   .patient-dialog-actions .staff-button {
     width: 100%;
+    min-height: 44px;
     justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .patients-summary {
+    grid-template-columns: 1fr;
   }
 }

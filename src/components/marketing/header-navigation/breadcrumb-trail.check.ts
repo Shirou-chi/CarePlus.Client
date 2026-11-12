@@ -15,8 +15,15 @@ trail = nextTrail(trail, "/book", "PUSH");
 if (trail.join() !== "/book") throw new Error("back to an earlier page");
 
 trail = nextTrail(["/account"], "/invoices", "REPLACE");
-if (trail.join() !== "/account,/invoices") throw new Error("redirect keeps the page you left");
+if (trail.join() !== "/invoices") throw new Error("section root replaces sibling trail");
 
 if (nextTrail(["/book", "/doctors"], "/home", "PUSH").length !== 0) throw new Error("home clears the trail");
+
+trail = nextTrail([], "/contact", "PUSH");
+trail = nextTrail(trail, "/doctors", "PUSH");
+trail = nextTrail(trail, "/announcements", "PUSH");
+trail = nextTrail(trail, "/login", "PUSH");
+trail = nextTrail(trail, "/about", "PUSH");
+if (trail.join() !== "/about") throw new Error("footer hops must not stack");
 
 console.log("breadcrumb trail ok");

@@ -61,17 +61,18 @@
 .staff-dialog__header h2 {
   margin: 0;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1.25rem;
 }
 
 .staff-dialog__header button {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
   place-items: center;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--staff-subtle);
   color: var(--staff-muted);
   cursor: pointer;
@@ -118,6 +119,25 @@
 }
 
 @media (max-width: 640px) {
+  .staff-dialog-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .staff-dialog {
+    width: 100%;
+    max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top) - 12px));
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    border-radius: 18px 18px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  .staff-dialog__header h2 {
+    font-size: 1.15rem;
+  }
+
   .staff-detail-grid {
     grid-template-columns: 1fr;
   }
@@ -129,6 +149,6 @@
 
 @media (max-width: 520px) {
   .staff-dialog {
-    padding: 17px;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   }
 }

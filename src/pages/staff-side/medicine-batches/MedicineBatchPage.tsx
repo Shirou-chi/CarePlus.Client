@@ -273,9 +273,9 @@ export function MedicineBatchPage() {
         <div className="staff-content medicine-batch-content">
           <section className="medicine-batch-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Pharmacy inventory</p>
-              <h1>{medicineIdFilter ? `Track ${medicines.find((medicine) => medicine.medicineId === medicineIdFilter)?.medicineName || 'selected medicine'} batches.` : 'Track every medicine batch.'}</h1>
-              <p className="medicine-batch-hero__copy">Manage stock quantities and expiry dates for each medicine delivery.</p>
+              <p className="staff-eyebrow">Pharmacy inventory</p>
+              <h1>{medicineIdFilter ? `${medicines.find((medicine) => medicine.medicineId === medicineIdFilter)?.medicineName || 'Medicine'} batches` : 'Medicine batches'}</h1>
+              <p className="medicine-batch-hero__copy">Stock quantities and expiry dates by delivery.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add batch</button>
           </section>

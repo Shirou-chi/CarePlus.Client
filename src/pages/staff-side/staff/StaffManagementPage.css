@@ -13,7 +13,7 @@
 .staff-management-hero h1 {
   margin: 0;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: clamp(2rem, 3.5vw, 3rem);
   letter-spacing: -0.055em;
   line-height: 1;
@@ -75,7 +75,7 @@
   display: block;
   margin-top: 4px;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1.45rem;
   letter-spacing: -0.05em;
   line-height: 1;
@@ -477,7 +477,11 @@
 @media (max-width: 760px) {
   .staff-management-hero {
     display: grid;
-    gap: 18px;
+    gap: 14px;
+  }
+
+  .staff-management-hero h1 {
+    font-size: clamp(1.85rem, 8vw, 2.25rem);
   }
 
   .staff-management-summary {
@@ -486,15 +490,18 @@
 
   .staff-management-toolbar {
     flex-wrap: wrap;
+    gap: 8px;
   }
 
   .staff-management-search {
     flex-basis: 100%;
+    min-height: 44px;
   }
 }
 
 @media (max-width: 520px) {
   .staff-management-summary {
+    grid-template-columns: 1fr;
     gap: 9px;
   }
 
@@ -503,11 +510,21 @@
     padding: 12px;
   }
 
+  .staff-management-hero .staff-button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
   .staff-management-form-grid {
     grid-template-columns: 1fr;
   }
 
   .staff-management-dialog {
-    padding: 17px;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .staff-management-dialog .staff-button {
+    min-height: 44px;
   }
 }

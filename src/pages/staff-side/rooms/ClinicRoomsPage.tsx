@@ -119,9 +119,9 @@ export function ClinicRoomsPage() {
         <div className="staff-content clinic-rooms-content">
           <section className="clinic-rooms-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Clinical operations</p>
-              <h1>Keep every room ready.</h1>
-              <p className="clinic-rooms-hero__copy">Manage consultation spaces and keep the clinic team aware of room availability.</p>
+              <p className="staff-eyebrow">Clinical operations</p>
+              <h1>Clinic rooms</h1>
+              <p className="clinic-rooms-hero__copy">Manage consultation spaces and room availability.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add room</button>
           </section>

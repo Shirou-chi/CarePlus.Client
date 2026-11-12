@@ -171,8 +171,8 @@ export function MedicalRecordsPage() {
         <div className="staff-content medical-records-content">
           <section className="medical-records-hero">
             <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Clinical records</p>
-              <h1>Keep every consultation clear.</h1>
+              <p className="staff-eyebrow">Clinical records</p>
+              <h1>Medical records</h1>
               <p>Document diagnoses and clinical notes for the patients you have seen.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medical record</button>

@@ -39,6 +39,17 @@ body {
     font-kerning: normal;
 }
 
+/* Staff lazy-route placeholder; keeps the shell color while a page chunk loads */
+.staff-route-fallback {
+    min-height: 100dvh;
+    background: #f5f8fa;
+}
+
+html.dark-mode .staff-route-fallback,
+:root[data-theme="dark"] .staff-route-fallback {
+    background: #000;
+}
+
 /* Scale rem-based UI consistently for users who need larger text. */
 html[data-text-size="large"] {
     font-size: 112.5%;

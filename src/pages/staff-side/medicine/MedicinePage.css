@@ -13,7 +13,7 @@
 .medicine-hero h1 {
   margin: 0;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: clamp(2rem, 3.5vw, 3rem);
   letter-spacing: -0.055em;
   line-height: 1;
@@ -73,7 +73,7 @@
   display: block;
   margin-top: 4px;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1.45rem;
   letter-spacing: -0.05em;
   line-height: 1;
@@ -370,7 +370,7 @@
 }
 
 .medicine-empty .staff-icon { color: var(--staff-brand); }
-.medicine-empty strong { color: var(--staff-ink); font-family: var(--site-font-display); font-size: 1rem; }
+.medicine-empty strong { color: var(--staff-ink); font-family: var(--font-display); font-size: 1rem; }
 .medicine-empty span { font-size: 0.68rem; }
 .medicine-empty button { margin-top: 5px; }
 
