@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { TOKEN_KEY } from "@/services/api";
 import { profileApi } from "@/services/profileApi";
+import { syncBrowserZoomCompensation } from "@/utils/browser-zoom";
 
 type Theme = "light" | "dark" | "system";
 export type TextSize = "normal" | "large";
@@ -97,6 +98,18 @@ export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "
         mediaQuery.addEventListener("change", handleChange);
         return () => mediaQuery.removeEventListener("change", handleChange);
     }, [theme]);
+
+    useEffect(() => {
+        syncBrowserZoomCompensation();
+        const onResize = () => syncBrowserZoomCompensation();
+        window.addEventListener("resize", onResize);
+        window.visualViewport?.addEventListener("resize", onResize);
+        return () => {
+            window.removeEventListener("resize", onResize);
+            window.visualViewport?.removeEventListener("resize", onResize);
+            document.getElementById("root")?.style.removeProperty("zoom");
+        };
+    }, []);
 
     const textSizeBoot = useRef(true);
 

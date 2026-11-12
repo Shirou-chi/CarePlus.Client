@@ -65,29 +65,67 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
 
         const row = document.querySelector<HTMLElement>("[data-service-row]");
-        if (!scroller && row) row.scrollTo({ left: 0, behavior: "smooth" });
+        if (!scroller && row) row.scrollTo({ left: 0, behavior: "auto" });
 
         const max = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
         const desired = scroller ? Math.max(0, Math.min(target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2, max)) : 0;
-        const rect = target.getBoundingClientRect();
-        const header = 88;
-        if (scroller && (rect.top < header || rect.bottom > window.innerHeight - 180)) {
-            window.scrollBy({ top: rect.top - header - 24 });
-        }
-
-        const after = target.getBoundingClientRect();
-        const fromScroll = scroller?.scrollLeft ?? 0;
-        const endBox = { top: after.top, left: after.left - (desired - fromScroll), width: after.width, height: after.height };
-        const fromBox = boxRef.current;
+        const mobile = window.matchMedia("(max-width: 1023px)").matches;
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const header = 88;
+        const bottomPad = mobile ? 108 : 24;
+        let settleTimer: number | null = null;
 
-        const shouldAnimate = Boolean(scroller && scroller.scrollWidth > scroller.clientWidth + 4 && !reduce && fromBox);
-        if (!shouldAnimate || !fromBox) {
-            animating.current = false;
+        const needsWindowScroll = () => {
+            // Step 0 points at Me / Tutorial in a fixed bar; scrolling the page only bounces.
+            if (step === 0 || !scroller) return false;
+            const rect = target.getBoundingClientRect();
+            return rect.top < header || rect.bottom > window.innerHeight - bottomPad;
+        };
+
+        const scrollTargetIntoView = (behavior: ScrollBehavior) => {
             if (scroller) scroller.scrollLeft = desired;
-            remember(readBox(target));
-            return;
+            if (!needsWindowScroll()) return false;
+            const rect = target.getBoundingClientRect();
+            window.scrollBy({ top: rect.top - header - 24, behavior });
+            return true;
+        };
+
+        // ponytail: mobile / step-0 hops jump; morphing from Me to icons leaves a mid-screen ghost hole
+        const canMorph =
+            Boolean(scroller) &&
+            step > 1 &&
+            !mobile &&
+            !reduce &&
+            Boolean(boxRef.current) &&
+            scroller!.scrollWidth > scroller!.clientWidth + 4;
+
+        if (!canMorph) {
+            animating.current = false;
+            const shouldSmooth = mobile && step > 0 && !reduce;
+            const didWindowScroll = scrollTargetIntoView(shouldSmooth ? "smooth" : "auto");
+            if (shouldSmooth && didWindowScroll) {
+                // Wait for the page to settle, then lock the highlight.
+                animating.current = true;
+                setBox(null);
+                settleTimer = window.setTimeout(() => {
+                    animating.current = false;
+                    remember(readBox(target));
+                }, 340);
+            } else {
+                remember(readBox(target));
+            }
+            return () => {
+                if (settleTimer !== null) window.clearTimeout(settleTimer);
+                if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+                animating.current = false;
+            };
         }
+
+        const fromBox = boxRef.current!;
+        const fromScroll = scroller!.scrollLeft;
+        scrollTargetIntoView("auto");
+        const after = target.getBoundingClientRect();
+        const endBox = { top: after.top, left: after.left - (desired - fromScroll), width: after.width, height: after.height };
 
         const start = performance.now();
         const duration = 480;
@@ -95,7 +133,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         const tick = (now: number) => {
             const t = Math.min(1, (now - start) / duration);
             const eased = 1 - (1 - t) ** 3;
-            if (scroller) scroller.scrollLeft = fromScroll + (desired - fromScroll) * eased;
+            scroller!.scrollLeft = fromScroll + (desired - fromScroll) * eased;
             remember({
                 top: mix(fromBox.top, endBox.top, eased),
                 left: mix(fromBox.left, endBox.left, eased),
@@ -112,6 +150,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         };
         frameRef.current = requestAnimationFrame(tick);
         return () => {
+            if (settleTimer !== null) window.clearTimeout(settleTimer);
             if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
             animating.current = false;
         };

@@ -311,6 +311,45 @@ body:has(.staff-page) .site-back-to-top {
   cursor: pointer;
 }
 
+.staff-text-size-toggle {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--staff-line);
+  border-radius: 99px;
+  background: var(--staff-subtle);
+}
+
+.staff-text-size-toggle__option {
+  display: inline-flex;
+  min-width: 32px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 99px;
+  background: transparent;
+  color: var(--staff-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.staff-text-size-toggle__option:hover {
+  color: var(--staff-ink);
+}
+
+.staff-text-size-toggle__option.is-selected {
+  background: var(--staff-card);
+  color: var(--staff-ink);
+  box-shadow: 0 1px 3px rgba(16, 41, 58, 0.1);
+}
+
 .staff-theme-toggle--topbar {
   width: 58px;
   min-height: 32px;
@@ -1612,6 +1651,15 @@ body:has(.staff-page) .site-back-to-top {
   .staff-topbar__avatar {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .staff-text-size-toggle {
+    min-height: 44px;
+  }
+
+  .staff-text-size-toggle__option {
+    min-width: 36px;
+    min-height: 36px;
   }
 
   .staff-theme-toggle--topbar {

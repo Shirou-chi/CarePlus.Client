@@ -33,6 +33,40 @@ const prefetchStaffPages = () => {
     for (const load of staffPageLoaders) void load();
 };
 
+const patientPageLoaders = [
+    () => import("@/pages/user-side/account/account-page"),
+    () => import("@/pages/user-side/about-page"),
+    () => import("@/pages/user-side/bills/invoice-payment-page"),
+    () => import("@/pages/user-side/bills/outstanding-invoices-page"),
+    () => import("@/pages/user-side/bills/payment-history-page"),
+    () => import("@/pages/user-side/visits/booking-page"),
+    () => import("@/pages/user-side/visits/upcoming-visits-page"),
+    () => import("@/pages/user-side/visits/visit-history-page"),
+    () => import("@/pages/user-side/visits/queue-page"),
+    () => import("@/pages/user-side/auth/forgot-password-page"),
+    () => import("@/pages/user-side/family/family-page"),
+    () => import("@/pages/user-side/records/health-records-page"),
+    () => import("@/pages/user-side/auth/login-page"),
+    () => import("@/pages/user-side/records/clinic-records-page"),
+    () => import("@/pages/user-side/not-found"),
+    () => import("@/pages/user-side/medicine/order-history-page"),
+    () => import("@/pages/user-side/medicine/prescribed-medicine-browse-page"),
+    () => import("@/pages/user-side/medicine/prescribed-medicine-page"),
+    () => import("@/pages/user-side/medicine/cart-page"),
+    () => import("@/pages/user-side/medicine/checkout-page"),
+    () => import("@/pages/user-side/contact-page"),
+    () => import("@/pages/user-side/doctors/doctor-detail-page"),
+    () => import("@/pages/user-side/doctors/doctors-page"),
+    () => import("@/pages/user-side/chat/chat-page"),
+    () => import("@/pages/user-side/announcements/announcements-page"),
+    () => import("@/pages/user-side/notifications/notifications-page"),
+    () => import("@/pages/user-side/auth/register-page"),
+] as const;
+
+const prefetchPatientPages = () => {
+    for (const load of patientPageLoaders) void load();
+};
+
 const StaffHomePage = page(() => import("@/pages/staff-side/StaffHomePage"), "StaffHomePage");
 const StaffLoginPage = page(() => import("@/pages/staff-side/login/StaffLoginPage"), "StaffLoginPage");
 const StaffAppointmentsPage = page(() => import("@/pages/staff-side/appointments/AppointmentsPage"), "AppointmentsPage");
@@ -157,15 +191,20 @@ const AppRoutes = () => {
         window.scrollTo({ top: 0, behavior });
     }, [location.pathname, location.hash, location.key]);
 
+    useEffect(() => {
+        if (!isReady || isStaffRoute) return;
+        prefetchPatientPages();
+    }, [isReady, isStaffRoute]);
+
     if (isReady && profile && location.pathname === "/") return <Navigate to="/home" replace />;
     if (isReady && !profile && location.pathname === "/home") return <Navigate to="/" replace />;
     if (invoicesReady && overdue && featurePath(location.pathname)) return <Navigate to="/invoices" replace />;
 
     return (
         <>
-            {/* ponytail: staff keeps a stable key so Suspense does not blank to black between lazy pages */}
-            <div key={isStaffRoute ? "staff" : location.pathname} className={showMobileBottomNav ? "careplus-page careplus-has-mobile-nav" : "careplus-page"}>
-                <Suspense fallback={isStaffRoute ? <div className="staff-route-fallback" aria-hidden /> : <div className="careplus-landing min-h-dvh" />}>
+            {/* ponytail: stable shell key keeps Suspense from blanking to black between lazy pages */}
+            <div key={isStaffRoute ? "staff" : "patient"} className={showMobileBottomNav ? "careplus-page careplus-has-mobile-nav" : "careplus-page"}>
+                <Suspense fallback={isStaffRoute ? <div className="staff-route-fallback" aria-hidden /> : <div className="min-h-dvh bg-primary" aria-hidden />}>
                 <Routes location={location}>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/home" element={<HomePage />} />
