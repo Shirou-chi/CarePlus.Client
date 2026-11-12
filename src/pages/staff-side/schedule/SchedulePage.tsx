@@ -11,6 +11,7 @@ import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
 import { StaffListReset } from '../components/StaffListControls'
 import { StaffWeekFilter } from '../components/StaffWeekFilter'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './SchedulePage.css'
 
@@ -667,14 +668,10 @@ export function SchedulePage() {
         />
 
         <div className="staff-content schedule-content">
-          <section className="schedule-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Operations</p>
-              <h1>Make every hour count.</h1>
-              <p className="schedule-hero__copy">Coordinate provider availability, consultation hours, and room coverage across the clinic.</p>
-            </div>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Staff scheduling" />
             {currentRole === 'Admin' ? <button className="staff-button staff-button--primary schedule-add-button" type="button" onClick={openAvailabilityDialog}><Icon name="plus" size={17} /> Add availability</button> : null}
-          </section>
+          </header>
 
           <section aria-label="Schedule summary" className="schedule-summary">
             <article className="schedule-summary-card schedule-summary-card--teal"><span><Icon name="users" size={18} /></span><small>Scheduled providers</small><strong>{scheduledProviderCount}</strong><em>From backend records</em></article>

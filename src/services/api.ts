@@ -1,6 +1,9 @@
+import { OLD_STAFF_SESSION_KEY, SESSION_KEY } from '@/utils/auth'
+
 export const baseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export const TOKEN_KEY = 'careplus-token'
+export const SESSION_EXPIRED_MESSAGE = 'Your session has expired or is invalid. Please sign in again.'
 
 export type ApiResponse<T> = {
   isSuccess: boolean
@@ -90,11 +93,23 @@ export function messageFromBody(body: unknown, fallback: string) {
 }
 
 function messageFromHttpStatus(status: number) {
-  if (status === 401) return 'Your session has expired or is invalid. Please sign in again.'
+  if (status === 401) return SESSION_EXPIRED_MESSAGE
   if (status === 403) return 'You do not have permission to perform this action.'
   if (status === 404) return 'The requested appointment could not be found.'
   if (status === 405) return 'This action is not supported by the server.'
   return `Request failed with status ${status}`
+}
+
+function redirectExpiredSession(token: string) {
+  if (localStorage.getItem(TOKEN_KEY) !== token) return
+
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(SESSION_KEY)
+  localStorage.removeItem(OLD_STAFF_SESSION_KEY)
+
+  const path = window.location.pathname.toLowerCase()
+  const isStaffPage = path === '/staff' || path.startsWith('/staff/')
+  window.location.replace(isStaffPage ? '/staff/login' : '/login')
 }
 
 export async function request<T>(
@@ -108,13 +123,11 @@ export async function request<T>(
     headers.set('Content-Type', 'application/json')
   }
 
-  if (requiresAuth) {
-    const token = localStorage.getItem(TOKEN_KEY)
-
-    if (!token) {
-      throw new Error('Please login first.')
-    }
-
+  const token = requiresAuth ? localStorage.getItem(TOKEN_KEY) : null
+  if (requiresAuth && !token) {
+    throw new Error('Please login first.')
+  }
+  if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
@@ -124,12 +137,17 @@ export async function request<T>(
   })
 
   const body = await response.json().catch(() => null)
+  const expired = token !== null && (response.status === 401 || (body?.isSuccess === false && body.respCode === 401))
+  if (expired) {
+    redirectExpiredSession(token)
+  }
 
-  if (!response.ok) {
+  if (!response.ok || expired) {
+    const status = expired ? 401 : response.status
     const code = body && typeof body === 'object' && 'reason' in body && typeof body.reason === 'string'
       ? body.reason
       : undefined
-    throw new ApiRequestError(messageFromBody(body, messageFromHttpStatus(response.status)), response.status, code)
+    throw new ApiRequestError(messageFromBody(body, messageFromHttpStatus(status)), status, code)
   }
 
   return body as T

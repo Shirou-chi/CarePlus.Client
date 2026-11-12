@@ -12,3 +12,4 @@ export type Profile = {
 };
 
 export const SESSION_KEY = "careplus-session";
+export const OLD_STAFF_SESSION_KEY = "careplus-staff-session";

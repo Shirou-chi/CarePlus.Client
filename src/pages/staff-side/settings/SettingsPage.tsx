@@ -5,6 +5,7 @@ import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './SettingsPage.css'
 
@@ -181,6 +182,7 @@ export function SettingsPage() {
       <StaffNavbar activeNav="Settings" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setSearchTerm} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={searchTerm} selectedRole={currentRole} theme={theme === 'dark' ? 'dark' : 'light'} toggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
 
         <div className="staff-content staff-settings-content">
+          <StaffPageEyebrow label="Account settings" />
           <section className="staff-card staff-settings-profile-card">
               <div className="staff-settings-profile-card__header">
                 <div className="staff-settings-profile-identity">

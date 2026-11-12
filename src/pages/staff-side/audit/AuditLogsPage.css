@@ -2,34 +2,16 @@
   padding-top: 34px;
 }
 
-.audit-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 26px;
-  margin-bottom: 26px;
-}
-
-.audit-hero h1 {
-  margin: 0;
-  color: var(--staff-ink);
-  font-family: var(--site-font-display);
-  font-size: clamp(2rem, 3.5vw, 3rem);
-  letter-spacing: -0.055em;
-  line-height: 1;
-}
-
-.audit-hero__copy {
-  max-width: 590px;
-  margin: 11px 0 0;
-  color: var(--staff-muted);
-  font-size: 0.82rem;
-}
-
 .audit-export-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.audit-export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
 }
 
 .audit-summary {
@@ -300,6 +282,12 @@
   font-size: 0.53rem;
 }
 
+.audit-actor strong,
+.audit-actor small {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .audit-entry-icon,
 .audit-actor__avatar {
   display: grid;
@@ -549,6 +537,7 @@
   color: var(--staff-ink);
   font-size: 0.67rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .audit-detail-list dd small {
@@ -563,10 +552,6 @@
 }
 
 /* Keep the activity list scannable; full descriptions stay in the detail drawer. */
-.audit-hero__copy {
-  font-size: 0.94rem;
-}
-
 .audit-log-card__description {
   font-size: 0.72rem;
 }
@@ -620,15 +605,6 @@
 @media (max-width: 640px) {
   .audit-content {
     padding-top: 28px;
-  }
-
-  .audit-hero {
-    display: grid;
-    gap: 16px;
-  }
-
-  .audit-hero h1 {
-    font-size: 2.25rem;
   }
 
   .audit-summary {

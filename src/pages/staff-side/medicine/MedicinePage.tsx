@@ -8,6 +8,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './MedicinePage.css'
 
@@ -245,14 +246,10 @@ export function MedicinePage() {
         />
 
         <div className="staff-content medicine-content">
-          <section className="medicine-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Pharmacy inventory</p>
-              <h1>Keep medicines ready.</h1>
-              <p className="medicine-hero__copy">Manage the medicine catalogue used by the pharmacy and patient ordering flow.</p>
-            </div>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Medicine inventory" />
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medicine</button>
-          </section>
+          </header>
 
           <section aria-label="Medicine summary" className="medicine-summary">
             <article className="medicine-summary-card medicine-summary-card--teal"><span><Icon name="box" size={18} /></span><small>Total medicines</small><strong>{medicines.length}</strong><em>Catalogue records</em></article>

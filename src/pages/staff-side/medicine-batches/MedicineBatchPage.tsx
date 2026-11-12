@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { medicineApi, type MedicineRecord } from '@/services/medicineApi'
 import { medicineBatchApi, type MedicineBatchRecord } from '@/services/medicineBatchApi'
@@ -9,6 +9,8 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
+import { getBatchStatus, LOW_STOCK_THRESHOLD } from './batch-status'
 import '../StaffHomePage.css'
 import './MedicineBatchPage.css'
 
@@ -17,8 +19,6 @@ type StatusFilter = (typeof statusFilters)[number]
 const sortOptions = ['Expiry soonest', 'Expiry latest', 'Medicine A–Z', 'Stock low–high', 'Stock high–low'] as const
 type SortOption = (typeof sortOptions)[number]
 type DialogMode = 'create' | 'edit' | 'view' | null
-type BatchStatus = 'In stock' | 'Low stock' | 'Expired'
-const LOW_STOCK_THRESHOLD = 10
 
 const emptyForm = {
   medicineId: '',
@@ -95,22 +95,11 @@ function toDateInput(value: string) {
   return value ? value.slice(0, 10) : ''
 }
 
-function getBatchStatus(batch: MedicineBatchRecord): BatchStatus {
-  const expiry = new Date(batch.expiryDate)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  if (!Number.isNaN(expiry.getTime()) && expiry < today) return 'Expired'
-  if (batch.stockQuantity <= LOW_STOCK_THRESHOLD) return 'Low stock'
-  return 'In stock'
-}
-
 function statusClass(value: string) {
   return value.toLowerCase().replace(/\s+/g, '-')
 }
 
 export function MedicineBatchPage() {
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -271,14 +260,10 @@ export function MedicineBatchPage() {
         <StaffNavbar activeNav="Medicine batches" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setSearchTerm} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={searchTerm} selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
 
         <div className="staff-content medicine-batch-content">
-          <section className="medicine-batch-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Pharmacy inventory</p>
-              <h1>{medicineIdFilter ? `Track ${medicines.find((medicine) => medicine.medicineId === medicineIdFilter)?.medicineName || 'selected medicine'} batches.` : 'Track every medicine batch.'}</h1>
-              <p className="medicine-batch-hero__copy">Manage stock quantities and expiry dates for each medicine delivery.</p>
-            </div>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Medicine batch tracking" />
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add batch</button>
-          </section>
+          </header>
 
           <section aria-label="Medicine batch summary" className="medicine-batch-summary">
             <article className="medicine-batch-summary-card medicine-batch-summary-card--teal"><span><Icon name="box" size={18} /></span><small>Total batches</small><strong>{batches.length}</strong><em>All stock lots</em></article>

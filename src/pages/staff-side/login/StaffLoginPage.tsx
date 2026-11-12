@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import './StaffLoginPage.css'
 
 export function StaffLoginPage() {
@@ -53,7 +54,7 @@ export function StaffLoginPage() {
 
       <section className="staff-login-page__layout" aria-labelledby="staff-login-title">
         <div className="staff-login-page__intro">
-          <p className="staff-login-page__eyebrow">CarePlus / Staff Portal</p>
+          <StaffPageEyebrow as="p" className="staff-login-page__eyebrow" label="Staff sign in" />
           <h1 id="staff-login-title">Welcome back, CarePlus team.</h1>
           <p>
             Sign in with your staff username or email to access the clinic operations portal.
