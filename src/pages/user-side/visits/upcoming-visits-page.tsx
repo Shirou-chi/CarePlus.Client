@@ -125,11 +125,16 @@ export const UpcomingVisitsPage = () => {
                         <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.visitsBody}</p>
                         <p className="mt-4 w-fit max-w-full rounded-xl bg-primary px-4 py-3 text-sm text-primary ring-1 ring-secondary">{t.visitsLimitNote}</p>
                     </div>
-                    {next ? (
-                        <Button href="/book" color="primary" size="md" iconLeading={CalendarPlus01}>
-                            {t.visitsBookAnother}
+                    <div className="flex flex-wrap gap-2">
+                        <Button href="/history" color="secondary" size="md">
+                            {t.visitHistory}
                         </Button>
-                    ) : null}
+                        {next ? (
+                            <Button href="/book" color="primary" size="md" iconLeading={CalendarPlus01}>
+                                {t.visitsBookAnother}
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
 
                 {loadError ? (

@@ -42,7 +42,7 @@ export const DoctorsPage = () => {
                     {error ? <p role="alert" className="rounded-2xl bg-error-solid px-6 py-4 text-sm font-semibold text-white">{error}</p> : null}
                     {!loading && !error && doctors.length === 0 ? <p className="rounded-2xl bg-primary px-6 py-10 text-center text-sm text-tertiary ring-1 ring-secondary">{t.doctorNotFound}</p> : null}
                     {!loading && !error && doctors.length > 0 ? (
-                        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-3">
                             {doctors.map((doctor) => (
                                 <DoctorCard key={doctor.staffId} doctor={doctor} locale={locale} t={t} />
                             ))}

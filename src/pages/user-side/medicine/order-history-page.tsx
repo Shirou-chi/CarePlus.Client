@@ -294,7 +294,7 @@ const OrderMap = ({ order, title }: { order: MedicineOrder; title: string }) => 
         <iframe
             title={title}
             src={mapEmbedSrc(point)}
-            className="h-44 w-full rounded-lg border-0"
+            className="pointer-events-none h-44 w-full rounded-lg border-0 lg:pointer-events-auto"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
         />

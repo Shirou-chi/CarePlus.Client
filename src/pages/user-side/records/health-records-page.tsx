@@ -75,7 +75,7 @@ export const HealthRecordsPage = () => {
         }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Unable to load health records."); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [profile?.patientId]);
+    }, [profile?.id]);
 
     const save = async (action: () => Promise<unknown>) => {
         setSaving(true);
@@ -186,7 +186,7 @@ export const HealthRecordsPage = () => {
                         </Button>
                     </div>
                     <Tabs selectedKey={tab} onSelectionChange={(key) => setTab(String(key) as HealthItemKind)} className="mt-5">
-                        <Tabs.List type="underline" size="sm">
+                        <Tabs.List type="underline" size="sm" className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             <Tabs.Item id="allergy" label={t.phrAllergy} badge={itemsByKind.allergy.length} />
                             <Tabs.Item id="condition" label={t.phrCondition} badge={itemsByKind.condition.length} />
                             <Tabs.Item id="history" label={t.phrHistoryTags} badge={itemsByKind.history.length} />
@@ -242,7 +242,7 @@ export const HealthRecordsPage = () => {
                     <Table aria-label={t.phrTableTitle}>
                         <Table.Header>
                             <Table.Head label={locale === "zh" ? "PDF 文件" : "PDF document"} isRowHeader />
-                            <Table.Head label={locale === "zh" ? "上传日期" : "Uploaded"} />
+                            <Table.Head label={locale === "zh" ? "上传日期" : "Uploaded"} className="max-md:hidden" />
                             <Table.Head label="" />
                         </Table.Header>
                         <Table.Body
@@ -251,8 +251,11 @@ export const HealthRecordsPage = () => {
                         >
                             {(item) => (
                                 <Table.Row id={item.id}>
-                                    <Table.Cell className="font-medium text-primary">{item.pdfFileName}</Table.Cell>
-                                    <Table.Cell>{formatDay(item.recordedAt)}</Table.Cell>
+                                    <Table.Cell className="max-w-[9rem] truncate font-medium text-primary md:max-w-none">
+                                        {item.pdfFileName}
+                                        <span className="mt-0.5 block text-xs font-normal text-tertiary md:hidden">{formatDay(item.recordedAt)}</span>
+                                    </Table.Cell>
+                                    <Table.Cell className="max-md:hidden">{formatDay(item.recordedAt)}</Table.Cell>
                                     <Table.Cell>
                                         <div className="flex justify-end gap-2">
                                             <Button color="secondary" size="sm" onClick={async () => {

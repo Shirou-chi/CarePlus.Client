@@ -2,6 +2,9 @@ export type NoticeKind = "visit" | "medicine" | "records" | "account" | "announc
 
 export const ANNOUNCEMENTS_HREF = "/announcements";
 
+/** sessionStorage list of notice ids already shown as a pop-up; cleared on logout so the next sign-in shows unread ones again. */
+export const TOASTED_NOTICES_KEY = "careplus-toasted-notices";
+
 export const clinicAnnouncementNav = {
     href: ANNOUNCEMENTS_HREF,
     copyKey: "notifAnnouncementNav" as const,

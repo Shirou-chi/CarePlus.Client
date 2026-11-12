@@ -39,7 +39,7 @@ export const ClinicCoverflow = ({ cards }: { cards: ClinicCard[] }) => {
 
     return (
         <section className="mx-auto w-full max-w-container px-4 pb-10 md:px-8 md:pb-14">
-            <div className="overflow-hidden rounded-3xl bg-[#0b2036] py-12 md:py-16 dark:bg-[#eef8fb]">
+            <div className="overflow-hidden rounded-3xl bg-black py-12 md:py-16 dark:bg-[#171717]">
                 <div
                     className="relative mx-auto h-[22rem] w-full max-w-5xl touch-pan-y select-none sm:h-[26rem] md:h-[30rem]"
                     style={{ perspective: "1200px", transformStyle: "preserve-3d" }}
