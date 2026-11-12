@@ -6,7 +6,6 @@ import { StaffDialog } from '../components/StaffDialog'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './ClinicRoomsPage.css'
 
@@ -125,7 +124,7 @@ export function ClinicRoomsPage() {
               <p className="clinic-rooms-hero__copy">Manage consultation spaces and room availability.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add room</button>
-          </header>
+           </section>
 
           <section aria-label="Room summary" className="clinic-rooms-summary">
             <article className="clinic-room-summary-card clinic-room-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Total rooms</small><strong>{counts.total}</strong><em>Clinic spaces</em></article>

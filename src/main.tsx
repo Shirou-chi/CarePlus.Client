@@ -20,9 +20,11 @@ const staffPageLoaders = [
     () => import("@/pages/staff-side/leave/LeavePage"),
     () => import("@/pages/staff-side/notifications/NotificationsPage"),
     () => import("@/pages/staff-side/patients/PatientsPage"),
+    () => import("@/pages/staff-side/queue/StaffQueuePage"),
     () => import("@/pages/staff-side/rooms/ClinicRoomsPage"),
     () => import("@/pages/staff-side/medicine/MedicinePage"),
     () => import("@/pages/staff-side/medicine-batches/MedicineBatchPage"),
+    () => import("@/pages/staff-side/prescriptions/PrescriptionsPage"),
     () => import("@/pages/staff-side/schedule/SchedulePage"),
     () => import("@/pages/staff-side/staff/StaffManagementPage"),
     () => import("@/pages/staff-side/settings/SettingsPage"),
@@ -74,9 +76,11 @@ const AuditLogsPage = page(() => import("@/pages/staff-side/audit/AuditLogsPage"
 const LeavePage = page(() => import("@/pages/staff-side/leave/LeavePage"), "LeavePage");
 const StaffNotificationsPage = page(() => import("@/pages/staff-side/notifications/NotificationsPage"), "NotificationsPage");
 const PatientsPage = page(() => import("@/pages/staff-side/patients/PatientsPage"), "PatientsPage");
+const StaffQueuePage = page(() => import("@/pages/staff-side/queue/StaffQueuePage"), "StaffQueuePage");
 const ClinicRoomsPage = page(() => import("@/pages/staff-side/rooms/ClinicRoomsPage"), "ClinicRoomsPage");
 const MedicinePage = page(() => import("@/pages/staff-side/medicine/MedicinePage"), "MedicinePage");
 const MedicineBatchPage = page(() => import("@/pages/staff-side/medicine-batches/MedicineBatchPage"), "MedicineBatchPage");
+const PrescriptionsPage = page(() => import("@/pages/staff-side/prescriptions/PrescriptionsPage"), "PrescriptionsPage");
 const SchedulePage = page(() => import("@/pages/staff-side/schedule/SchedulePage"), "SchedulePage");
 const StaffManagementPage = page(() => import("@/pages/staff-side/staff/StaffManagementPage"), "StaffManagementPage");
 const SettingsPage = page(() => import("@/pages/staff-side/settings/SettingsPage"), "SettingsPage");
@@ -243,17 +247,19 @@ const AppRoutes = () => {
                         </Route>
                         <Route path="/staff/schedules" element={<SchedulePage />} />
                         <Route path="/staff/leave" element={<LeavePage />} />
-                        <Route element={<StaffRouteGuard roles={["Pharmacist"]} />}>
+                        <Route element={<StaffRouteGuard roles={["Admin", "Pharmacist"]} />}>
                             <Route path="/staff/medicine" element={<MedicinePage />} />
+                        </Route>
+                        <Route element={<StaffRouteGuard roles={["Admin", "Pharmacist"]} />}>
                             <Route path="/staff/medicine-batches" element={<MedicineBatchPage />} />
                         </Route>
-                        <Route element={<StaffRouteGuard roles={["Doctor", "Pharmacist"]} />}>
+                        <Route element={<StaffRouteGuard roles={["Admin", "Doctor", "Pharmacist"]} />}>
                             <Route path="/staff/prescriptions" element={<PrescriptionsPage />} />
                         </Route>
                         <Route path="/staff/notifications" element={<StaffNotificationsPage />} />
                         <Route path="/staff/settings" element={<SettingsPage />} />
                     </Route>
-                    <Route element={<StaffRouteGuard roles={["Doctor"]} />}>
+                    <Route element={<StaffRouteGuard roles={["Admin", "Doctor"]} />}>
                         <Route path="/staff/medical-records" element={<MedicalRecordsPage />} />
                     </Route>
                     <Route element={<StaffRouteGuard roles={["Admin"]} />}>

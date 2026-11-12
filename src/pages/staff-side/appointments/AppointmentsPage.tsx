@@ -11,7 +11,6 @@ import { StaffDateFilter } from '../components/StaffDateFilter'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset } from '../components/StaffListControls'
 import { StaffWeekFilter } from '../components/StaffWeekFilter'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './AppointmentsPage.css'
 
@@ -364,7 +363,7 @@ export function AppointmentsPage() {
     return () => {
       cancelled = true
     }
-  }, [logout, navigate])
+  }, [currentRole, logout, navigate])
 
   useEffect(() => {
     if (!canCreate || !dialogOpen) return
@@ -585,7 +584,7 @@ export function AppointmentsPage() {
               <h1>Appointments</h1>
             </div>
             {canCreate ? <button className="staff-button staff-button--primary" type="button" onClick={() => { setPatientSearch(''); setSelectedPatientId(''); setPatientDropdownOpen(false); setAppointmentDate(''); setAppointmentTime(''); setAppointmentShift('morning'); setBookingTimeDialogOpen(false); setAppointmentVisitType('General consultation'); setAppointmentNotes(''); setAvailableDoctors([]); setProviderAvailabilityError(''); setSelectedProviderId(''); setDialogOpen(true) }}><Icon name="plus" size={17} /> New appointment</button> : <span className="appointments-role-note"><Icon name="shield" size={15} /> {currentRole} view</span>}
-          </header>
+           </section>
 
           <section aria-label="Appointment summary" className="appointments-summary">
             <article className="appointments-summary-card appointments-summary-card--teal"><span><Icon name="calendar" size={18} /></span><small>Appointments</small><strong>{selectedDayAppointments.length}</strong><em>Selected date</em></article>

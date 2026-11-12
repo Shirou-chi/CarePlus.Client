@@ -14,6 +14,7 @@ export type MedicalRecord = {
 
 export type MedicalRecordCreateRequest = {
   patientId: string
+  doctorId?: string
   consultationDate: string
   diagnosis: string
   notes?: string

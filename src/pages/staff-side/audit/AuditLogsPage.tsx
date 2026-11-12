@@ -8,7 +8,6 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './AuditLogsPage.css'
 
