@@ -1,4 +1,6 @@
-import { passwordGaps, passwordIsValid, passwordMeter } from "./password.ts";
+import { loadPasswordMeter, passwordGaps, passwordIsValid, passwordMeter } from "./password.ts";
+
+await loadPasswordMeter();
 
 const weak = passwordMeter("12345aB@");
 const medium = passwordMeter("k9Xm!pQa");

@@ -43,7 +43,7 @@ export function NotFound() {
 
                 <div className="relative min-h-64 flex-1 overflow-hidden rounded-3xl bg-secondary shadow-xs ring-1 ring-secondary md:min-h-[28rem]">
                     <img
-                        src="/home/clinic-reception.png"
+                        src="/home/clinic-reception.webp"
                         alt=""
                         className="absolute inset-0 size-full object-cover"
                     />

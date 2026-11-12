@@ -332,6 +332,7 @@ export const BookingPage = () => {
         if (message === "child-underage-booking") return t.bookChildUnderage;
         if (message === "child-self-only") return t.bookChildSelfOnly;
         if (message === "age-verification-required") return t.bookAgeUnavailable;
+        if (message === "slot-too-soon") return t.bookSlotTooSoon;
         return isSlotConflict(message) ? t.bookSlotTaken : message;
     };
 
@@ -475,10 +476,10 @@ export const BookingPage = () => {
     }
 
     return (
-        <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] pb-24 md:pt-22 lg:pb-0">
+        <div className="careplus-landing careplus-booking min-h-dvh overflow-x-hidden pt-[4.5rem] pb-24 md:pt-22 lg:pb-0">
             <LandingHeader />
             <PageBreadcrumb />
-            <main className="mx-auto w-full max-w-container px-4 py-6 pb-28 md:px-8 md:py-10 md:pb-10">
+            <main className="mx-auto w-full max-w-container px-4 py-6 md:px-8 md:py-10">
                 <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">
                     {isRescheduling ? t.bookReschedulePageTitle : t.bookTitle}
                 </h1>
@@ -693,10 +694,11 @@ export const BookingPage = () => {
                     </aside>
                 </div>
 
-                <div className="fixed inset-x-0 bottom-0 z-40 border-t border-secondary bg-primary/95 px-4 py-3 shadow-lg backdrop-blur-md pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
-                    <dl className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                <div className="careplus-booking-bar fixed inset-x-0 bottom-0 z-40 border-t border-secondary bg-primary/90 px-4 py-3 shadow-lg backdrop-blur-md pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden dark:border-white/10 dark:bg-[#0a0a0a]/92">
+                    <dl className="mb-3 grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
                         <SummaryRow label={t.bookStepFamily} value={bookingForName} compact mobile />
                         <SummaryRow label={t.bookStepWhen} value={slot ? formatWhen(slot.startAt) : t.bookNotPicked} compact mobile />
+                        <SummaryRow label={t.bookStepDoctor} value={doctor?.name ?? t.bookAnyDoctor} compact mobile />
                     </dl>
                     <div className="flex gap-2">
                         {step > 0 ? (
@@ -811,8 +813,8 @@ const ShiftCard = ({
 );
 
 const SummaryRow = ({ label, value, compact, mobile }: { label: string; value: string; compact?: boolean; mobile?: boolean }) => (
-    <div className={cx("flex min-w-0 items-start justify-between gap-2", compact ? (mobile ? "gap-1.5" : "gap-3") : "py-3")}>
+    <div className={cx("flex min-w-0", mobile ? "flex-col gap-0.5" : "items-start justify-between gap-2", compact ? (mobile ? "" : "gap-3") : "py-3")}>
         <dt className={cx("shrink-0 text-tertiary", mobile && "text-[11px]")}>{label}</dt>
-        <dd className={cx("min-w-0 text-right font-medium break-words text-primary", mobile ? "text-[11px] leading-snug" : "text-sm")}>{value}</dd>
+        <dd className={cx("min-w-0 font-medium break-words text-primary", mobile ? "line-clamp-2 text-xs leading-snug" : "text-right text-sm")}>{value}</dd>
     </div>
 );

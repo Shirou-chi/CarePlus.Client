@@ -150,6 +150,16 @@ export const appointmentApi = {
     return unwrap(result, 'Unable to load upcoming visits.')
   },
 
+  async history(): Promise<Appointment[]> {
+    const result = await request<ApiResponse<Appointment[]>>(
+      '/api/Appointment/History',
+      {},
+      true,
+    )
+
+    return unwrap(result, 'Unable to load visit history.')
+  },
+
   async book(payload: AppointmentBookRequest): Promise<Appointment> {
     const result = await request<ApiResponse<Appointment>>(
       '/api/Appointment',

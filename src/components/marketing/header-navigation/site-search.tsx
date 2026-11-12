@@ -55,6 +55,7 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
         ...common,
         page("/book", t.bookVisit, t.bookVisitHint, "booking appointment schedule timeslot consultation 预约 挂号 时段"),
         page("/visits", t.upcomingVisits, t.upcomingVisitsHint, "upcoming appointment reschedule cancel 即将就诊 改期 取消"),
+        page("/history", t.visitHistory, t.visitHistoryHint, "visit history past cancelled completed 就诊记录 历史"),
         page("/queue", "Clinic queue", "Check in and follow your live queue progress", "queue check in waiting number clinic 排队 报到 叫号"),
         page("/doctors", t.doctorsTitle, t.doctorsBody, "doctor physician browse 医生 医师"),
         page("/medicine", t.medTitle, t.medSearch, "medicine pharmacy drug prescribed buy 药物 药房 处方"),
@@ -170,7 +171,7 @@ export const SiteSearch = () => {
 
     return (
         <AriaDialogTrigger isOpen={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) { saveSearch(query); setQuery(""); } }}>
-            <AriaButton aria-label={t.search} className="inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white">
+            <AriaButton aria-label={t.search} className="inline-flex cursor-pointer items-center justify-center rounded-md p-2 lg:p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white">
                 <SearchMd className="size-5" />
             </AriaButton>
             <AriaPopover className="w-[min(28rem,calc(100vw-1.5rem))] shadow-lg" offset={8} placement="bottom end">
@@ -188,7 +189,7 @@ export const SiteSearch = () => {
                                 }}
                                 aria-label={t.search}
                                 placeholder={locale === "zh" ? "搜索页面、医生、药物或公告" : "Search pages, doctors, medicine, or notices"}
-                                className="min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-placeholder"
+                                className="min-w-0 flex-1 bg-transparent text-md text-primary lg:text-sm outline-none placeholder:text-placeholder"
                             />
                         </div>
                         <div className="max-h-[min(65dvh,30rem)] overflow-y-auto p-2">

@@ -59,7 +59,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
     };
 
     useLayoutEffect(() => {
-        const target = step === 0 ? visibleTour("tutorial") : targets.current[step - 1];
+        const target = step === 0 ? (visibleTour("tutorial") ?? visibleTour("account")) : targets.current[step - 1];
         const scroller = target?.closest<HTMLElement>("[data-service-row]") ?? null;
         if (!target) return;
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
@@ -118,7 +118,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
     }, [targets, step]);
 
     useEffect(() => {
-        const target = step === 0 ? visibleTour("tutorial") : targets.current[step - 1];
+        const target = step === 0 ? (visibleTour("tutorial") ?? visibleTour("account")) : targets.current[step - 1];
         if (!target) return;
         const measure = () => {
             if (animating.current) return;

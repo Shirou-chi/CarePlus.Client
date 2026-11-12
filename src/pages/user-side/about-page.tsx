@@ -1,4 +1,4 @@
-import { ArrowRight, CalendarCheck01, File06, HeartHand, MedicalCross, Users01 } from "@untitledui/icons";
+import { CalendarCheck01, File06, HeartHand, MedicalCross, Users01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
@@ -9,11 +9,11 @@ import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 
 const clinicPhotos = [
-    { src: "/home/clinic-reception.png", altKey: "clinicReception" as const },
-    { src: "/home/clinic-waiting-room.png", altKey: "clinicWaiting" as const },
-    { src: "/home/clinic-examination-room.png", altKey: "clinicExam" as const },
-    { src: "/home/clinic-corridor.png", altKey: "clinicCorridor" as const },
-    { src: "/home/clinic-entrance.png", altKey: "clinicEntrance" as const },
+    { src: "/home/clinic-reception.webp", altKey: "clinicReception" as const },
+    { src: "/home/clinic-waiting-room.webp", altKey: "clinicWaiting" as const },
+    { src: "/home/clinic-examination-room.webp", altKey: "clinicExam" as const },
+    { src: "/home/clinic-corridor.webp", altKey: "clinicCorridor" as const },
+    { src: "/home/clinic-entrance.webp", altKey: "clinicEntrance" as const },
 ];
 
 export const AboutPage = () => {
@@ -97,7 +97,7 @@ export const AboutPage = () => {
                 <section className="mx-auto w-full max-w-container px-4 py-14 md:px-8 md:py-20">
                     <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
                         <div className="overflow-hidden rounded-3xl ring-1 ring-primary/15">
-                            <img src="/home/clinic-examination-room.png" alt={t.clinicExam} className="aspect-[4/3] size-full object-cover" />
+                            <img src="/home/clinic-examination-room.webp" alt={t.clinicExam} className="aspect-[4/3] size-full object-cover" />
                         </div>
                         <div>
                             <p className="text-sm font-semibold text-brand-secondary">{t.aboutMissionTitle}</p>
@@ -130,7 +130,7 @@ export const AboutPage = () => {
                                     <h3 className="mt-4 text-lg font-semibold text-primary">{item.title}</h3>
                                     <p className="mt-2 text-md text-tertiary">{item.body}</p>
                                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#b8d5dc] ring-1 ring-black/10 dark:bg-[#3d668a] dark:ring-white/10">
-                                        <div className="h-full rounded-full bg-[#0b2036] dark:bg-[#72e6f0]" style={{ width: `${item.share}%` }} />
+                                        <div className="h-full rounded-full bg-black dark:bg-[#72e6f0]" style={{ width: `${item.share}%` }} />
                                     </div>
                                 </article>
                             ))}
@@ -159,7 +159,7 @@ export const AboutPage = () => {
                                         <span className="text-tertiary">{item.pct}%</span>
                                     </div>
                                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#b8d5dc] ring-1 ring-black/10 dark:bg-[#3d668a] dark:ring-white/10">
-                                        <div className="h-full rounded-full bg-[#0b2036] dark:bg-[#72e6f0]" style={{ width: `${item.pct}%` }} />
+                                        <div className="h-full rounded-full bg-black dark:bg-[#72e6f0]" style={{ width: `${item.pct}%` }} />
                                     </div>
                                 </li>
                             ))}
@@ -175,9 +175,9 @@ export const AboutPage = () => {
                         </h2>
                         <p className="mt-3 text-lg text-tertiary">{t.aboutGalleryBody}</p>
                     </div>
-                    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="-mx-4 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5 [&::-webkit-scrollbar]:hidden">
                         {clinicPhotos.map((photo) => (
-                            <figure key={photo.src} className="overflow-hidden rounded-2xl ring-1 ring-primary/15">
+                            <figure key={photo.src} className="w-[72%] shrink-0 snap-start overflow-hidden rounded-2xl ring-1 ring-primary/15 sm:w-auto">
                                 <img src={photo.src} alt={t[photo.altKey]} className="aspect-[4/5] size-full object-cover" />
                                 <figcaption className="border-t border-secondary bg-secondary px-3 py-2 text-xs font-medium text-secondary">
                                     {t[photo.altKey]}
@@ -188,7 +188,7 @@ export const AboutPage = () => {
                 </section>
 
                 <section className="px-4 pb-16 md:px-8 md:pb-24">
-                    <div className="careplus-ink mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14 dark:bg-[#173b5d] dark:ring-1 dark:ring-[#3b668c] dark:[background-image:none]">
+                    <div className="mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] bg-black px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14">
                         <div className="max-w-xl">
                             <FeaturedIcon icon={HeartHand} color="gray" theme="dark" size="lg" />
                             <h2 className="mt-4 text-display-xs font-semibold text-white md:text-display-sm">{t.aboutCtaTitle}</h2>
