@@ -8,7 +8,6 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './MedicinePage.css'
 
@@ -50,6 +49,7 @@ export function MedicinePage() {
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const currentRole = getStaffRole(user?.role)
+  const canManage = currentRole === 'Admin' || currentRole === 'Pharmacist'
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -85,7 +85,7 @@ export function MedicinePage() {
 
   useEffect(() => {
     void loadMedicines()
-  }, [])
+  }, [currentRole])
 
   const filteredMedicines = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -252,8 +252,8 @@ export function MedicinePage() {
               <h1>Medicine</h1>
               <p className="medicine-hero__copy">Catalogue used by pharmacy and patient ordering.</p>
             </div>
-            <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medicine</button>
-          </header>
+            {canManage ? <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medicine</button> : null}
+           </section>
 
           <section aria-label="Medicine summary" className="medicine-summary">
             <article className="medicine-summary-card medicine-summary-card--teal"><span><Icon name="box" size={18} /></span><small>Total medicines</small><strong>{medicines.length}</strong><em>Catalogue records</em></article>
@@ -282,7 +282,7 @@ export function MedicinePage() {
                       <td><span className="medicine-details"><strong>{medicine.form || '—'} · {medicine.kind || '—'}</strong><small>{medicine.pack || medicine.method || medicine.description}</small></span></td>
                       <td><strong className="medicine-price">{formatPrice(medicine.price)}</strong></td>
                       <td><span className={`medicine-status medicine-status--${statusClass(status)}`}><i />{status}</span></td>
-                      <td><div className="medicine-actions"><button aria-label={`View ${medicine.medicineName}`} className="medicine-view" type="button" onClick={() => openView(medicine)}><Icon name="eye" size={15} /> View</button><button aria-label={`Edit ${medicine.medicineName}`} className="medicine-edit" type="button" onClick={() => openEdit(medicine)}><Icon name="edit" size={15} /> Edit</button><button aria-label={`View batches for ${medicine.medicineName}`} className="medicine-batches-link" type="button" onClick={() => navigate(`/staff/medicine-batches?medicineId=${encodeURIComponent(medicine.medicineId)}`)}><Icon name="box" size={15} /> Batches</button></div></td>
+                      <td><div className="medicine-actions"><button aria-label={`View ${medicine.medicineName}`} className="medicine-view" type="button" onClick={() => openView(medicine)}><Icon name="eye" size={15} /> View</button>{canManage ? <button aria-label={`Edit ${medicine.medicineName}`} className="medicine-edit" type="button" onClick={() => openEdit(medicine)}><Icon name="edit" size={15} /> Edit</button> : null}<button aria-label={`View batches for ${medicine.medicineName}`} className="medicine-batches-link" type="button" onClick={() => navigate(`/staff/medicine-batches?medicineId=${encodeURIComponent(medicine.medicineId)}`)}><Icon name="box" size={15} /> Batches</button></div></td>
                     </tr>
                   })}</tbody>
                 </table>
@@ -322,7 +322,7 @@ export function MedicinePage() {
           <div><dt>Price</dt><dd>{formatPrice(selectedMedicine.price)}</dd></div>
           <div><dt>Status</dt><dd>{normalizeStatus(selectedMedicine.status)}</dd></div>
         </dl>
-        <div className="medicine-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closeDialog}>Close</button><button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedMedicine)}><Icon name="edit" size={15} /> Edit medicine</button></div>
+        <div className="medicine-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closeDialog}>Close</button>{canManage ? <button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedMedicine)}><Icon name="edit" size={15} /> Edit medicine</button> : null}</div>
       </StaffDialog> : null}
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}
     </div>

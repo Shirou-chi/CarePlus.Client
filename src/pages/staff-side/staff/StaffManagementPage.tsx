@@ -8,7 +8,6 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset } from '../components/StaffListControls'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './StaffManagementPage.css'
 
@@ -270,7 +269,7 @@ export function StaffManagementPage() {
               <p className="staff-management-hero__copy">Create accounts, update roles, and manage access status.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add staff</button>
-          </header>
+           </section>
 
           <section aria-label="Staff summary" className="staff-management-summary">
             <article className="staff-management-summary-card staff-management-summary-card--teal"><span><Icon name="staff" size={18} /></span><small>Total staff</small><strong>{staff.length}</strong><em>All clinic accounts</em></article>

@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '@/providers/auth-provider'
 import { medicalRecordApi, type MedicalRecord } from '@/services/medicalRecordApi'
 import { patientApi, type PatientRecord } from '@/services/patientApi'
+import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { StaffDialog } from '../components/StaffDialog'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { StaffSidebar, getStaffRole } from '../navbar/StaffSidebar'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './MedicalRecordsPage.css'
 
@@ -48,6 +48,7 @@ export function MedicalRecordsPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [records, setRecords] = useState<MedicalRecord[]>([])
   const [patients, setPatients] = useState<PatientRecord[]>([])
+  const [doctors, setDoctors] = useState<StaffRecord[]>([])
   const [query, setQuery] = useState('')
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null)
   const [dialogMode, setDialogMode] = useState<DialogMode>(null)
@@ -67,15 +68,19 @@ export function MedicalRecordsPage() {
     setError('')
 
     try {
-      const [recordResult, patientResult] = await Promise.allSettled([
+      const [recordResult, patientResult, staffResult] = await Promise.allSettled([
         medicalRecordApi.retrieve(),
         patientApi.retrieveAll(),
+        currentRole === 'Admin' ? staffApi.retrieveAll() : Promise.resolve([] as StaffRecord[]),
       ])
 
       if (recordResult.status === 'rejected') throw recordResult.reason
 
       setRecords(recordResult.value)
       setPatients(patientResult.status === 'fulfilled' ? patientResult.value : [])
+      setDoctors(staffResult.status === 'fulfilled'
+        ? staffResult.value.filter((member) => member.role === 'Doctor' && member.status === 'Active')
+        : [])
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to load medical records.')
     } finally {
@@ -132,6 +137,7 @@ export function MedicalRecordsPage() {
     event.preventDefault()
     const values = new FormData(event.currentTarget)
     const patientId = String(values.get('patientId') ?? '').trim()
+    const doctorId = String(values.get('doctorId') ?? '').trim()
     const consultationDate = String(values.get('consultationDate') ?? '').trim()
     const diagnosis = String(values.get('diagnosis') ?? '').trim()
     const notes = String(values.get('notes') ?? '').trim()
@@ -149,7 +155,13 @@ export function MedicalRecordsPage() {
         })
         announce('Medical record updated.')
       } else {
-        await medicalRecordApi.create({ patientId, consultationDate, diagnosis, notes })
+        await medicalRecordApi.create({
+          patientId,
+          doctorId: currentRole === 'Admin' ? doctorId : undefined,
+          consultationDate,
+          diagnosis,
+          notes,
+        })
         announce('Medical record created.')
       }
 
@@ -177,7 +189,7 @@ export function MedicalRecordsPage() {
               <p>Document diagnoses and clinical notes for the patients you have seen.</p>
             </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medical record</button>
-          </header>
+           </section>
 
           <section aria-label="Medical record summary" className="medical-records-summary">
             <article className="medical-records-summary-card medical-records-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Total records</small><strong>{records.length}</strong><em>Assigned to you</em></article>
@@ -207,7 +219,7 @@ export function MedicalRecordsPage() {
 
       {dialogMode === 'view' && selectedRecord ? <StaffDialog className="medical-record-dialog" closeOnBackdropClick={false} eyebrow="Medical record" onClose={closeDialog} title="Record details" titleId="medical-record-details-title"><div className="medical-record-detail-card"><span className="medical-record-detail-card__avatar">{initials(selectedRecord.patientName)}</span><div><strong>{selectedRecord.patientName}</strong><small>@{selectedRecord.patientUsername || selectedRecord.patientId}</small></div></div><dl className="staff-detail-grid medical-record-detail-grid"><div><dt>Record ID</dt><dd>{selectedRecord.medicalRecordId}</dd></div><div><dt>Consultation</dt><dd>{formatDateTime(selectedRecord.consultationDate)}</dd></div><div className="staff-detail-grid__wide"><dt>Diagnosis</dt><dd>{selectedRecord.diagnosis}</dd></div><div className="staff-detail-grid__wide"><dt>Clinical notes</dt><dd>{selectedRecord.notes || '-'}</dd></div></dl><div className="medical-record-dialog__actions"><button className="staff-button staff-button--secondary" type="button" onClick={closeDialog}>Close</button><button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedRecord)}><Icon name="edit" size={15} /> Edit record</button></div></StaffDialog> : null}
 
-      {dialogMode === 'create' || dialogMode === 'edit' ? <StaffDialog className="medical-record-dialog" closeOnBackdropClick={false} eyebrow="Medical record management" onClose={closeDialog} title={dialogMode === 'edit' ? 'Edit medical record' : 'Add medical record'} titleId="medical-record-form-title"><form className="medical-record-form" onSubmit={submitRecord}><label>Patient{dialogMode === 'edit' ? <input value={selectedRecord?.patientName ?? ''} readOnly /> : <select autoFocus defaultValue="" name="patientId" required><option disabled value="">Choose a patient</option>{patients.map((patient) => <option key={patient.patientId} value={patient.patientId}>{patientLabel(patient)}</option>)}</select>}</label><label>Consultation date and time<input defaultValue={dialogMode === 'edit' && selectedRecord ? localDateTimeValue(new Date(selectedRecord.consultationDate)) : localDateTimeValue()} max={localDateTimeValue()} name="consultationDate" required type="datetime-local" /></label><label>Diagnosis<textarea defaultValue={selectedRecord?.diagnosis ?? ''} maxLength={500} name="diagnosis" placeholder="Enter the consultation diagnosis" required rows={3} /></label><label>Clinical notes <span>(optional)</span><textarea defaultValue={selectedRecord?.notes ?? ''} maxLength={2000} name="notes" placeholder="Add treatment notes, observations, or follow-up details" rows={4} /></label>{formError ? <div className="medical-record-form-error" role="alert">{formError}</div> : null}<div className="medical-record-dialog__actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={closeDialog}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving} type="submit">{saving ? 'Saving…' : dialogMode === 'edit' ? 'Save changes' : 'Create record'}</button></div></form></StaffDialog> : null}
+      {dialogMode === 'create' || dialogMode === 'edit' ? <StaffDialog className="medical-record-dialog" closeOnBackdropClick={false} eyebrow="Medical record management" onClose={closeDialog} title={dialogMode === 'edit' ? 'Edit medical record' : 'Add medical record'} titleId="medical-record-form-title"><form className="medical-record-form" onSubmit={submitRecord}><label>Patient{dialogMode === 'edit' ? <input value={selectedRecord?.patientName ?? ''} readOnly /> : <select autoFocus defaultValue="" name="patientId" required><option disabled value="">Choose a patient</option>{patients.map((patient) => <option key={patient.patientId} value={patient.patientId}>{patientLabel(patient)}</option>)}</select>}</label>{dialogMode === 'create' && currentRole === 'Admin' ? <label>Doctor<select defaultValue="" name="doctorId" required><option disabled value="">Choose a doctor</option>{doctors.map((doctor) => <option key={doctor.staffId} value={doctor.staffId}>{doctor.name} · {doctor.staffId}</option>)}</select></label> : null}<label>Consultation date and time<input defaultValue={dialogMode === 'edit' && selectedRecord ? localDateTimeValue(new Date(selectedRecord.consultationDate)) : localDateTimeValue()} max={localDateTimeValue()} name="consultationDate" required type="datetime-local" /></label><label>Diagnosis<textarea defaultValue={selectedRecord?.diagnosis ?? ''} maxLength={500} name="diagnosis" placeholder="Enter the consultation diagnosis" required rows={3} /></label><label>Clinical notes <span>(optional)</span><textarea defaultValue={selectedRecord?.notes ?? ''} maxLength={2000} name="notes" placeholder="Add treatment notes, observations, or follow-up details" rows={4} /></label>{formError ? <div className="medical-record-form-error" role="alert">{formError}</div> : null}<div className="medical-record-dialog__actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={closeDialog}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving} type="submit">{saving ? 'Saving…' : dialogMode === 'edit' ? 'Save changes' : 'Create record'}</button></div></form></StaffDialog> : null}
 
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}
     </div>

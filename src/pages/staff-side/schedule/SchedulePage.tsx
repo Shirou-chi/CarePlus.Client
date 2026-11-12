@@ -11,7 +11,6 @@ import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
 import { StaffListReset } from '../components/StaffListControls'
 import { StaffWeekFilter } from '../components/StaffWeekFilter'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './SchedulePage.css'
 
@@ -307,7 +306,7 @@ export function SchedulePage() {
 
   useEffect(() => {
     void loadScheduleData()
-  }, [])
+  }, [currentRole])
 
   useEffect(() => {
     setRoomSelection(selectedBlock?.roomId ?? '')
@@ -675,7 +674,7 @@ export function SchedulePage() {
               <p className="schedule-hero__copy">Coordinate staff availability, consultation hours, and room coverage.</p>
             </div>
             {currentRole === 'Admin' ? <button className="staff-button staff-button--primary schedule-add-button" type="button" onClick={openAvailabilityDialog}><Icon name="plus" size={17} /> Add availability</button> : null}
-          </header>
+           </section>
 
           <section aria-label="Schedule summary" className="schedule-summary">
             <article className="schedule-summary-card schedule-summary-card--teal"><span><Icon name="users" size={18} /></span><small>Scheduled providers</small><strong>{scheduledProviderCount}</strong><em>From backend records</em></article>
@@ -758,6 +757,13 @@ export function SchedulePage() {
           titleId="new-availability-title"
         >
           {dialogError ? <p className="schedule-dialog-alert" role="alert">{dialogError}</p> : null}
+          {Object.entries(staffErrors).length ? (
+            <ul className="schedule-dialog-staff-errors" role="alert">
+              {Object.entries(staffErrors).map(([staffId, message]) => (
+                <li key={staffId}>{staff.find((member) => member.staffId === staffId)?.name || staffId}: {message}</li>
+              ))}
+            </ul>
+          ) : null}
           <form onSubmit={submitAvailability}>
             <label>Staff role<select required value={form.role} onChange={(event) => selectScheduleRole(event.target.value as SchedulableRole | '')} disabled={saving}>
               <option value="">Choose Doctor or Pharmacist</option>

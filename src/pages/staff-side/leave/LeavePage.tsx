@@ -9,7 +9,6 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
 import { StaffListReset } from '../components/StaffListControls'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './LeavePage.css'
 
@@ -357,7 +356,7 @@ export function LeavePage() {
               <p className="leave-hero__copy">{isAdmin ? 'Review requests and keep team coverage clear.' : 'Submit time-away requests and track upcoming leave.'}</p>
             </div>
             {!isAdmin ? <button className="staff-button staff-button--primary leave-request-button" type="button" onClick={openRequestDialog}><Icon name="plus" size={17} />Request leave</button> : null}
-          </header>
+           </section>
 
           <section aria-label="Leave summary" className="leave-summary">
             <div className="leave-summary-card leave-summary-card--teal"><span><Icon name="calendar" size={17} /></span><small>Total requests</small><strong>{summary.total}</strong><em>All statuses</em></div>

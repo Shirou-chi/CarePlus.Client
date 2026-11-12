@@ -9,7 +9,6 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
-import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { getBatchStatus, LOW_STOCK_THRESHOLD } from './batch-status'
 import '../StaffHomePage.css'
 import './MedicineBatchPage.css'
@@ -104,6 +103,7 @@ export function MedicineBatchPage() {
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const currentRole = getStaffRole(user?.role)
+  const canManage = currentRole === 'Admin' || currentRole === 'Pharmacist'
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -146,7 +146,7 @@ export function MedicineBatchPage() {
 
   useEffect(() => {
     void loadData()
-  }, [])
+  }, [currentRole])
 
   const filteredBatches = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
@@ -266,8 +266,8 @@ export function MedicineBatchPage() {
               <h1>{medicineIdFilter ? `${medicines.find((medicine) => medicine.medicineId === medicineIdFilter)?.medicineName || 'Medicine'} batches` : 'Medicine batches'}</h1>
               <p className="medicine-batch-hero__copy">Stock quantities and expiry dates by delivery.</p>
             </div>
-            <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add batch</button>
-          </header>
+            {canManage ? <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add batch</button> : null}
+           </section>
 
           <section aria-label="Medicine batch summary" className="medicine-batch-summary">
             <article className="medicine-batch-summary-card medicine-batch-summary-card--teal"><span><Icon name="box" size={18} /></span><small>Total batches</small><strong>{batches.length}</strong><em>All stock lots</em></article>
@@ -300,7 +300,7 @@ export function MedicineBatchPage() {
                       <td><strong className="medicine-batch-stock">{batch.stockQuantity}</strong><small>units</small></td>
                       <td>{formatDate(batch.expiryDate)}</td>
                       <td><span className={`medicine-batch-status medicine-batch-status--${statusClass(status)}`}><i />{status}</span></td>
-                      <td><div className="medicine-batch-actions"><button className="medicine-batch-view" type="button" onClick={() => openView(batch)}><Icon name="eye" size={15} /> View</button><button className="medicine-batch-edit" type="button" onClick={() => openEdit(batch)}><Icon name="edit" size={15} /> Edit</button></div></td>
+                      <td><div className="medicine-batch-actions"><button className="medicine-batch-view" type="button" onClick={() => openView(batch)}><Icon name="eye" size={15} /> View</button>{canManage ? <button className="medicine-batch-edit" type="button" onClick={() => openEdit(batch)}><Icon name="edit" size={15} /> Edit</button> : null}</div></td>
                     </tr>
                   })}</tbody>
                 </table>
@@ -324,7 +324,7 @@ export function MedicineBatchPage() {
       {dialogMode === 'view' && selectedBatch ? <StaffDialog className="medicine-batch-dialog medicine-batch-view-dialog" closeLabel="Close medicine batch details" closeOnBackdropClick={false} eyebrow="Medicine batch details" onClose={closeDialog} title={selectedBatch.batchId} titleId="medicine-batch-view-title">
         <div className="medicine-batch-view-heading"><span className="medicine-batch-avatar"><Icon name="box" size={18} /></span><span><strong>{selectedBatch.medicineName}</strong><small>{selectedBatch.medicineId}</small></span></div>
         <dl className="staff-detail-grid"><div><dt>Batch ID</dt><dd>{selectedBatch.batchId}</dd></div><div><dt>Medicine</dt><dd>{selectedBatch.medicineName}</dd></div><div><dt>Medicine ID</dt><dd>{selectedBatch.medicineId}</dd></div><div><dt>Stock quantity</dt><dd>{selectedBatch.stockQuantity} units</dd></div><div><dt>Expiry date</dt><dd>{formatDate(selectedBatch.expiryDate)}</dd></div><div><dt>Status</dt><dd>{getBatchStatus(selectedBatch)}</dd></div></dl>
-        <div className="medicine-batch-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closeDialog}>Close</button><button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedBatch)}><Icon name="edit" size={15} /> Edit batch</button></div>
+        <div className="medicine-batch-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closeDialog}>Close</button>{canManage ? <button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedBatch)}><Icon name="edit" size={15} /> Edit batch</button> : null}</div>
       </StaffDialog> : null}
 
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}

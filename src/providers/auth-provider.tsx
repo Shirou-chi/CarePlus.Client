@@ -78,15 +78,6 @@ function readStoredSession(): StoredSession | null {
             }
         }
 
-        const oldStaffSession = localStorage.getItem(OLD_STAFF_SESSION_KEY);
-        if (oldStaffSession) {
-            const user = JSON.parse(oldStaffSession) as AuthUser;
-            if (user.name) {
-                const migratedSession: StoredSession = { type: "staff", user };
-                saveSession(migratedSession);
-                return migratedSession;
-            }
-        }
     } catch {
         return null;
     }

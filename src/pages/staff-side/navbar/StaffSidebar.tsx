@@ -14,6 +14,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { label: 'Overview', icon: 'grid', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Appointments', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
+      { label: 'Queue', icon: 'clock', roles: ['Admin', 'Doctor'] },
       { label: 'Patients', icon: 'users', roles: ['Admin'] },
     ],
   },
@@ -24,9 +25,10 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Schedules & availability', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Leave', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Clinic rooms', icon: 'activity', roles: ['Admin'] },
-      { label: 'Medicine', icon: 'box', roles: ['Pharmacist'] },
-      { label: 'Medicine batches', icon: 'box', roles: ['Pharmacist'] },
-      { label: 'Medical records', icon: 'shield', roles: ['Doctor'] },
+      { label: 'Medicine', icon: 'box', roles: ['Admin', 'Pharmacist'] },
+      { label: 'Medicine batches', icon: 'box', roles: ['Admin', 'Pharmacist'] },
+      { label: 'Prescriptions', icon: 'check', roles: ['Admin', 'Doctor', 'Pharmacist'] },
+      { label: 'Medical records', icon: 'shield', roles: ['Admin', 'Doctor'] },
     ],
   },
   {
