@@ -2,30 +2,6 @@
   padding-top: 34px;
 }
 
-.staff-management-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 26px;
-  margin-bottom: 26px;
-}
-
-.staff-management-hero h1 {
-  margin: 0;
-  color: var(--staff-ink);
-  font-family: var(--site-font-display);
-  font-size: clamp(2rem, 3.5vw, 3rem);
-  letter-spacing: -0.055em;
-  line-height: 1;
-}
-
-.staff-management-hero__copy {
-  max-width: 620px;
-  margin: 11px 0 0;
-  color: var(--staff-muted);
-  font-size: 0.94rem;
-}
-
 .staff-management-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -475,11 +451,6 @@
 }
 
 @media (max-width: 760px) {
-  .staff-management-hero {
-    display: grid;
-    gap: 18px;
-  }
-
   .staff-management-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -7,6 +7,7 @@ import { StaffDialog } from '../components/StaffDialog'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { StaffSidebar, getStaffRole } from '../navbar/StaffSidebar'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './MedicalRecordsPage.css'
 
@@ -169,14 +170,10 @@ export function MedicalRecordsPage() {
         <StaffNavbar activeNav="Medical records" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setQuery} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={query} selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
 
         <div className="staff-content medical-records-content">
-          <section className="medical-records-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Clinical records</p>
-              <h1>Keep every consultation clear.</h1>
-              <p>Document diagnoses and clinical notes for the patients you have seen.</p>
-            </div>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Medical records" />
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medical record</button>
-          </section>
+          </header>
 
           <section aria-label="Medical record summary" className="medical-records-summary">
             <article className="medical-records-summary-card medical-records-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Total records</small><strong>{records.length}</strong><em>Assigned to you</em></article>

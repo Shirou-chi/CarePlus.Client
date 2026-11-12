@@ -1,27 +1,3 @@
-.medical-records-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 28px;
-  margin-bottom: 24px;
-}
-
-.medical-records-hero h1 {
-  margin: 0;
-  color: var(--staff-ink);
-  font-family: var(--site-font-display);
-  font-size: clamp(2rem, 4vw, 3.25rem);
-  font-weight: 400;
-  letter-spacing: -0.055em;
-}
-
-.medical-records-hero p:last-child {
-  max-width: 640px;
-  margin: 10px 0 0;
-  color: var(--staff-muted);
-  font-size: 0.82rem;
-}
-
 .medical-records-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -149,7 +125,6 @@
 .medical-record-form-error { padding: 10px 12px; border: 1px solid rgba(225, 91, 91, 0.45); border-radius: 8px; background: rgba(225, 91, 91, 0.08); color: #e88a8a; font-size: 0.72rem; }
 
 @media (max-width: 760px) {
-  .medical-records-hero { align-items: flex-start; flex-direction: column; }
   .medical-records-summary { grid-template-columns: 1fr; }
   .medical-records-toolbar { align-items: stretch; flex-direction: column; }
   .medical-records-search { width: 100%; }

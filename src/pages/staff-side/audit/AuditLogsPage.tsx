@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '@/providers/auth-provider'
-import { auditLogApi, type AuditLogRecord } from '@/services/auditLogApi'
+import { auditLogApi, createAuditLogCsv, type AuditLogRecord } from '@/services/auditLogApi'
+import { profileInitials } from '@/utils/profile-settings'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon, type IconName } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './AuditLogsPage.css'
 
 type AuditAction = 'Created' | 'Updated' | 'Deleted'
 type AuditEntry = {
+  log: AuditLogRecord
   id: string
   dateGroup: string
   dateTime: string
   time: string
   actor: string
   initials: string
+  username: string
   role: string
   action: AuditAction
   resource: string
@@ -36,19 +40,25 @@ function toAuditEntry(log: AuditLogRecord): AuditEntry {
   const now = new Date()
   const dayDifference = Math.floor((startOfDay(now).getTime() - startOfDay(date).getTime()) / 86_400_000)
   const action = log.action === 'Create' ? 'Created' : log.action === 'Delete' ? 'Deleted' : 'Updated'
-  const actor = log.userId === 'SYSTEM' ? 'System' : `User ${log.userId}`
-  const initials = log.userId === 'SYSTEM' ? 'SY' : `U${log.userId}`.slice(0, 2).toUpperCase()
+  const isSystem = log.userId === 'SYSTEM'
+  const name = log.actorName?.trim() ?? ''
+  const username = log.actorUsername?.trim() ?? ''
+  const actor = isSystem ? 'System' : name || username || `User ${log.userId}`
+  const initials = isSystem ? 'SY' : profileInitials(name || username) || 'U'
+  const role = isSystem ? 'System process' : log.actorRole?.trim() || (name || username ? 'User account' : 'Account details unavailable')
   const tone = action === 'Deleted' ? 'red' : action === 'Updated' ? 'blue' : 'teal'
   const icon = action === 'Deleted' ? 'close' : action === 'Updated' ? 'activity' : 'check'
 
   return {
+    log,
     id: log.logId,
     dateGroup: dayDifference === 0 ? 'Today' : dayDifference === 1 ? 'Yesterday' : dayDifference < 7 ? 'This week' : date.toLocaleDateString(),
     dateTime: log.dateTime,
     time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     actor,
     initials,
-    role: log.userId === 'SYSTEM' ? 'System process' : 'User ID',
+    username,
+    role,
     action,
     resource: log.module,
     detail: `${action} operation on ${log.module} (${log.affectedRecord}).`,
@@ -112,7 +122,8 @@ export function AuditLogsPage() {
   const filteredEntries = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
     const rows = auditEntries.filter((entry) => {
-      const matchesQuery = !query || `${entry.actor} ${entry.role} ${entry.action} ${entry.resource} ${entry.detail} ${entry.id}`.toLowerCase().includes(query)
+      const searchText = [entry.actor, entry.username && `@${entry.username}`, entry.role, entry.log.userId, entry.action, entry.resource, entry.detail, entry.id].join(' ')
+      const matchesQuery = !query || searchText.toLowerCase().includes(query)
       const matchesAction = actionFilter === 'All actions' || entry.action === actionFilter
       const entryDateKey = toDateKey(new Date(entry.dateTime))
       const matchesDate = !dateRange.start || (entryDateKey >= dateRange.start && entryDateKey <= (dateRange.end ?? dateRange.start))
@@ -141,15 +152,24 @@ export function AuditLogsPage() {
     announce('Audit filters cleared.')
   }
 
-  const exportAuditLogs = async () => {
+  const canExport = !isLoading && !loadError && filteredEntries.length > 0
+
+  const exportAuditLogs = () => {
+    if (!canExport) return
+
     try {
-      const blob = await auditLogApi.exportCsv()
-      const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
+      const blob = createAuditLogCsv(filteredEntries.map((entry) => entry.log))
+      const url = URL.createObjectURL(blob)
       link.href = url
       link.download = 'audit-log.csv'
-      link.click()
-      URL.revokeObjectURL(url)
+      try {
+        document.body.append(link)
+        link.click()
+      } finally {
+        link.remove()
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      }
       announce('Audit log downloaded.')
     } catch (error) {
       announce(error instanceof Error ? error.message : 'Unable to export audit logs.')
@@ -179,14 +199,10 @@ export function AuditLogsPage() {
         />
 
         <div className="staff-content audit-content">
-          <section className="audit-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Governance</p>
-              <h1>Trace every change with confidence.</h1>
-              <p className="audit-hero__copy">Review who changed what, when it happened, and where the action came from.</p>
-            </div>
-            <button className="staff-button staff-button--secondary audit-export-button" type="button" onClick={() => void exportAuditLogs()}><Icon name="download" size={16} /> Export audit log</button>
-          </section>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Audit logs" />
+            <button className="staff-button staff-button--secondary audit-export-button" disabled={!canExport} type="button" onClick={exportAuditLogs}><Icon name="download" size={16} /> Export audit log</button>
+          </header>
 
           <section aria-label="Audit summary" className="audit-summary">
             <article className="audit-summary-card audit-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Loaded events</small><strong>{auditEntries.length}</strong><em>Latest records from the API</em></article>
@@ -217,7 +233,15 @@ export function AuditLogsPage() {
                   {!isLoading && !loadError ? filteredEntries.map((entry) => (
                     <tr key={entry.id}>
                       <td><span className={`audit-entry-icon audit-entry-icon--${entry.tone}`}><Icon name={entry.icon} size={17} /></span><span><strong>{entry.resource}</strong><small>{entry.id}</small></span></td>
-                      <td><span className="audit-actor"><span className={`audit-actor__avatar audit-actor__avatar--${entry.tone}`}>{entry.initials}</span><span><strong>{entry.actor}</strong><small>{entry.role}</small></span></span></td>
+                      <td>
+                        <span className="audit-actor">
+                          <span aria-hidden="true" className={`audit-actor__avatar audit-actor__avatar--${entry.tone}`}>{entry.initials}</span>
+                          <span>
+                            <strong>{entry.actor}</strong>
+                            <small>{entry.username ? `@${entry.username} · ` : ''}{entry.role}</small>
+                          </span>
+                        </span>
+                      </td>
                       <td><span className={`audit-action audit-action--${entry.action.toLowerCase()}`}>{entry.action}</span></td>
                       <td><span className="audit-time"><strong>{entry.time}</strong><small>{entry.dateGroup}</small></span></td>
                       <td><button aria-label={`View details for ${entry.resource}`} className="audit-row-action" type="button" onClick={() => setSelectedEntry(entry)}><Icon name="chevronRight" size={17} /></button></td>
@@ -232,7 +256,32 @@ export function AuditLogsPage() {
         </div>
       </main>
 
-      {selectedEntry ? <div className="audit-detail-backdrop" role="presentation" onClick={() => setSelectedEntry(null)}><aside aria-labelledby="audit-detail-title" aria-modal="true" className="audit-detail-drawer" role="dialog" onClick={(event) => event.stopPropagation()}><div className="audit-detail-drawer__header"><div><p className="staff-card__eyebrow">Audit event</p><h2 id="audit-detail-title">Event details</h2></div><button aria-label="Close event details" type="button" onClick={() => setSelectedEntry(null)}><Icon name="close" size={19} /></button></div><div className="audit-detail-drawer__event"><span className={`audit-entry-icon audit-entry-icon--${selectedEntry.tone}`}><Icon name={selectedEntry.icon} size={20} /></span><div><strong>{selectedEntry.action} · {selectedEntry.resource}</strong><small>{selectedEntry.id}</small></div></div><dl className="audit-detail-list"><div><dt>Actor</dt><dd>{selectedEntry.actor}<small>{selectedEntry.role}</small></dd></div><div><dt>Date & time</dt><dd>{selectedEntry.dateGroup}, {selectedEntry.time}</dd></div><div><dt>Details</dt><dd>{selectedEntry.detail}</dd></div><div><dt>Source IP</dt><dd>{selectedEntry.ip}</dd></div></dl><button className="staff-button staff-button--secondary audit-detail-drawer__close" type="button" onClick={() => setSelectedEntry(null)}>Close details</button></aside></div> : null}
+      {selectedEntry ? (
+        <div className="audit-detail-backdrop" role="presentation" onClick={() => setSelectedEntry(null)}>
+          <aside aria-labelledby="audit-detail-title" aria-modal="true" className="audit-detail-drawer" role="dialog" onClick={(event) => event.stopPropagation()}>
+            <div className="audit-detail-drawer__header">
+              <div>
+                <p className="staff-card__eyebrow">Audit event</p>
+                <h2 id="audit-detail-title">Event details</h2>
+              </div>
+              <button aria-label="Close event details" type="button" onClick={() => setSelectedEntry(null)}><Icon name="close" size={19} /></button>
+            </div>
+            <div className="audit-detail-drawer__event">
+              <span className={`audit-entry-icon audit-entry-icon--${selectedEntry.tone}`}><Icon name={selectedEntry.icon} size={20} /></span>
+              <div><strong>{selectedEntry.action} · {selectedEntry.resource}</strong><small>{selectedEntry.id}</small></div>
+            </div>
+            <dl className="audit-detail-list">
+              <div><dt>Actor</dt><dd>{selectedEntry.actor}<small>{selectedEntry.role}</small></dd></div>
+              {selectedEntry.username ? <div><dt>Username</dt><dd>@{selectedEntry.username}</dd></div> : null}
+              {selectedEntry.log.userId !== 'SYSTEM' ? <div><dt>User ID</dt><dd>{selectedEntry.log.userId}</dd></div> : null}
+              <div><dt>Date & time</dt><dd>{selectedEntry.dateGroup}, {selectedEntry.time}</dd></div>
+              <div><dt>Details</dt><dd>{selectedEntry.detail}</dd></div>
+              <div><dt>Source IP</dt><dd>{selectedEntry.ip}</dd></div>
+            </dl>
+            <button className="staff-button staff-button--secondary audit-detail-drawer__close" type="button" onClick={() => setSelectedEntry(null)}>Close details</button>
+          </aside>
+        </div>
+      ) : null}
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}
     </div>
   )

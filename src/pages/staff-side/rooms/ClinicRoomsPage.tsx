@@ -6,6 +6,7 @@ import { StaffDialog } from '../components/StaffDialog'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './ClinicRoomsPage.css'
 
@@ -117,14 +118,10 @@ export function ClinicRoomsPage() {
         <StaffNavbar activeNav="Clinic rooms" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={() => undefined} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm="" selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
 
         <div className="staff-content clinic-rooms-content">
-          <section className="clinic-rooms-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Clinical operations</p>
-              <h1>Keep every room ready.</h1>
-              <p className="clinic-rooms-hero__copy">Manage consultation spaces and keep the clinic team aware of room availability.</p>
-            </div>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Clinic room management" />
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add room</button>
-          </section>
+          </header>
 
           <section aria-label="Room summary" className="clinic-rooms-summary">
             <article className="clinic-room-summary-card clinic-room-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Total rooms</small><strong>{counts.total}</strong><em>Clinic spaces</em></article>

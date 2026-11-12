@@ -1,7 +1,8 @@
+import { useId } from 'react'
 import type { Theme } from '../../../components/theme/useTheme'
 import { useAuth } from '@/providers/auth-provider'
 import { useNotices } from '@/providers/notification-provider'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { StaffAccountMenu } from '../components/StaffAccountMenu'
 import type { StaffRole } from './StaffSidebar'
 import { Icon } from './StaffIcon'
@@ -31,6 +32,7 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
   const navigate = useNavigate()
   const { user } = useAuth()
   const { unread, loading: notificationsLoading, error: notificationsError, markRead, markAllRead } = useNotices()
+  const notificationsId = useId()
   const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
   return (
@@ -42,22 +44,69 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
       </div>
       <div className="staff-topbar__actions">
         <div className="staff-notification-wrap">
-          <button aria-expanded={notificationsOpen} aria-label="Open notifications" className="staff-icon-button" type="button" onClick={onToggleNotifications}>
+          <button
+            aria-controls={notificationsOpen ? notificationsId : undefined}
+            aria-expanded={notificationsOpen}
+            aria-label="Notifications"
+            className="staff-icon-button"
+            type="button"
+            onClick={onToggleNotifications}
+          >
             <Icon name="bell" size={20} />
-            <span className="staff-notification-dot" />
+            {unread.length > 0 ? <span aria-hidden="true" className="staff-notification-dot" /> : null}
           </button>
           {notificationsOpen ? (
-            <div className="staff-notifications" role="status">
-              <div className="staff-notifications__header"><strong>Notifications</strong><button type="button" onClick={() => void markAllRead()} disabled={!unread.length || notificationsLoading}>Mark all read</button></div>
-              {notificationsError ? <div className="staff-notification-empty">Unable to load notifications.</div> : null}
-              {notificationsLoading ? <div className="staff-notification-empty">Loading notifications…</div> : null}
-              {!notificationsLoading && !notificationsError && !unread.length ? <div className="staff-notification-empty">No unread notifications.</div> : null}
-              {!notificationsLoading ? unread.slice(0, 3).map((item) => {
-                const tone = item.kind === 'medicine' ? 'amber' : 'teal'
-                return <button className="staff-notification" key={item.id} type="button" onClick={() => { markRead(item.id); navigate(item.href || '/staff/notifications'); onToggleNotifications() }}><span className={`staff-notification__bullet staff-notification__bullet--${tone}`} /><span><strong>{item.title}</strong><small>{item.message}</small></span><time>{notificationAge(item.createdAt)}</time></button>
-              }) : null}
-              <button className="staff-notifications__view-all" type="button" onClick={() => { navigate('/staff/notifications'); onToggleNotifications() }}>View all notifications</button>
-            </div>
+            <section aria-labelledby={`${notificationsId}-title`} className="staff-notifications" id={notificationsId}>
+              <div className="staff-notifications__header">
+                <h2 id={`${notificationsId}-title`}>Notifications</h2>
+                {unread.length > 0 ? (
+                  <button
+                    className="staff-notifications__mark-read"
+                    disabled={notificationsLoading}
+                    type="button"
+                    onClick={markAllRead}
+                  >
+                    <Icon name="check" size={14} />
+                    Mark all as read
+                  </button>
+                ) : null}
+              </div>
+              <div className="staff-notifications__body">
+                {notificationsError ? <p className="staff-notifications__status" role="alert">Unable to load notifications.</p> : null}
+                {notificationsLoading ? <p className="staff-notifications__status" role="status">Loading notifications…</p> : null}
+                {!notificationsLoading && !notificationsError && !unread.length ? (
+                  <div className="staff-notification-empty" role="status">
+                    <span className="staff-notification-empty__icon"><Icon name="check" size={20} /></span>
+                    <p>No unread notifications</p>
+                  </div>
+                ) : null}
+                {!notificationsLoading ? unread.slice(0, 3).map((item) => (
+                  <button
+                    className="staff-notification"
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      markRead(item.id)
+                      navigate(item.href || '/staff/notifications')
+                      onToggleNotifications()
+                    }}
+                  >
+                    <span aria-hidden="true" className={`staff-notification__bullet staff-notification__bullet--${item.kind === 'medicine' ? 'amber' : 'teal'}`} />
+                    <span className="staff-notification__text">
+                      <strong>{item.title}</strong>
+                      <small>{item.message}</small>
+                    </span>
+                    <time dateTime={item.createdAt}>{notificationAge(item.createdAt)}</time>
+                  </button>
+                )) : null}
+              </div>
+              <div className="staff-notifications__footer">
+                <Link className="staff-notifications__view-all" to="/staff/notifications" onClick={onToggleNotifications}>
+                  View all notifications
+                  <Icon name="chevronRight" size={16} />
+                </Link>
+              </div>
+            </section>
           ) : null}
         </div>
         <button aria-checked={theme === 'dark'} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} className={`staff-theme-toggle staff-theme-toggle--topbar${theme === 'dark' ? ' is-dark' : ''}`} role="switch" title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} type="button" onClick={toggleTheme}>

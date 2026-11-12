@@ -1,10 +1,13 @@
-import { formatApiErrorDetails, request, TOKEN_KEY, baseUrl, type ApiResponse } from './api'
+import { formatApiErrorDetails, request, type ApiResponse } from './api'
 
 export type AuditAction = 'Create' | 'Update' | 'Delete'
 
 export type AuditLogRecord = {
   logId: string
   userId: string
+  actorName?: string | null
+  actorUsername?: string | null
+  actorRole?: string | null
   action: AuditAction | string
   module: string
   affectedRecord: string
@@ -40,17 +43,19 @@ export const auditLogApi = {
 
     return unwrap(result, 'Unable to load audit-log details.')
   },
+}
 
-  async exportCsv(): Promise<Blob> {
-    const token = localStorage.getItem(TOKEN_KEY)
-    const response = await fetch(`${baseUrl}/api/AuditLog/Export`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    })
+function escapeCsvField(value: string): string {
+  // Keep formula-like values as text when the CSV is opened in a spreadsheet.
+  const text = /^(?:[\t\r\n]|\s*[=+\-@])/.test(value) ? "'" + value : value
+  return '"' + text.replace(/"/g, '""') + '"'
+}
 
-    if (!response.ok) {
-      throw new Error(`Unable to export audit logs (status ${response.status}).`)
-    }
+export function createAuditLogCsv(records: readonly AuditLogRecord[]): Blob {
+  const header = 'LogId,UserId,Action,Module,AffectedRecord,DateTime'
+  const rows = records.map(({ logId, userId, action, module, affectedRecord, dateTime }) =>
+    [logId, userId, action, module, affectedRecord, dateTime].map(escapeCsvField).join(','),
+  )
 
-    return response.blob()
-  },
+  return new Blob([[header, ...rows].join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' })
 }

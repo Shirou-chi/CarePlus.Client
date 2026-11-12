@@ -9,6 +9,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
 import { StaffListReset } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './LeavePage.css'
 
@@ -172,6 +173,7 @@ export function LeavePage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [calendarCursor, setCalendarCursor] = useState(() => new Date())
   const [form, setForm] = useState<LeaveForm>(emptyForm(user?.staffId))
+  const [requestDateRange, setRequestDateRange] = useState<StaffDateRange>({ start: todayInput(), end: null })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [actionBusy, setActionBusy] = useState(false)
@@ -255,7 +257,9 @@ export function LeavePage() {
   }
 
   const openRequestDialog = () => {
-    setForm(emptyForm(isAdmin ? staff[0]?.staffId ?? '' : user?.staffId ?? ''))
+    const nextForm = emptyForm(isAdmin ? staff[0]?.staffId ?? '' : user?.staffId ?? '')
+    setForm(nextForm)
+    setRequestDateRange({ start: nextForm.startDate, end: null })
     setFormError('')
     setDialogOpen(true)
   }
@@ -266,6 +270,11 @@ export function LeavePage() {
 
     if (!form.staffId) {
       setFormError('Choose a staff member before submitting the request.')
+      return
+    }
+
+    if (!form.startDate || !form.endDate) {
+      setFormError('Choose a leave date or date range before submitting the request.')
       return
     }
 
@@ -341,14 +350,10 @@ export function LeavePage() {
         />
 
         <div className="staff-content leave-content">
-          <section className="leave-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · People operations</p>
-              <h1>Leave that works for everyone.</h1>
-              <p className="leave-hero__copy">{isAdmin ? 'Review requests, protect team coverage, and keep time away transparent across the clinic.' : 'Submit time away requests and keep your upcoming availability in one place.'}</p>
-            </div>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Leave management" />
             {!isAdmin ? <button className="staff-button staff-button--primary leave-request-button" type="button" onClick={openRequestDialog}><Icon name="plus" size={17} />Request leave</button> : null}
-          </section>
+          </header>
 
           <section aria-label="Leave summary" className="leave-summary">
             <div className="leave-summary-card leave-summary-card--teal"><span><Icon name="calendar" size={17} /></span><small>Total requests</small><strong>{summary.total}</strong><em>All statuses</em></div>
@@ -375,7 +380,7 @@ export function LeavePage() {
       {isAdmin && selectedRequest ? <AdminLeaveReviewModal actionBusy={actionBusy} onClose={() => setSelectedRequest(null)} onStatus={(status) => void updateStatus(status)} request={selectedRequest} /> : null}
       {selectedRequest ? <div className="leave-detail-backdrop" role="presentation" onClick={() => setSelectedRequest(null)}><aside aria-labelledby="leave-detail-title" aria-modal="true" className="leave-detail-drawer" role="dialog" onClick={(event) => event.stopPropagation()}><div className="leave-detail-drawer__header"><div><p className="staff-card__eyebrow">Leave request</p><h2 id="leave-detail-title">Request details</h2></div><button aria-label="Close leave request details" type="button" onClick={() => setSelectedRequest(null)}><Icon name="close" size={19} /></button></div><div className="leave-detail-profile"><span className={`leave-avatar leave-avatar--${roleTone(selectedRequest.role)}`}>{getInitials(selectedRequest.staffName || selectedRequest.username)}</span><span><strong>{selectedRequest.staffName || selectedRequest.username}</strong><small>{selectedRequest.role} · {selectedRequest.leaveId}</small></span><span className={`leave-status leave-status--${statusClass(selectedRequest.status)}`}><i />{statusLabel(selectedRequest.status)}</span></div><dl className="leave-detail-list"><div><dt>Leave ID</dt><dd>{selectedRequest.leaveId}</dd></div><div><dt>Submitted date</dt><dd>{formatDate(selectedRequest.createdAt)}</dd></div><div><dt>Staff member</dt><dd>{selectedRequest.staffName || selectedRequest.username}</dd></div><div><dt>Date</dt><dd>{formatDateRange(selectedRequest)}<small>{selectedRequest.durationDays} {selectedRequest.durationDays === 1 ? 'day' : 'days'}</small></dd></div><div><dt>Reason</dt><dd>{selectedRequest.reason}</dd></div><div><dt>Support document</dt><dd><a className="leave-document-link" href={leaveDocumentUrl(selectedRequest.supportDocument)} rel="noreferrer" target="_blank">{displayDocumentName(selectedRequest.supportDocument)}</a></dd></div></dl><div className={`leave-detail-actions${isAdmin && selectedRequest.status === 'Pending' ? '' : ' leave-detail-actions--single'}`}>{isAdmin && selectedRequest.status === 'Pending' ? <><button className="staff-button staff-button--secondary" disabled={actionBusy} type="button" onClick={() => void updateStatus('Declined')}>Decline</button><button className="staff-button staff-button--primary" disabled={actionBusy} type="button" onClick={() => void updateStatus('Approved')}>{actionBusy ? 'Saving…' : 'Approve request'}</button></> : <button className="staff-button staff-button--secondary" type="button" onClick={() => setSelectedRequest(null)}>Close details</button>}</div></aside></div> : null}
 
-      {dialogOpen ? <div className="leave-dialog-backdrop" role="presentation"><section aria-labelledby="leave-request-title" aria-modal="true" className="leave-dialog" role="dialog" onClick={(event) => event.stopPropagation()}><div className="leave-dialog__header"><div><p className="staff-card__eyebrow">People operations</p><h2 id="leave-request-title">Request leave</h2></div><button aria-label="Close leave request form" type="button" onClick={() => setDialogOpen(false)}><Icon name="close" size={19} /></button></div><form onSubmit={submitRequest}><label>Staff member<select disabled={!isAdmin} value={form.staffId} onChange={(event) => setForm((current) => ({ ...current, staffId: event.target.value }))}>{isAdmin ? staff.map((member) => <option key={member.staffId} value={member.staffId}>{member.name} · {member.role}</option>) : <option value={user?.staffId ?? ''}>{user?.name || 'Signed-in staff member'} · {currentRole}</option>}</select></label><div className="leave-form-grid"><label>Start date<input className="staff-date-input" required type="date" value={form.startDate} onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))} /></label><label>End date<input className="staff-date-input" required type="date" value={form.endDate} min={form.startDate} onChange={(event) => setForm((current) => ({ ...current, endDate: event.target.value }))} /></label></div><label>Reason<textarea required maxLength={500} placeholder="Add a short reason for your request" rows={4} value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} /></label><label>Support document<input required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => setForm((current) => ({ ...current, supportDocument: event.target.files?.[0] ?? null }))} />{form.supportDocument ? <small className="leave-selected-file">Selected: {form.supportDocument.name}</small> : null}</label>{formError ? <p className="leave-form-error" role="alert">{formError}</p> : null}<div className="leave-dialog__actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={() => setDialogOpen(false)}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving} type="submit">{saving ? 'Submitting…' : 'Submit request'}</button></div></form></section></div> : null}
+      {dialogOpen ? <div className="leave-dialog-backdrop" role="presentation"><section aria-labelledby="leave-request-title" aria-modal="true" className="leave-dialog" role="dialog" onClick={(event) => event.stopPropagation()}><div className="leave-dialog__header"><div><p className="staff-card__eyebrow">People operations</p><h2 id="leave-request-title">Request leave</h2></div><button aria-label="Close leave request form" type="button" onClick={() => setDialogOpen(false)}><Icon name="close" size={19} /></button></div><form onSubmit={submitRequest}><label>Staff member<select disabled={!isAdmin} value={form.staffId} onChange={(event) => setForm((current) => ({ ...current, staffId: event.target.value }))}>{isAdmin ? staff.map((member) => <option key={member.staffId} value={member.staffId}>{member.name} · {member.role}</option>) : <option value={user?.staffId ?? ''}>{user?.name || 'Signed-in staff member'} · {currentRole}</option>}</select></label><label className="leave-dialog__date-field">Leave dates<StaffDateFilter disabled={saving} emptyLabel="Choose a date or date range" label="Choose leave date or date range" minDate={todayInput()} onChange={(range) => { setRequestDateRange(range); setForm((current) => ({ ...current, startDate: range.start ?? '', endDate: range.end ?? range.start ?? '' })) }} selectionMode="range" value={requestDateRange} /><small className="leave-date-help">Choose one date or select a start and end date.</small></label><label>Reason<textarea required maxLength={500} placeholder="Add a short reason for your request" rows={4} value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} /></label><label>Support document<input required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => setForm((current) => ({ ...current, supportDocument: event.target.files?.[0] ?? null }))} />{form.supportDocument ? <small className="leave-selected-file">Selected: {form.supportDocument.name}</small> : null}</label>{formError ? <p className="leave-form-error" role="alert">{formError}</p> : null}<div className="leave-dialog__actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={() => setDialogOpen(false)}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving} type="submit">{saving ? 'Submitting…' : 'Submit request'}</button></div></form></section></div> : null}
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}
     </div>
   )

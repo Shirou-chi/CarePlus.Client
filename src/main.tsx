@@ -16,6 +16,8 @@ import { SchedulePage } from "@/pages/staff-side/schedule/SchedulePage";
 import { StaffManagementPage } from "@/pages/staff-side/staff/StaffManagementPage";
 import { SettingsPage } from "@/pages/staff-side/settings/SettingsPage";
 import { MedicalRecordsPage } from "@/pages/staff-side/medical-records/MedicalRecordsPage";
+import { StaffQueuePage } from "@/pages/staff-side/queue/StaffQueuePage";
+import { PrescriptionsPage } from "@/pages/staff-side/prescriptions/PrescriptionsPage";
 import { AccountPage } from "@/pages/user-side/account/account-page";
 import { AboutPage } from "@/pages/user-side/about-page";
 import { InvoicePaymentPage } from "@/pages/user-side/bills/invoice-payment-page";
@@ -162,11 +164,17 @@ const AppRoutes = () => {
                     <Route element={<StaffRouteGuard />}>
                         <Route path="/staff" element={<StaffHomePage />} />
                         <Route path="/staff/appointments" element={<StaffAppointmentsPage />} />
+                        <Route element={<StaffRouteGuard roles={["Admin", "Doctor"]} />}>
+                            <Route path="/staff/queue" element={<StaffQueuePage />} />
+                        </Route>
                         <Route path="/staff/schedules" element={<SchedulePage />} />
                         <Route path="/staff/leave" element={<LeavePage />} />
                         <Route element={<StaffRouteGuard roles={["Pharmacist"]} />}>
                             <Route path="/staff/medicine" element={<MedicinePage />} />
                             <Route path="/staff/medicine-batches" element={<MedicineBatchPage />} />
+                        </Route>
+                        <Route element={<StaffRouteGuard roles={["Doctor", "Pharmacist"]} />}>
+                            <Route path="/staff/prescriptions" element={<PrescriptionsPage />} />
                         </Route>
                         <Route path="/staff/notifications" element={<StaffNotificationsPage />} />
                         <Route path="/staff/settings" element={<SettingsPage />} />

@@ -2,30 +2,6 @@
   padding-top: 34px;
 }
 
-.medicine-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 26px;
-  margin-bottom: 26px;
-}
-
-.medicine-hero h1 {
-  margin: 0;
-  color: var(--staff-ink);
-  font-family: var(--site-font-display);
-  font-size: clamp(2rem, 3.5vw, 3rem);
-  letter-spacing: -0.055em;
-  line-height: 1;
-}
-
-.medicine-hero__copy {
-  max-width: 590px;
-  margin: 11px 0 0;
-  color: var(--staff-muted);
-  font-size: 0.94rem;
-}
-
 .medicine-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -493,8 +469,6 @@
 
 @media (max-width: 640px) {
   .medicine-content { padding-top: 28px; }
-  .medicine-hero { display: grid; gap: 16px; }
-  .medicine-hero h1 { font-size: 2.25rem; }
   .medicine-summary { gap: 9px; }
   .medicine-summary-card { min-height: 128px; padding: 12px; }
   .medicine-toolbar { align-items: stretch; padding: 12px; }

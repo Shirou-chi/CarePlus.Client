@@ -2,29 +2,25 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/providers/auth-provider'
 import { staffNotificationApi, type ApiNotification } from '@/services/notificationApi'
 import { useTheme } from '../../../components/theme/useTheme'
-import { Icon, type IconName } from '../navbar/StaffIcon'
+import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
-import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffListReset } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './NotificationsPage.css'
 
 type NotificationCategory = 'Appointments' | 'Inventory' | 'Leave' | 'Security' | 'System'
-type NotificationTone = 'teal' | 'blue' | 'amber' | 'violet' | 'red'
 type NotificationItem = {
   id: string
   title: string
   message: string
+  actor: string
+  initials: string
   time: string
   category: NotificationCategory
-  icon: IconName
-  tone: NotificationTone
   unread: boolean
 }
-
-const categoryFilters = ['All categories', 'Appointments', 'Inventory', 'Leave', 'Security', 'System'] as const
-const sortOptions = ['Newest first', 'Oldest first', 'Title A–Z', 'Unread first'] as const
-type SortOption = (typeof sortOptions)[number]
 
 const categoryForType = (type: string): NotificationCategory => {
   if (type === 'staff_appointment' || type === 'schedule_update') return 'Appointments'
@@ -34,21 +30,7 @@ const categoryForType = (type: string): NotificationCategory => {
   return 'System'
 }
 
-const iconForType = (type: string): IconName => {
-  if (type === 'staff_appointment' || type === 'schedule_update') return 'calendar'
-  if (type === 'medicine_update') return 'box'
-  if (type === 'leave_review' || type === 'leave_update') return 'calendar'
-  if (type === 'security') return 'shield'
-  return 'download'
-}
-
-const toneForType = (type: string): NotificationTone => {
-  if (type === 'staff_appointment' || type === 'schedule_update') return 'teal'
-  if (type === 'medicine_update') return 'amber'
-  if (type === 'leave_review' || type === 'leave_update') return 'violet'
-  if (type === 'security') return 'red'
-  return 'blue'
-}
+const categoryFilters = ['All categories', 'Appointments', 'Inventory', 'Leave', 'Security', 'System'] as const
 
 const relativeNotificationTime = (createdAt: string) => {
   const minutes = Math.max(0, Math.round((Date.now() - Date.parse(createdAt)) / 60_000))
@@ -64,10 +46,10 @@ const mapStaffNotification = (item: ApiNotification): NotificationItem => ({
   id: item.id,
   title: item.title,
   message: item.message,
+  actor: item.actor,
+  initials: item.initials,
   time: relativeNotificationTime(item.createdAt),
   category: categoryForType(item.type),
-  icon: iconForType(item.type),
-  tone: toneForType(item.type),
   unread: item.unread,
 })
 
@@ -81,8 +63,8 @@ export function NotificationsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all')
   const [categoryFilter, setCategoryFilter] = useState<(typeof categoryFilters)[number]>('All categories')
-  const [sortOption, setSortOption] = useState<SortOption>('Newest first')
   const [notificationItems, setNotificationItems] = useState<NotificationItem[]>([])
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(true)
   const [notificationsError, setNotificationsError] = useState<string | null>(null)
   const [notificationActionLoading, setNotificationActionLoading] = useState(false)
@@ -126,26 +108,31 @@ export function NotificationsPage() {
       return matchesTab && matchesCategory && matchesSearch
     })
 
-    return rows.sort((left, right) => {
-      switch (sortOption) {
-        case 'Oldest first':
-          return notificationItems.indexOf(right) - notificationItems.indexOf(left)
-        case 'Title A–Z':
-          return left.title.localeCompare(right.title)
-        case 'Unread first':
-          return Number(right.unread) - Number(left.unread)
-        case 'Newest first':
-        default:
-          return notificationItems.indexOf(left) - notificationItems.indexOf(right)
-      }
-    })
-  }, [activeTab, categoryFilter, notificationItems, searchTerm, sortOption])
+    return rows
+  }, [activeTab, categoryFilter, notificationItems, searchTerm])
 
   const resetListControls = () => {
     setSearchTerm('')
     setActiveTab('all')
     setCategoryFilter('All categories')
-    setSortOption('Newest first')
+  }
+
+  const selectableNotifications = filteredNotifications.filter((item) => item.unread)
+  const allVisibleSelected = selectableNotifications.length > 0 && selectableNotifications.every((item) => selectedIds.includes(item.id))
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((current) => current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id])
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds((current) => {
+      if (allVisibleSelected) {
+        const visibleIds = new Set(selectableNotifications.map((item) => item.id))
+        return current.filter((id) => !visibleIds.has(id))
+      }
+
+      return [...new Set([...current, ...selectableNotifications.map((item) => item.id)])]
+    })
   }
 
   const markRead = async (id: string) => {
@@ -153,6 +140,7 @@ export function NotificationsPage() {
     try {
       const rows = await staffNotificationApi.markRead(id)
       setNotificationItems(rows.map(mapStaffNotification))
+      setSelectedIds((current) => current.filter((selectedId) => selectedId !== id))
       announce('Notification marked as read.')
     } catch (cause) {
       announce(cause instanceof Error ? cause.message : 'Unable to update notification.')
@@ -166,7 +154,25 @@ export function NotificationsPage() {
     try {
       const rows = await staffNotificationApi.markAllRead()
       setNotificationItems(rows.map(mapStaffNotification))
+      setSelectedIds([])
       announce('All notifications marked as read.')
+    } catch (cause) {
+      announce(cause instanceof Error ? cause.message : 'Unable to update notifications.')
+    } finally {
+      setNotificationActionLoading(false)
+    }
+  }
+
+  const markSelectedRead = async () => {
+    const ids = selectedIds.filter((id) => notificationItems.some((item) => item.id === id && item.unread))
+    if (!ids.length) return
+
+    setNotificationActionLoading(true)
+    try {
+      const rows = await staffNotificationApi.markManyRead(ids)
+      setNotificationItems(rows.map(mapStaffNotification))
+      setSelectedIds([])
+      announce('Selected notifications marked as read.')
     } catch (cause) {
       announce(cause instanceof Error ? cause.message : 'Unable to update notifications.')
     } finally {
@@ -180,15 +186,107 @@ export function NotificationsPage() {
       <main className="staff-main">
       <StaffNavbar activeNav={activeNav} notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setSearchTerm} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={searchTerm} selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
         <div className="staff-content notifications-content">
-          <section className="notifications-hero"><div><p className="staff-eyebrow">CarePlus Clinic · Activity centre</p><h1>Stay ahead of every update.</h1><p className="notifications-hero__copy">Keep important clinic activity visible without losing the signal in the noise.</p></div><button className="staff-button staff-button--secondary notifications-mark-button" type="button" onClick={() => void markAllRead()} disabled={notificationActionLoading || !unreadCount}><Icon name="check" size={16} /> Mark all as read</button></section>
+          <StaffPageEyebrow label="Notification centre" />
           <section className="notifications-board">
             <div className="staff-card notifications-list-card">
-              <div className="staff-card__header notifications-list-header"><div><p className="staff-card__eyebrow">Notification centre</p><h2>Your notifications</h2><span className="notifications-list-description">Updates from the modules you have access to.</span></div><span className="notifications-unread-count">{unreadCount} unread</span></div>
-              <div className="notifications-tabs"><button aria-pressed={activeTab === 'all'} className={activeTab === 'all' ? 'is-selected' : ''} type="button" onClick={() => setActiveTab('all')}>All activity <span>{notificationItems.length}</span></button><button aria-pressed={activeTab === 'unread'} className={activeTab === 'unread' ? 'is-selected' : ''} type="button" onClick={() => setActiveTab('unread')}>Unread <span>{unreadCount}</span></button></div>
-              <div className="notifications-toolbar"><label className="notifications-search"><Icon name="search" size={16} /><span className="sr-only">Search notifications</span><input placeholder="Search notifications" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label><label className="notifications-select"><span className="sr-only">Filter by category</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as (typeof categoryFilters)[number])}>{categoryFilters.map((category) => <option key={category}>{category}</option>)}</select><Icon name="chevronDown" size={14} /></label><StaffListSort label="Sort notifications" options={sortOptions} value={sortOption} onChange={(value) => setSortOption(value as SortOption)} /><StaffListReset onClick={resetListControls} /></div>
+              <div className="staff-card__header notifications-list-header">
+                <div>
+                  <h2>Notifications</h2>
+                  <span className="notifications-list-description">Keep track of appointments, schedules, leave, and clinic updates.</span>
+                </div>
+                <span className="notifications-unread-count">{unreadCount} unread</span>
+              </div>
+              <div className="notifications-tabs"><button aria-pressed={activeTab === 'all'} className={activeTab === 'all' ? 'is-selected' : ''} type="button" onClick={() => setActiveTab('all')}>All <span>{notificationItems.length}</span></button><button aria-pressed={activeTab === 'unread'} className={activeTab === 'unread' ? 'is-selected' : ''} type="button" onClick={() => setActiveTab('unread')}>Unread <span>{unreadCount}</span></button></div>
+              <div className="notifications-toolbar"><label className="notifications-search"><Icon name="search" size={15} /><span className="sr-only">Search notifications</span><input placeholder="Search notifications" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label><label className="notifications-select"><span className="sr-only">Filter by category</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as (typeof categoryFilters)[number])}>{categoryFilters.map((category) => <option key={category} value={category}>{category}</option>)}</select><Icon name="chevronDown" size={13} /></label><StaffListReset onClick={resetListControls} /></div>
+              <div className="notifications-actions"><button className="notifications-mark-button" type="button" onClick={() => void (selectedIds.length ? markSelectedRead() : markAllRead())} disabled={notificationActionLoading || !unreadCount}><Icon name="check" size={15} />{selectedIds.length ? 'Mark selected as read' : 'Mark all as read'}</button></div>
               {notificationsError ? <div className="notifications-error"><strong>Unable to load notifications</strong><span>{notificationsError}</span><button type="button" onClick={() => void loadNotifications()}>Try again</button></div> : null}
-              <div className="notifications-list">{notificationsLoading ? <div className="notifications-empty"><Icon name="bell" size={25} /><strong>Loading notifications</strong><span>Checking your staff updates.</span></div> : null}{!notificationsLoading ? filteredNotifications.map((item) => { const isUnread = item.unread; return <article className={`notification-item${isUnread ? ' is-unread' : ''}`} key={item.id}><span className={`notification-item__icon notification-item__icon--${item.tone}`}><Icon name={item.icon} size={18} /></span><div className="notification-item__copy"><div><strong>{item.title}</strong>{isUnread ? <span className="notification-unread-dot" /> : null}</div><p>{item.message}</p><small>{item.category} · {item.time}</small></div><button aria-label={isUnread ? `Mark ${item.title} as read` : `Open ${item.title}`} className="notification-item__action" type="button" onClick={() => void markRead(item.id)} disabled={notificationActionLoading}>{isUnread ? <Icon name="check" size={16} /> : <Icon name="chevronRight" size={17} />}</button></article> }) : null}{!notificationsLoading && !filteredNotifications.length ? <div className="notifications-empty"><Icon name="bell" size={25} /><strong>No notifications found</strong><span>Try another search or category.</span></div> : null}</div>
-              <div className="notifications-footer"><span>Showing <strong>{filteredNotifications.length}</strong> notifications</span><button type="button" onClick={() => announce('Older notifications are ready to load.')}>Load older notifications <Icon name="arrowUpRight" size={15} /></button></div>
+              <div className="notifications-table-wrap">
+                {notificationsLoading ? (
+                  <div className="notifications-empty">
+                    <Icon name="bell" size={25} />
+                    <strong>Loading notifications</strong>
+                    <span>Checking your staff updates.</span>
+                  </div>
+                ) : (
+                  <table aria-label="Staff notifications" className="notifications-table">
+                    <thead>
+                      <tr>
+                        <th className="notifications-table__select" scope="col">
+                          <label className="notification-checkbox">
+                            <input
+                              aria-label="Select all unread notifications"
+                              checked={allVisibleSelected}
+                              disabled={!selectableNotifications.length}
+                              type="checkbox"
+                              onChange={toggleSelectAll}
+                            />
+                            <span />
+                          </label>
+                        </th>
+                        <th className="notifications-table__notice" scope="col">Notice</th>
+                        <th className="notifications-table__category" scope="col">Category</th>
+                        <th className="notifications-table__time" scope="col">When</th>
+                        <th className="notifications-table__status" scope="col">Status</th>
+                        <th className="notifications-table__actions" scope="col">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredNotifications.map((item) => (
+                        <tr className={`notification-row${item.unread ? ' is-unread' : ''}`} key={item.id}>
+                          <td>
+                            <label className="notification-checkbox">
+                              <input
+                                aria-label={`Select ${item.title}`}
+                                checked={selectedIds.includes(item.id)}
+                                disabled={!item.unread || notificationActionLoading}
+                                type="checkbox"
+                                onChange={() => toggleSelected(item.id)}
+                              />
+                              <span />
+                            </label>
+                          </td>
+                          <td>
+                            <div className="notification-row__notice">
+                              <span className="notification-row__avatar">{item.initials || 'CC'}</span>
+                              <span>
+                                <strong>{item.message || item.title}</strong>
+                                <small>{item.actor || item.title}</small>
+                              </span>
+                            </div>
+                          </td>
+                          <td><span className="notification-row__category">{item.category}</span></td>
+                          <td><span className="notification-row__time">{item.time}</span></td>
+                          <td>
+                            <span className={`notification-row__status${item.unread ? ' is-unread' : ''}`}>
+                              <i />
+                              {item.unread ? 'Unread' : 'Read'}
+                            </span>
+                          </td>
+                          <td className="notifications-table__actions">
+                            <button
+                              aria-label={item.unread ? `Mark ${item.title} as read` : `${item.title} is already read`}
+                              className="notification-row__action"
+                              disabled={!item.unread || notificationActionLoading}
+                              type="button"
+                              onClick={() => void markRead(item.id)}
+                            >
+                              {item.unread ? 'Mark as read' : 'Read'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {!notificationsLoading && !filteredNotifications.length ? (
+                  <div className="notifications-empty">
+                    <Icon name="bell" size={25} />
+                    <strong>No notifications found</strong>
+                    <span>Try another search or switch tabs.</span>
+                  </div>
+                ) : null}
+              </div>
+              <div className="notifications-footer"><span>Showing <strong>{filteredNotifications.length}</strong> notifications</span></div>
             </div>
           </section>
         </div>

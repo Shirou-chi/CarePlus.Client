@@ -14,7 +14,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Overview', icon: 'grid', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Appointments', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Patients', icon: 'users', roles: ['Admin'] },
-      { label: 'Queue', icon: 'clock', roles: ['Admin', 'Doctor', 'Pharmacist'] },
+      { label: 'Queue', icon: 'clock', roles: ['Admin', 'Doctor'] },
     ],
   },
   {
@@ -59,6 +59,7 @@ type StaffSidebarProps = {
 const staffRoutes: Record<string, string> = {
   Overview: '/staff',
   Appointments: '/staff/appointments',
+  Queue: '/staff/queue',
   Patients: '/staff/patients',
   Staff: '/staff/staff',
   'Schedules & availability': '/staff/schedules',
@@ -66,6 +67,7 @@ const staffRoutes: Record<string, string> = {
   'Clinic rooms': '/staff/rooms',
   Medicine: '/staff/medicine',
   'Medicine batches': '/staff/medicine-batches',
+  Prescriptions: '/staff/prescriptions',
   'Medical records': '/staff/medical-records',
   Notifications: '/staff/notifications',
   'Audit & logs': '/staff/audit-logs',

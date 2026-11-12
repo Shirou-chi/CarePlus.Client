@@ -2,30 +2,6 @@
   padding-top: 34px;
 }
 
-.patients-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 26px;
-  margin-bottom: 26px;
-}
-
-.patients-hero h1 {
-  margin: 0;
-  color: var(--staff-ink);
-  font-family: var(--site-font-display);
-  font-size: clamp(2rem, 3.5vw, 3rem);
-  letter-spacing: -0.055em;
-  line-height: 1;
-}
-
-.patients-hero__copy {
-  max-width: 590px;
-  margin: 11px 0 0;
-  color: var(--staff-muted);
-  font-size: 0.94rem;
-}
-
 .patients-add-button {
   display: inline-flex;
   align-items: center;
@@ -714,15 +690,6 @@
 @media (max-width: 640px) {
   .patients-content {
     padding-top: 28px;
-  }
-
-  .patients-hero {
-    display: grid;
-    gap: 16px;
-  }
-
-  .patients-hero h1 {
-    font-size: 2.25rem;
   }
 
   .patients-summary {

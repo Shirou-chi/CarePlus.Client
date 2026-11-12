@@ -1,0 +1,291 @@
+.staff-queue .staff-metric-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 86px;
+  padding: 14px;
+}
+
+.staff-queue .staff-metric-card__icon { flex: 0 0 auto; }
+
+.staff-queue .staff-metric-card div {
+  display: grid;
+  gap: 4px;
+  color: var(--staff-muted);
+  font-size: 0.67rem;
+}
+
+.staff-queue .staff-metric-card strong {
+  color: var(--staff-ink);
+  font-family: var(--site-font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.staff-queue__list { padding: 0; }
+
+.staff-queue__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--staff-line);
+}
+
+.staff-queue__search {
+  display: flex;
+  flex: 1 1 230px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--staff-line);
+  border-radius: 7px;
+  color: var(--staff-muted);
+  font-size: 0.7rem;
+}
+
+.staff-queue__search:focus-within { border-color: var(--staff-brand); }
+.staff-queue__search .staff-icon { flex: 0 0 auto; }
+
+.staff-queue__search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--staff-ink);
+}
+
+.staff-queue__table-wrap { overflow-x: auto; }
+
+.staff-queue__table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.staff-queue__table th,
+.staff-queue__table td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.staff-queue__table th {
+  background: var(--staff-subtle);
+  color: var(--staff-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.staff-queue__table td {
+  border-top: 1px solid var(--staff-line);
+  font-size: 0.72rem;
+}
+
+.staff-queue__table tbody tr:hover { background: color-mix(in srgb, var(--staff-subtle) 58%, var(--staff-card)); }
+
+.staff-queue__table small {
+  display: block;
+  margin-top: 3px;
+  color: var(--staff-muted);
+  font-size: 0.62rem;
+}
+
+.staff-queue__table time { white-space: nowrap; }
+
+.staff-queue__ticket {
+  display: inline-block;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.staff-queue__status {
+  --queue-status-accent: var(--staff-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--queue-status-accent) 14%, var(--staff-card));
+  color: var(--staff-ink);
+  font-size: 0.62rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.staff-queue__status::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--queue-status-accent);
+  content: '';
+}
+
+.staff-queue__status[data-status='Waiting'] { --queue-status-accent: var(--staff-amber); }
+.staff-queue__status[data-status='Called'] { --queue-status-accent: var(--staff-blue); }
+.staff-queue__status[data-status='InConsultation'] { --queue-status-accent: var(--staff-violet); }
+.staff-queue__status[data-status='Completed'] { --queue-status-accent: var(--staff-teal); }
+
+.staff-queue__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.staff-queue .staff-queue__row-actions .staff-button,
+.staff-queue .staff-queue__missed {
+  min-height: 34px;
+  padding: 0 9px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.staff-queue .staff-queue__missed {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--staff-muted);
+  cursor: pointer;
+}
+
+.staff-queue__missed:hover:not(:disabled) { background: var(--staff-subtle); }
+.staff-queue button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+.staff-queue__empty {
+  display: grid;
+  min-height: 182px;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--staff-muted);
+  font-size: 0.73rem;
+  text-align: center;
+}
+
+.staff-queue__empty strong { color: var(--staff-ink); }
+.staff-queue__empty .staff-icon { color: var(--staff-brand); }
+
+.staff-queue__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 8px;
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  font-size: 0.72rem;
+}
+
+.staff-queue__dialog-copy { color: var(--staff-muted); font-size: 0.75rem; }
+
+.staff-queue__dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.queue-consultation {
+  width: min(640px, 100%);
+}
+
+.queue-consultation .staff-dialog__header {
+  margin-bottom: 4px;
+}
+
+.queue-consultation__visit {
+  margin: 0 0 18px;
+  color: var(--staff-muted);
+  font-size: 0.78rem;
+}
+
+.queue-consultation__form,
+.queue-consultation__section,
+.queue-consultation__medicine {
+  display: grid;
+  gap: 12px;
+}
+
+.queue-consultation__section,
+.queue-consultation__medicine {
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 8px;
+}
+
+.queue-consultation legend {
+  padding: 0 5px;
+  color: var(--staff-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.queue-consultation small {
+  color: var(--staff-muted);
+  font-weight: 400;
+}
+
+.queue-consultation label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--staff-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.queue-consultation :is(input, select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--staff-line);
+  border-radius: 7px;
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.queue-consultation textarea { resize: vertical; }
+.queue-consultation__section > .staff-button { justify-self: start; }
+.queue-consultation__medicine > .staff-button { justify-self: end; }
+
+.queue-consultation__medicine-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(85px, 125px);
+  gap: 10px;
+}
+
+.queue-consultation__error {
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 7px;
+  background: var(--staff-subtle);
+  color: var(--staff-ink);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .staff-queue .staff-metric-card { min-height: 76px; padding: 10px; }
+}
+
+@media (max-width: 420px) {
+  .queue-consultation__medicine-fields { grid-template-columns: 1fr; }
+}

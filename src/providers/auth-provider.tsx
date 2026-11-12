@@ -1,13 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { TOKEN_KEY } from "@/services/api";
+import { SESSION_EXPIRED_MESSAGE, TOKEN_KEY } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme, type TextSize } from "@/providers/theme-provider";
-import { SESSION_KEY, type Profile } from "@/utils/auth";
+import { OLD_STAFF_SESSION_KEY, SESSION_KEY, type Profile } from "@/utils/auth";
 import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
-
-const OLD_STAFF_SESSION_KEY = "careplus-staff-session";
 
 export type AuthUser = {
     name: string;
@@ -56,6 +54,8 @@ function readStoredSession(): StoredSession | null {
     if (typeof window === "undefined") return null;
 
     try {
+        if (!localStorage.getItem(TOKEN_KEY)) return null;
+
         const saved = localStorage.getItem(SESSION_KEY);
 
         if (saved) {
@@ -193,10 +193,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         let cancelled = false;
+        const isCurrentSession = () => !cancelled && localStorage.getItem(TOKEN_KEY) === token;
         authApi
             .getCurrentUser()
             .then(async (apiUser) => {
-                if (cancelled) return;
+                if (!isCurrentSession()) return;
 
                 if (apiUser.accountType === "Staff" || apiUser.staffId) {
                     const nextSession: StoredSession = {
@@ -207,7 +208,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setSession(nextSession);
                     setHasCompletedTutorial(null);
                     const setting = await profileApi.getAppSetting().catch(() => null);
-                    if (setting) {
+                    if (setting && isCurrentSession()) {
                         applyAppSetting("", setting, applyTheme, () => undefined, applyTextSize);
                     }
                     return;
@@ -215,7 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 const nextProfile = profileFromUser(apiUser);
                 const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
-                if (cancelled) return;
+                if (!isCurrentSession()) return;
 
                 const nextSession: StoredSession = {
                     type: "patient",
@@ -226,7 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
             })
             .catch(() => {
-                if (cancelled) return;
+                if (!isCurrentSession()) return;
                 authApi.clearToken();
                 saveSession(null);
                 setSession(null);
@@ -246,10 +247,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const login = async (email: string, password: string) => {
         authApi.clearToken();
+        const { token } = await authApi.patientLogin(email.trim(), password);
+        authApi.saveToken(token);
 
         try {
-            const { token } = await authApi.patientLogin(email.trim(), password);
-            authApi.saveToken(token);
             const apiUser = await authApi.getCurrentUser();
 
             if (apiUser.accountType === "Staff" || apiUser.staffId) {
@@ -258,6 +259,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             const nextProfile = profileFromUser(apiUser);
             const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
+            if (localStorage.getItem(TOKEN_KEY) !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
+
             const nextSession: StoredSession = {
                 type: "patient",
                 profile: nextProfile,
@@ -266,7 +269,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setSession(nextSession);
             setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
         } catch (error) {
-            authApi.clearToken();
+            if (localStorage.getItem(TOKEN_KEY) === token) authApi.clearToken();
             throw error;
         }
     };
@@ -286,6 +289,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 user: convertApiUser(apiUser),
             };
             const setting = await profileApi.getAppSetting().catch(() => null);
+            if (localStorage.getItem(TOKEN_KEY) !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
+
             if (setting) {
                 applyAppSetting("", setting, applyTheme, () => undefined, applyTextSize);
             }
@@ -293,7 +298,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setSession(nextSession);
             setHasCompletedTutorial(null);
         } catch (error) {
-            authApi.clearToken();
+            if (localStorage.getItem(TOKEN_KEY) === token) authApi.clearToken();
             throw error;
         }
     };

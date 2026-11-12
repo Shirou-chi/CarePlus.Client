@@ -8,6 +8,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './StaffManagementPage.css'
 
@@ -262,14 +263,10 @@ export function StaffManagementPage() {
         />
 
         <div className="staff-content staff-management-content">
-          <section className="staff-management-hero">
-            <div>
-              <p className="staff-eyebrow">CarePlus Clinic · Administration</p>
-              <h1>Manage your staff.</h1>
-              <p className="staff-management-hero__copy">Create staff accounts, update roles, and keep access status current across the clinic.</p>
-            </div>
+          <header className="staff-page-heading">
+            <StaffPageEyebrow label="Staff management" />
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add staff</button>
-          </section>
+          </header>
 
           <section aria-label="Staff summary" className="staff-management-summary">
             <article className="staff-management-summary-card staff-management-summary-card--teal"><span><Icon name="staff" size={18} /></span><small>Total staff</small><strong>{staff.length}</strong><em>All clinic accounts</em></article>
