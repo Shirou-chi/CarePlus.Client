@@ -89,7 +89,7 @@ export const DoctorDetailPage = () => {
                     <>
                         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start">
                             <div className="overflow-hidden rounded-2xl bg-secondary shadow-xs ring-1 ring-secondary">
-                                <img src={doctorPhotoUrl(doctor.name)} alt="" className="aspect-square w-full object-cover" />
+                                <img src={doctorPhotoUrl(doctor.name)} alt="" className="aspect-[4/3] w-full object-cover object-top sm:aspect-square" />
                             </div>
 
                             <div>

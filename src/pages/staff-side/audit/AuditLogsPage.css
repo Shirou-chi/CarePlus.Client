@@ -2,6 +2,30 @@
   padding-top: 34px;
 }
 
+.audit-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 26px;
+  margin-bottom: 26px;
+}
+
+.audit-hero h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.audit-hero__copy {
+  max-width: 590px;
+  margin: 11px 0 0;
+  color: var(--staff-muted);
+  font-size: 0.82rem;
+}
+
 .audit-export-button {
   display: inline-flex;
   align-items: center;
@@ -63,7 +87,7 @@
   display: block;
   margin-top: 4px;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1.45rem;
   letter-spacing: -0.05em;
   line-height: 1;
@@ -377,7 +401,7 @@
 
 .audit-empty strong {
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1rem;
 }
 
@@ -470,7 +494,7 @@
 .audit-detail-drawer__header h2 {
   margin: 0;
   color: var(--staff-ink);
-  font-family: var(--site-font-display);
+  font-family: var(--font-display);
   font-size: 1.45rem;
   letter-spacing: -0.04em;
 }
@@ -604,7 +628,16 @@
 
 @media (max-width: 640px) {
   .audit-content {
-    padding-top: 28px;
+    padding-top: 24px;
+  }
+
+  .audit-hero {
+    display: grid;
+    gap: 14px;
+  }
+
+  .audit-hero h1 {
+    font-size: clamp(1.85rem, 8vw, 2.25rem);
   }
 
   .audit-summary {
@@ -612,13 +645,19 @@
   }
 
   .audit-summary-card {
-    min-height: 128px;
+    min-height: 118px;
     padding: 12px;
   }
 
   .audit-toolbar {
     align-items: stretch;
     padding: 12px;
+    gap: 8px;
+  }
+
+  .audit-search,
+  .audit-select {
+    min-height: 44px;
   }
 
   .audit-select {
@@ -627,6 +666,7 @@
 
   .audit-clear-button {
     width: 100%;
+    min-height: 44px;
     text-align: left;
   }
 
@@ -642,6 +682,12 @@
   }
 
   .audit-detail-drawer {
-    padding: 20px 17px;
+    padding: 20px 17px calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 420px) {
+  .audit-summary {
+    grid-template-columns: 1fr;
   }
 }

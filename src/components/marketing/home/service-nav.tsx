@@ -138,7 +138,12 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
         drag.current = null;
     };
 
-    const tourItem = tourStep === null ? null : tourStep === 0 ? { label: t.tourNavTitle, hint: t.tourNav } : items[tourStep - 1];
+    const tourNavHint = () => {
+        if (typeof window === "undefined") return t.tourNav;
+        const tutorialVisible = [...document.querySelectorAll<HTMLElement>("[data-tour='tutorial']")].some((node) => node.getClientRects().length > 0);
+        return tutorialVisible ? t.tourNav : t.tourNavMobile;
+    };
+    const tourItem = tourStep === null ? null : tourStep === 0 ? { label: t.tourNavTitle, hint: tourNavHint() } : items[tourStep - 1];
 
     return (
         <nav ref={frame} aria-label={t.exploreCareplus} className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">

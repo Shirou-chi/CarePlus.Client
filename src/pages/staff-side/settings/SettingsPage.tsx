@@ -41,7 +41,7 @@ function readSettings(): StaffSettings {
 
 export function SettingsPage() {
   const { updateStaffProfile, user } = useAuth()
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, textSize, setTextSize } = useTheme()
   const selectedTheme: ThemeChoice = theme === 'dark' || (theme === 'system' && document.documentElement.dataset.theme === 'dark') ? 'dark' : 'light'
   const currentRole = getStaffRole(user?.role)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -226,7 +226,30 @@ export function SettingsPage() {
               <section className="staff-card staff-settings-card">
                 <div className="staff-settings-card__header"><span className="staff-settings-card__icon staff-settings-card__icon--teal"><Icon name="sun" size={18} /></span><div><p className="staff-card__eyebrow">Appearance</p></div></div>
                 <div className="staff-settings-theme-grid">
-                  {appearanceOptions.map((option) => <button aria-pressed={selectedTheme === option.value} className={`staff-settings-theme-option${selectedTheme === option.value ? ' is-selected' : ''}`} key={option.value} type="button" onClick={() => setTheme(option.value)}><span className="staff-settings-theme-option__icon"><Icon name={option.icon} size={18} /></span><span><strong>{option.label}</strong><small>{option.description}</small></span>{selectedTheme === option.value ? <Icon name="check" size={16} /> : null}</button>)}
+                  {appearanceOptions.map((option) => <button aria-pressed={selectedTheme === option.value} className={`staff-settings-theme-option${selectedTheme === option.value ? ' is-selected' : ''}`} key={option.value} type="button" onClick={() => setTheme(option.value)}><span className="staff-settings-theme-option__icon"><Icon name={option.icon} size={18} /></span><span><strong>{option.label}</strong><small>{option.description}</small></span>{selectedTheme === option.value ? <span className="staff-settings-theme-option__check"><Icon name="check" size={12} /></span> : null}</button>)}
+                </div>
+                <div className="staff-settings-text-size">
+                  <p className="staff-settings-text-size__label">Text size</p>
+                  <div className="staff-settings-text-size__options" role="group" aria-label="Text size">
+                    <button
+                      aria-pressed={textSize === 'normal'}
+                      className={`staff-settings-text-size__option${textSize === 'normal' ? ' is-selected' : ''}`}
+                      type="button"
+                      onClick={() => setTextSize('normal')}
+                    >
+                      A
+                      <span className="sr-only"> Normal text</span>
+                    </button>
+                    <button
+                      aria-pressed={textSize === 'large'}
+                      className={`staff-settings-text-size__option${textSize === 'large' ? ' is-selected' : ''}`}
+                      type="button"
+                      onClick={() => setTextSize('large')}
+                    >
+                      A+
+                      <span className="sr-only"> Large text</span>
+                    </button>
+                  </div>
                 </div>
               </section>
 

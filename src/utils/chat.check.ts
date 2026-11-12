@@ -4,7 +4,7 @@ import {
     newThread,
     userMessagesInLastHour,
     validateChatSend,
-} from "@/utils/chat";
+} from "./chat.ts";
 
 const hourAgo = Date.now() - 30 * 60 * 1000;
 const rateLimited = [

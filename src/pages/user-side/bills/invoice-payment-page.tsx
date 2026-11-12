@@ -71,9 +71,8 @@ export const InvoicePaymentPage = () => {
     if (!invoice) return <Navigate to="/invoices" replace />;
 
     const record = records.find((item) => item.id === invoice.recordId) ?? null;
-    if (!record) return <Navigate to="/invoices" replace />;
-    const totals = getClinicRecordTotals(record);
-    const sstLabel = t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100));
+    const totals = record ? getClinicRecordTotals(record) : null;
+    const sstLabel = record ? t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100)) : null;
 
     const confirm = () => {
         if (method === "card" && !selectedCard) {
@@ -109,29 +108,42 @@ export const InvoicePaymentPage = () => {
                         </p>
                         <p className="mt-1 text-sm text-tertiary">{t.invoicesDueOn.replace("{date}", formatDate(invoice.dueAt))}</p>
 
-                        <ul className="mt-4 divide-y divide-secondary border-y border-secondary">
-                            {record.charges.map((line) => (
-                                <li key={line.id} className="flex items-start justify-between gap-3 py-3 text-sm">
-                                    <div className="min-w-0">
-                                        <p className="font-medium text-primary">{line.item}</p>
-                                        <p className="text-tertiary">
-                                            {clinicChargeCategoryLabel(locale, line.category)}
-                                            {line.qty > 1 ? ` · ${formatRm(line.unitPrice)} × ${line.qty}` : ""}
-                                        </p>
-                                    </div>
-                                    <p className="shrink-0 font-medium text-primary tabular-nums">{formatRm(line.unitPrice * line.qty)}</p>
-                                </li>
-                            ))}
-                        </ul>
+                        {record ? (
+                            <ul className="mt-4 divide-y divide-secondary border-y border-secondary">
+                                {record.charges.map((line) => (
+                                    <li key={line.id} className="flex items-start justify-between gap-3 py-3 text-sm">
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-primary">{line.item}</p>
+                                            <p className="text-tertiary">
+                                                {clinicChargeCategoryLabel(locale, line.category)}
+                                                {line.qty > 1 ? ` · ${formatRm(line.unitPrice)} × ${line.qty}` : ""}
+                                            </p>
+                                        </div>
+                                        <p className="shrink-0 font-medium text-primary tabular-nums">{formatRm(line.unitPrice * line.qty)}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="mt-4 text-sm text-tertiary">{t.invoicesNoRecordBody}</p>
+                        )}
                         <dl className="mt-3 space-y-1 text-sm">
-                            <div className="flex justify-between gap-3 text-tertiary">
-                                <dt>{t.clinicRecordsSubtotal}</dt>
-                                <dd className="tabular-nums">{formatRm(totals.subtotal)}</dd>
-                            </div>
-                            <div className="flex justify-between gap-3 text-tertiary">
-                                <dt>{sstLabel}</dt>
-                                <dd className="tabular-nums">{formatRm(totals.sst)}</dd>
-                            </div>
+                            {totals && sstLabel ? (
+                                <>
+                                    <div className="flex justify-between gap-3 text-tertiary">
+                                        <dt>{t.clinicRecordsSubtotal}</dt>
+                                        <dd className="tabular-nums">{formatRm(totals.subtotal)}</dd>
+                                    </div>
+                                    <div className="flex justify-between gap-3 text-tertiary">
+                                        <dt>{sstLabel}</dt>
+                                        <dd className="tabular-nums">{formatRm(totals.sst)}</dd>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex justify-between gap-3 text-tertiary">
+                                    <dt>{t.invoices}</dt>
+                                    <dd className="tabular-nums">{formatRm(invoice.total)}</dd>
+                                </div>
+                            )}
                             {invoice.lateFee > 0 ? (
                                 <div className="flex justify-between gap-3 text-error-primary">
                                     <dt>

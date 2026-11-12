@@ -4,7 +4,8 @@ import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme, type TextSize } from "@/providers/theme-provider";
-import { OLD_STAFF_SESSION_KEY, SESSION_KEY, type Profile } from "@/utils/auth";
+import { SESSION_KEY, type Profile } from "@/utils/auth";
+import { TOASTED_NOTICES_KEY } from "@/utils/notifications";
 import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
 
 export type AuthUser = {
@@ -124,9 +125,6 @@ export const profileFromUser = (user: CurrentUserResponse): Profile => ({
 const isNotificationLevel = (value: string | null | undefined): value is NotificationLevel =>
     value === "all" || value === "reminder" || value === "none";
 
-const isTextSize = (value: string | null | undefined): value is TextSize =>
-    value === "normal" || value === "large" || value === "larger";
-
 async function loadPatientPreferences(
     profileId: string,
     applyTheme: (theme: "light" | "dark") => void,
@@ -160,11 +158,7 @@ function applyAppSetting(
     if (setting.language === "en" || setting.language === "zh") {
         applyLocale(setting.language);
     }
-    if (isTextSize(setting.textSize)) {
-        applyTextSize(setting.textSize);
-    } else {
-        applyTextSize("normal");
-    }
+    applyTextSize(setting.textSize === "large" || setting.textSize === "larger" ? "large" : "normal");
     if (profileId && isNotificationLevel(setting.notification)) {
         const current = readProfileSettings(profileId);
         writeProfileSettings(profileId, { ...current, notificationLevel: setting.notification });
@@ -184,9 +178,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const token = localStorage.getItem(TOKEN_KEY);
         if (!token) {
-            applyTheme("light");
-            applyLocale("en");
-            applyTextSize("normal");
             setHasCompletedTutorial(null);
             setIsReady(true);
             return;
@@ -305,6 +296,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = async () => {
         authApi.clearToken();
+        sessionStorage.removeItem(TOASTED_NOTICES_KEY);
         saveSession(null);
         setSession(null);
         setHasCompletedTutorial(null);

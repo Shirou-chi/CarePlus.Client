@@ -39,7 +39,7 @@ export const CalendarCell = ({ date, isHighlighted, showOutOfRangeDates = false,
         <AriaCalendarCell
             {...props}
             date={date}
-            className={({ isDisabled, isFocusVisible, isSelectionStart, isSelectionEnd, isSelected, isOutsideMonth }) => {
+            className={({ isDisabled, isUnavailable, isFocusVisible, isSelectionStart, isSelectionEnd, isSelected, isOutsideMonth }) => {
                 const isRoundedLeft = isSelectionStart || dayOfWeek === 0;
                 const isRoundedRight = isSelectionEnd || dayOfWeek === 6;
 
@@ -49,7 +49,7 @@ export const CalendarCell = ({ date, isHighlighted, showOutOfRangeDates = false,
                     isRoundedRight && "rounded-r-full",
                     isInRange && isDisabled && "bg-active",
                     isSelected && isRangeCalendar && "bg-active",
-                    isDisabled ? "pointer-events-none" : "cursor-pointer",
+                    isDisabled || isUnavailable ? "pointer-events-none cursor-default" : "cursor-pointer",
                     isFocusVisible ? "z-10" : "z-0",
                     isOutsideMonth && "opacity-50",
                     isRangeCalendar && isOutsideMonth && !showOutOfRangeDates && "hidden",
@@ -70,15 +70,15 @@ export const CalendarCell = ({ date, isHighlighted, showOutOfRangeDates = false,
                 );
             }}
         >
-            {({ isDisabled, isFocusVisible, isSelectionStart, isSelectionEnd, isSelected, formattedDate }) => {
-                const markedAsSelected = isSelectionStart || isSelectionEnd || (isSelected && !isDisabled && !isRangeCalendar);
+            {({ isDisabled, isUnavailable, isFocusVisible, isSelectionStart, isSelectionEnd, isSelected, formattedDate }) => {
+                const markedAsSelected = isSelectionStart || isSelectionEnd || (isSelected && !isDisabled && !isUnavailable && !isRangeCalendar);
 
                 return (
                     <div
                         className={cx(
                             "relative flex size-full items-center justify-center rounded-full text-sm text-secondary hover:text-secondary_hover",
                             // Disabled state.
-                            isDisabled && "text-secondary/50",
+                            (isDisabled || isUnavailable) && "text-secondary/50",
                             // Focus ring, visible while the cell has keyboard focus.
                             isFocusVisible ? "outline-2 outline-offset-2 outline-focus-ring" : "",
                             // Hover state for cells in the middle of the range.
@@ -89,8 +89,8 @@ export const CalendarCell = ({ date, isHighlighted, showOutOfRangeDates = false,
                             markedAsSelected &&
                                 "bg-[var(--color-bg-brand-solid)] font-medium text-white hover:bg-[var(--color-bg-brand-solid_hover)] hover:text-white",
                             // Hover state for non-selected cells.
-                            !isSelected && !isDisabled ? "hover:bg-quaternary hover:font-medium!" : "",
-                            !isSelected && isTodayDate ? "bg-active font-medium hover:bg-secondary_hover" : "",
+                            !isSelected && !isDisabled && !isUnavailable ? "hover:bg-quaternary hover:font-medium!" : "",
+                            !isSelected && !isUnavailable && isTodayDate ? "bg-active font-medium hover:bg-secondary_hover" : "",
                         )}
                     >
                         {formattedDate}

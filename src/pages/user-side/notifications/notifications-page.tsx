@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { type MouseEvent, useId, useState } from "react";
 import { Heading, type Selection } from "react-aria-components";
 import { Bell01, Trash01 } from "@untitledui/icons";
 import { Navigate } from "react-router";
@@ -381,7 +381,7 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                 iconLeading={Trash01}
                                 aria-label={`${t.notifDelete}: ${noticeMessage(item, t)}`}
                                 className="mt-2 shrink-0"
-                                onClick={(event) => {
+                                onClick={(event: MouseEvent<HTMLElement>) => {
                                     event.stopPropagation();
                                     onDelete();
                                 }}

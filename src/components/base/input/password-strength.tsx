@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
-import { passwordMeter } from "@/utils/password";
+import { loadPasswordMeter, passwordMeter } from "@/utils/password";
 
 const fill = {
     weak: "bg-error-solid",
@@ -16,6 +17,10 @@ const labelColor = {
 
 export const PasswordStrengthBar = ({ password }: { password: string }) => {
     const { t } = useI18n();
+    const [, setReady] = useState(false);
+    useEffect(() => {
+        void loadPasswordMeter().then(() => setReady(true));
+    }, []);
     const meter = passwordMeter(password);
     if (!meter) {
         return null;

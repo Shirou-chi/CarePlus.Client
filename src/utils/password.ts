@@ -1,19 +1,22 @@
-import { ZxcvbnFactory } from "@zxcvbn-ts/core";
-import { adjacencyGraphs, dictionary as commonDictionary } from "@zxcvbn-ts/language-common";
-import { dictionary as englishDictionary } from "@zxcvbn-ts/language-en";
-
 const hasLower = /[a-z]/;
 const hasUpper = /[A-Z]/;
 const hasNumber = /\d/;
 const hasSymbol = /[^A-Za-z0-9]/;
 
-const meter = new ZxcvbnFactory({
-    graphs: adjacencyGraphs,
-    dictionary: {
-        ...commonDictionary,
-        ...englishDictionary,
-    },
-});
+type Meter = { check: (value: string) => { score: number; guessesLog10: number } };
+let meter: Meter | null = null;
+let loading: Promise<void> | null = null;
+
+// The zxcvbn dictionaries are ~1.6 MB, so they load on first use instead of with every page that validates passwords.
+export const loadPasswordMeter = () =>
+    (loading ??= Promise.all([import("@zxcvbn-ts/core"), import("@zxcvbn-ts/language-common"), import("@zxcvbn-ts/language-en")]).then(
+        ([core, common, en]) => {
+            meter = new core.ZxcvbnFactory({
+                graphs: common.adjacencyGraphs,
+                dictionary: { ...common.dictionary, ...en.dictionary },
+            });
+        },
+    ));
 
 export const passwordGaps = (value: string) => {
     const gaps: Array<"short" | "long" | "lower" | "upper" | "number" | "symbol"> = [];
@@ -29,7 +32,7 @@ export const passwordGaps = (value: string) => {
 export const passwordIsValid = (value: string) => passwordGaps(value).length === 0;
 
 export const passwordMeter = (value: string): { level: "weak" | "medium" | "strong"; score: number } | null => {
-    if (!value) {
+    if (!value || !meter) {
         return null;
     }
     const result = meter.check(value);

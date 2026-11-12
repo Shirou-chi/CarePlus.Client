@@ -24,15 +24,15 @@ export const ProgressSteps = ({
                 <span className="font-semibold text-primary">{activeStep?.title}</span>
             </p>
 
-            <div className="-mx-1 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:mx-0 md:overflow-visible md:px-0 md:pb-0 [&::-webkit-scrollbar]:hidden">
-                <ol className="flex min-w-max items-start gap-1 sm:min-w-0 sm:gap-2 md:w-full md:gap-3">
+            <div>
+                <ol className="flex w-full items-start gap-1 sm:gap-2 md:gap-3">
                     {steps.map((step, index) => {
                         const complete = index < current;
                         const active = index === current;
                         const reachable = index <= current;
 
                         return (
-                            <li key={step.title} className="flex w-[4.75rem] shrink-0 items-start sm:w-auto sm:min-w-0 sm:flex-1">
+                            <li key={step.title} className="flex min-w-0 flex-1 items-start">
                                 <button
                                     type="button"
                                     disabled={!reachable}

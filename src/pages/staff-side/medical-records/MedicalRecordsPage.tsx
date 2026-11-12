@@ -170,8 +170,12 @@ export function MedicalRecordsPage() {
         <StaffNavbar activeNav="Medical records" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setQuery} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={query} selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
 
         <div className="staff-content medical-records-content">
-          <header className="staff-page-heading">
-            <StaffPageEyebrow label="Medical records" />
+          <section className="medical-records-hero">
+            <div>
+              <p className="staff-eyebrow">Clinical records</p>
+              <h1>Medical records</h1>
+              <p>Document diagnoses and clinical notes for the patients you have seen.</p>
+            </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add medical record</button>
           </header>
 

@@ -1,3 +1,27 @@
+.medical-records-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 24px;
+}
+
+.medical-records-hero h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+}
+
+.medical-records-hero p:last-child {
+  max-width: 640px;
+  margin: 10px 0 0;
+  color: var(--staff-muted);
+  font-size: 0.82rem;
+}
+
 .medical-records-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

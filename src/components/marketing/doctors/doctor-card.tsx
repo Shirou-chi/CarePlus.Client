@@ -15,17 +15,17 @@ export const DoctorCard = ({ doctor, locale: _locale, t }: { doctor: DoctorRecor
                 className="size-full object-cover transition duration-300 group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/20 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 border-t border-white/20 bg-white/10 p-4 backdrop-blur-md">
+            <div className="absolute inset-x-0 bottom-0 border-t border-white/20 bg-white/10 p-3 backdrop-blur-md sm:p-4">
                 <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                         <p className="truncate font-semibold text-white">{doctor.name}</p>
                         <p className="mt-0.5 truncate text-sm text-white/85">{doctor.specialization}</p>
                     </div>
-                    <ArrowUpRight aria-hidden className="size-5 shrink-0 text-white/80 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    <ArrowUpRight aria-hidden className="hidden size-5 shrink-0 sm:block text-white/80 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
             </div>
         </div>
-        <dl className="flex flex-1 flex-col gap-2.5 p-4 text-sm">
+        <dl className="hidden flex-1 flex-col gap-2.5 p-4 text-sm sm:flex">
             <div>
                 <dt className="text-xs font-medium text-quaternary">{t.doctorsQualification}</dt>
                 <dd className="mt-0.5 text-secondary">{doctor.qualification}</dd>

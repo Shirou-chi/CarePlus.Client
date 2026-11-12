@@ -668,8 +668,12 @@ export function SchedulePage() {
         />
 
         <div className="staff-content schedule-content">
-          <header className="staff-page-heading">
-            <StaffPageEyebrow label="Staff scheduling" />
+          <section className="schedule-hero">
+            <div>
+              <p className="staff-eyebrow">Operations</p>
+              <h1>Schedules</h1>
+              <p className="schedule-hero__copy">Coordinate staff availability, consultation hours, and room coverage.</p>
+            </div>
             {currentRole === 'Admin' ? <button className="staff-button staff-button--primary schedule-add-button" type="button" onClick={openAvailabilityDialog}><Icon name="plus" size={17} /> Add availability</button> : null}
           </header>
 

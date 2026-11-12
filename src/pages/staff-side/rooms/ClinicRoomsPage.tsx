@@ -118,8 +118,12 @@ export function ClinicRoomsPage() {
         <StaffNavbar activeNav="Clinic rooms" notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={() => undefined} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm="" selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
 
         <div className="staff-content clinic-rooms-content">
-          <header className="staff-page-heading">
-            <StaffPageEyebrow label="Clinic room management" />
+          <section className="clinic-rooms-hero">
+            <div>
+              <p className="staff-eyebrow">Clinical operations</p>
+              <h1>Clinic rooms</h1>
+              <p className="clinic-rooms-hero__copy">Manage consultation spaces and room availability.</p>
+            </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add room</button>
           </header>
 

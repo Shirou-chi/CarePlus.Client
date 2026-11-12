@@ -43,8 +43,9 @@ export const LandingFooter = () => {
                   heading: t.product,
                   links: [
                       { label: t.home, href: "/" },
-                      { label: t.features, href: "/#features" },
                       { label: t.howItWorks, href: "/#how-it-works" },
+                      { label: t.homeNavMedicine, href: "/#medicine" },
+                      { label: t.homeNavFamily, href: "/#family" },
                   ],
               },
               {

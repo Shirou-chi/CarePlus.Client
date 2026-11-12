@@ -263,8 +263,12 @@ export function StaffManagementPage() {
         />
 
         <div className="staff-content staff-management-content">
-          <header className="staff-page-heading">
-            <StaffPageEyebrow label="Staff management" />
+          <section className="staff-management-hero">
+            <div>
+              <p className="staff-eyebrow">Administration</p>
+              <h1>Staff</h1>
+              <p className="staff-management-hero__copy">Create accounts, update roles, and manage access status.</p>
+            </div>
             <button className="staff-button staff-button--primary" type="button" onClick={openCreate}><Icon name="plus" size={17} /> Add staff</button>
           </header>
 

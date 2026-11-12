@@ -186,7 +186,7 @@ export function NotificationsPage() {
       <main className="staff-main">
       <StaffNavbar activeNav={activeNav} notificationsOpen={notificationsOpen} onOpenSidebar={() => setSidebarOpen(true)} onSearchChange={setSearchTerm} onToggleNotifications={() => setNotificationsOpen((current) => !current)} searchTerm={searchTerm} selectedRole={currentRole} theme={theme} toggleTheme={toggleTheme} />
         <div className="staff-content notifications-content">
-          <StaffPageEyebrow label="Notification centre" />
+          <section className="notifications-hero"><div><p className="staff-eyebrow">Activity</p><h1>Notifications</h1><p className="notifications-hero__copy">Updates from the modules you can access.</p></div><button className="staff-button staff-button--secondary notifications-mark-button" type="button" onClick={() => void markAllRead()} disabled={notificationActionLoading || !unreadCount}><Icon name="check" size={16} /> Mark all as read</button></section>
           <section className="notifications-board">
             <div className="staff-card notifications-list-card">
               <div className="staff-card__header notifications-list-header">

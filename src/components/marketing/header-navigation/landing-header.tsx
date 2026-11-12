@@ -1,5 +1,5 @@
 import { type FC, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import {
     CalendarCheck01,
     Bell01,
@@ -17,6 +17,7 @@ import {
     User01,
     Users01,
     Trash01,
+    Type01,
 } from "@untitledui/icons";
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -26,6 +27,8 @@ import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/but
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { NavMenuItemLink } from "@/components/marketing/header-navigation/base-components/nav-menu-item";
+import { AccountSheet } from "@/components/marketing/header-navigation/account-sheet";
+import { shouldHideMobileBottomNav } from "@/components/marketing/header-navigation/mobile-bottom-nav";
 import { SiteSearch } from "@/components/marketing/header-navigation/site-search";
 import { requestHomeTour } from "@/components/marketing/home/home-tour";
 import { HeaderNotifications } from "@/components/marketing/notifications/header-notifications";
@@ -53,7 +56,7 @@ type ServiceGroup = {
 };
 
 const iconGhost =
-    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white";
+    "inline-flex cursor-pointer items-center justify-center rounded-md p-2 lg:p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white";
 
 const useServiceGroups = (): ServiceGroup[] => {
     const { t, locale } = useI18n();
@@ -79,6 +82,7 @@ const useServiceGroups = (): ServiceGroup[] => {
             links: [
                 { title: t.bookVisit, subtitle: t.bookVisitHint, href: bookHref },
                 { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: visitsHref },
+                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: profile ? "/history" : "/login" },
                 { title: locale === "zh" ? "诊所排队" : "Clinic queue", subtitle: locale === "zh" ? "报到并查看实时排队进度" : "Check in and follow your live queue", href: queueHref },
             ],
         },
@@ -141,10 +145,12 @@ const useOverdueLock = () => {
 
 export const LandingHeader = () => {
     const { t, locale, setLocale } = useI18n();
-    const { theme, setTheme } = useTheme();
+    const { theme, setTheme, textSize, setTextSize } = useTheme();
     const { profile, logout } = useAuth();
     const navigate = useNavigate();
+    const { pathname } = useLocation();
     const overdue = useOverdueLock();
+    const isLanding = pathname === "/";
     const signedInName = profile?.fullName.split(" ")[0] ?? t.signIn;
     const signOut = async () => {
         await logout();
@@ -152,7 +158,7 @@ export const LandingHeader = () => {
     };
 
     return (
-        <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/90 backdrop-blur-md dark:border-white/10 dark:bg-[#0b2036]/92">
+        <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/90 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/92">
             <div className="mx-auto flex h-[4.5rem] w-full max-w-container items-center justify-between gap-4 px-4 md:h-22 md:px-8">
                 <CarePlusLogo href={profile ? "/home" : "/"} className="max-[479px]:[&>span]:sr-only" />
 
@@ -162,6 +168,7 @@ export const LandingHeader = () => {
                     {profile ? null : (
                         <div className="ml-12 flex items-center gap-3">
                             <ThemeToggle />
+                            <TextSizeToggle />
                             <LanguageSwitch />
                         </div>
                     )}
@@ -192,6 +199,14 @@ export const LandingHeader = () => {
                                     <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none" onAction={() => setLocale(locale === "en" ? "zh" : "en")}>
                                         {t.language}
                                     </Dropdown.Item>
+                                    <Dropdown.Item
+                                        icon={Type01}
+                                        addon={textSize === "large" ? "A+" : "A"}
+                                        selectionIndicator="none"
+                                        onAction={() => setTextSize(textSize === "large" ? "normal" : "large")}
+                                    >
+                                        {t.settingsTextSize}
+                                    </Dropdown.Item>
                                     <Dropdown.Separator />
                                     <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
                                         {t.signOut}
@@ -214,8 +229,15 @@ export const LandingHeader = () => {
                     <SiteSearch />
                     {overdue ? null : <HeaderNotifications />}
                     {overdue ? null : <HeaderCart />}
-                    <MobileNav />
-                    {profile ? <TourButton /> : null}
+                    {profile ? null : isLanding ? (
+                        <>
+                            <ThemeToggle />
+                            <TextSizeToggle />
+                            <LanguageSwitch />
+                        </>
+                    ) : (
+                        <MobileNav />
+                    )}
                     {profile ? <MobileAccount /> : null}
                 </div>
             </div>
@@ -252,7 +274,7 @@ const HeaderCart = () => {
                     </span>
                 ) : null}
             </AriaButton>
-            <AriaPopover className="w-80 shadow-lg" offset={8} placement="bottom end">
+            <AriaPopover className="w-[min(100vw-1.5rem,20rem)] shadow-lg" offset={8} placement="bottom end">
                 <AriaDialog className="outline-hidden" aria-label={t.cart}>
                     <div className="rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary_alt">
                         <p className="text-sm font-semibold text-primary">{t.cart}</p>
@@ -265,7 +287,7 @@ const HeaderCart = () => {
                             </>
                         ) : (
                             <>
-                                <ul className="mt-3 flex flex-col gap-3">
+                                <ul className="mt-3 flex max-h-[50dvh] flex-col gap-3 overflow-y-auto">
                                     {lines.map((line) => (
                                         <li key={line.medicineId} className="flex items-start justify-between gap-3">
                                             <span className="min-w-0">
@@ -305,6 +327,32 @@ const ThemeToggle = () => {
                 {isDark ? <Sun className="size-5" /> : <Moon01 className="size-5" />}
             </AriaButton>
         </Tooltip>
+    );
+};
+
+const TextSizeToggle = () => {
+    const { textSize, setTextSize } = useTheme();
+    const { t } = useI18n();
+
+    return (
+        <ButtonGroup
+            size="sm"
+            className="careplus-text-size"
+            disallowEmptySelection
+            selectedKeys={new Set([textSize])}
+            onSelectionChange={(keys) => {
+                const next = [...keys][0];
+                if (next === "normal" || next === "large") setTextSize(next);
+            }}
+            aria-label={t.settingsTextSize}
+        >
+            <ButtonGroupItem id="normal" aria-label={t.settingsTextSizeNormal}>
+                A
+            </ButtonGroupItem>
+            <ButtonGroupItem id="large" aria-label={t.settingsTextSizeLarge}>
+                A+
+            </ButtonGroupItem>
+        </ButtonGroup>
     );
 };
 
@@ -411,40 +459,17 @@ const TourButton = () => {
 };
 
 const MobileAccount = () => {
-    const { t, locale, setLocale } = useI18n();
-    const { theme, setTheme } = useTheme();
-    const { profile, logout } = useAuth();
-    const navigate = useNavigate();
-    if (!profile) return null;
-    const signOut = async () => {
-        await logout();
-        navigate("/login");
-    };
+    const { t } = useI18n();
+    const { profile } = useAuth();
+    const { pathname } = useLocation();
+    if (!profile || !shouldHideMobileBottomNav(pathname)) return null;
 
     return (
-        <Dropdown.Root>
+        <AccountSheet>
             <AriaButton data-tour="account" aria-label={t.viewProfile} className="cursor-pointer rounded-full p-0.5 outline-focus-ring focus-visible:outline-2">
                 <Avatar size="sm" src={profile.avatarUrl} alt="" />
             </AriaButton>
-            <Dropdown.Popover>
-                <Dropdown.Menu>
-                    <Dropdown.Item icon={User01} selectionIndicator="none" onAction={() => navigate("/account")}>
-                        {t.viewProfile}
-                    </Dropdown.Item>
-                    <Dropdown.Separator />
-                    <Dropdown.Item icon={theme === "dark" ? Sun : Moon01} selectionIndicator="none" onAction={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                        {theme === "dark" ? t.themeToLight : t.themeToDark}
-                    </Dropdown.Item>
-                    <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none" onAction={() => setLocale(locale === "en" ? "zh" : "en")}>
-                        {t.language}
-                    </Dropdown.Item>
-                    <Dropdown.Separator />
-                    <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
-                        {t.signOut}
-                    </Dropdown.Item>
-                </Dropdown.Menu>
-            </Dropdown.Popover>
-        </Dropdown.Root>
+        </AccountSheet>
     );
 };
 
@@ -499,8 +524,9 @@ const MobileNav = () => {
                             </details>
                         ))}
                         {profile ? null : (
-                            <div className="mt-3 flex items-center justify-between gap-3 px-2 py-2">
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-2 py-2">
                                 <ThemeToggle />
+                                <TextSizeToggle />
                                 <LanguageSwitch />
                             </div>
                         )}
