@@ -54,8 +54,9 @@ export const showsPaymentHistory = (order: Pick<MedicineOrder, "payment" | "stat
 
 const knownStatuses: OrderStatus[] = ["processing", "waiting_delivery", "ready_pickup", "picked_up", "delivered"];
 
+/** Admin/DB rows may use "Picked_up", "Picked Up", etc.; always fold to snake_case. */
 export const normalizeOrderStatus = (fulfilment: MedicineOrder["fulfilment"], status: string): OrderStatus => {
-    const value = status.trim().toLowerCase();
+    const value = status.trim().toLowerCase().replace(/[\s-]+/g, "_");
     if (value === "completed" || value === "dispensed") {
         return fulfilment === "delivery" ? "delivered" : "picked_up";
     }

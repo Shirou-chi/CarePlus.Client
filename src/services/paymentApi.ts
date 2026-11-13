@@ -1,4 +1,4 @@
-import type { MedicineOrder, OrderStatus } from "@/utils/order-history";
+import { normalizeOrderStatus, type MedicineOrder } from "@/utils/order-history";
 import { getAuthToken, request, type ApiResponse } from "./api";
 
 type PaymentRow = {
@@ -13,25 +13,26 @@ type PaymentRow = {
     lines: { id: string; name: string; detail: string; unitPrice: number; qty: number }[];
 };
 
-const statuses: OrderStatus[] = ["processing", "waiting_delivery", "ready_pickup", "picked_up", "delivered"];
-
-const toOrder = (row: PaymentRow): MedicineOrder => ({
-    id: row.id,
-    placedAt: row.placedAt,
-    status: statuses.includes(row.status as OrderStatus) ? (row.status as OrderStatus) : "processing",
-    fulfilment: row.fulfilment === "delivery" ? "delivery" : "pickup",
-    payment: row.payment,
-    address: row.address || undefined,
-    lines: row.lines.map((line) => ({
-        id: line.id,
-        name: line.name,
-        detail: line.detail,
-        unitPrice: line.unitPrice,
-        qty: line.qty,
-    })),
-    total: row.total,
-    trackingSteps: [],
-});
+const toOrder = (row: PaymentRow): MedicineOrder => {
+    const fulfilment = row.fulfilment === "delivery" ? "delivery" : "pickup";
+    return {
+        id: row.id,
+        placedAt: row.placedAt,
+        status: normalizeOrderStatus(fulfilment, row.status),
+        fulfilment,
+        payment: row.payment,
+        address: row.address || undefined,
+        lines: row.lines.map((line) => ({
+            id: line.id,
+            name: line.name,
+            detail: line.detail,
+            unitPrice: line.unitPrice,
+            qty: line.qty,
+        })),
+        total: row.total,
+        trackingSteps: [],
+    };
+};
 
 export const paymentApi = {
     async list(): Promise<MedicineOrder[]> {
