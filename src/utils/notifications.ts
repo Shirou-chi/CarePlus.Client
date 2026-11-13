@@ -5,6 +5,9 @@ export const ANNOUNCEMENTS_HREF = "/announcements";
 /** sessionStorage list of notice ids already shown as a pop-up; cleared on logout so the next sign-in shows unread ones again. */
 export const TOASTED_NOTICES_KEY = "careplus-toasted-notices";
 
+/** Set on patient login; NotificationToasts shows Welcome back once when there is nothing else to toast. */
+export const WELCOME_PENDING_KEY = "careplus-welcome-pending";
+
 export const clinicAnnouncementNav = {
     href: ANNOUNCEMENTS_HREF,
     copyKey: "notifAnnouncementNav" as const,

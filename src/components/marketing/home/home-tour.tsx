@@ -73,84 +73,74 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         const header = 88;
         const bottomPad = mobile ? 108 : 24;
-        let settleTimer: number | null = null;
+        const fromBox = boxRef.current;
+        const fromScroll = scroller?.scrollLeft ?? 0;
+        const fromWindowY = window.scrollY;
 
-        const needsWindowScroll = () => {
+        const verticalDelta = () => {
             // Step 0 points at Me / Tutorial in a fixed bar; scrolling the page only bounces.
-            if (step === 0 || !scroller) return false;
+            if (step === 0) return 0;
             const rect = target.getBoundingClientRect();
-            return rect.top < header || rect.bottom > window.innerHeight - bottomPad;
+            if (rect.top >= header && rect.bottom <= window.innerHeight - bottomPad) return 0;
+            return rect.top - header - 24;
         };
 
-        const scrollTargetIntoView = (behavior: ScrollBehavior) => {
-            if (scroller) scroller.scrollLeft = desired;
-            if (!needsWindowScroll()) return false;
-            const rect = target.getBoundingClientRect();
-            window.scrollBy({ top: rect.top - header - 24, behavior });
-            return true;
-        };
+        const needsHScroll = Boolean(scroller) && Math.abs(desired - fromScroll) > 1;
+        const vDelta = verticalDelta();
+        const needsVScroll = Math.abs(vDelta) > 1;
 
-        // ponytail: mobile / step-0 hops jump; morphing from Me to icons leaves a mid-screen ghost hole
-        const canMorph =
-            Boolean(scroller) &&
-            step > 1 &&
-            !mobile &&
-            !reduce &&
-            Boolean(boxRef.current) &&
-            scroller!.scrollWidth > scroller!.clientWidth + 4;
-
-        if (!canMorph) {
+        if (reduce || (!needsHScroll && !needsVScroll)) {
             animating.current = false;
-            const shouldSmooth = mobile && step > 0 && !reduce;
-            const didWindowScroll = scrollTargetIntoView(shouldSmooth ? "smooth" : "auto");
-            if (shouldSmooth && didWindowScroll) {
-                // Wait for the page to settle, then lock the highlight.
-                animating.current = true;
-                setBox(null);
-                settleTimer = window.setTimeout(() => {
-                    animating.current = false;
-                    remember(readBox(target));
-                }, 340);
-            } else {
-                remember(readBox(target));
-            }
+            if (scroller) scroller.scrollLeft = desired;
+            if (needsVScroll) window.scrollBy({ top: vDelta, behavior: "auto" });
+            remember(readBox(target));
             return () => {
-                if (settleTimer !== null) window.clearTimeout(settleTimer);
                 if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
                 animating.current = false;
             };
         }
 
-        const fromBox = boxRef.current!;
-        const fromScroll = scroller!.scrollLeft;
-        scrollTargetIntoView("auto");
-        const after = target.getBoundingClientRect();
-        const endBox = { top: after.top, left: after.left - (desired - fromScroll), width: after.width, height: after.height };
-
+        // ponytail: drive scroll + hole together each frame so the highlight never freezes mid-slide
+        const duration = 420;
         const start = performance.now();
-        const duration = 480;
+        const targetWindowY = fromWindowY + vDelta;
         animating.current = true;
+
         const tick = (now: number) => {
             const t = Math.min(1, (now - start) / duration);
             const eased = 1 - (1 - t) ** 3;
-            scroller!.scrollLeft = fromScroll + (desired - fromScroll) * eased;
-            remember({
-                top: mix(fromBox.top, endBox.top, eased),
-                left: mix(fromBox.left, endBox.left, eased),
-                width: mix(fromBox.width, endBox.width, eased),
-                height: mix(fromBox.height, endBox.height, eased),
-            });
+
+            if (scroller) {
+                scroller.scrollLeft = needsHScroll ? fromScroll + (desired - fromScroll) * eased : desired;
+            }
+            if (needsVScroll) {
+                window.scrollTo({ top: fromWindowY + (targetWindowY - fromWindowY) * eased, behavior: "auto" });
+            }
+
+            const live = readBox(target);
+            if (fromBox && step > 0) {
+                remember({
+                    top: mix(fromBox.top, live.top, eased),
+                    left: mix(fromBox.left, live.left, eased),
+                    width: mix(fromBox.width, live.width, eased),
+                    height: mix(fromBox.height, live.height, eased),
+                });
+            } else {
+                remember(live);
+            }
+
             if (t < 1) {
                 frameRef.current = requestAnimationFrame(tick);
                 return;
             }
+
             animating.current = false;
             frameRef.current = null;
             remember(readBox(target));
         };
+
         frameRef.current = requestAnimationFrame(tick);
         return () => {
-            if (settleTimer !== null) window.clearTimeout(settleTimer);
             if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
             animating.current = false;
         };

@@ -5,7 +5,7 @@ import { profileApi, resolveProfilePictureUrl, type AppSettingResponse } from "@
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme, type TextSize } from "@/providers/theme-provider";
 import { SESSION_KEY, type Profile } from "@/utils/auth";
-import { TOASTED_NOTICES_KEY } from "@/utils/notifications";
+import { TOASTED_NOTICES_KEY, WELCOME_PENDING_KEY } from "@/utils/notifications";
 import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
 
 export type AuthUser = {
@@ -249,6 +249,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             saveSession(nextSession);
             setSession(nextSession);
             setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
+            sessionStorage.setItem(WELCOME_PENDING_KEY, "1");
         } catch (error) {
             if (getAuthToken() === token) authApi.clearToken();
             throw error;
@@ -316,6 +317,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = async () => {
         authApi.clearToken();
         sessionStorage.removeItem(TOASTED_NOTICES_KEY);
+        sessionStorage.removeItem(WELCOME_PENDING_KEY);
         saveSession(null);
         setSession(null);
         setHasCompletedTutorial(null);

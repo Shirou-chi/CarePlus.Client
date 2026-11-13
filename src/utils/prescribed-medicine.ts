@@ -10,7 +10,7 @@ export type ShotView = "bottle" | "box" | "blister" | "label";
 export type MedicineForm = "capsule" | "tablet";
 export type MedicineKind = "antibiotic" | "analgesic" | "antihistamine";
 export type CatalogView = "grid" | "list";
-export type MedicineImageKey = "amox" | "para" | "lora";
+export type MedicineImageKey = "amox" | "para" | "lora" | "ibu" | "ceti" | "clox";
 
 export type MedicineRow = {
     medicineId: string;
@@ -66,7 +66,7 @@ export const formFilters: MedicineForm[] = ["capsule", "tablet"];
 export const isMedicineId = (id: string | undefined): id is MedicineId => !!id && /^[a-z0-9]{2,20}$/i.test(id);
 
 const kinds: MedicineKind[] = ["antibiotic", "analgesic", "antihistamine"];
-const imageKeys: MedicineImageKey[] = ["amox", "para", "lora"];
+const imageKeys: MedicineImageKey[] = ["amox", "para", "lora", "ibu", "ceti", "clox"];
 
 let catalogRows: MedicineRow[] = [];
 let catalogReady = false;
@@ -98,7 +98,7 @@ const toMedicine = (row: MedicineRow, locale: Locale): Medicine => {
         method: zh && row.methodZh ? row.methodZh : row.method,
         description: zh && row.descriptionZh ? row.descriptionZh : row.description,
         price: Number(row.price),
-        tone: imageKey === "amox" ? "amber" : imageKey === "lora" ? "teal" : "navy",
+        tone: imageKey === "amox" || imageKey === "ibu" ? "amber" : imageKey === "lora" || imageKey === "clox" ? "teal" : "navy",
         imageKey,
     };
 };
