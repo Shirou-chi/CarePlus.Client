@@ -26,7 +26,7 @@ export const LoginPage = () => {
     const [twoFactor, setTwoFactor] = useState<TwoFactorStep | null>(null);
 
     if (!isReady) {
-        return <div className="careplus-landing min-h-dvh" />;
+        return <div className="min-h-60" />;
     }
 
     if (profile) {

@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
+import { Link, useSearchParams } from "react-router";
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
-import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
-import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
-import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useI18n } from "@/providers/locale-provider";
+import { safeAppPath } from "@/utils/chat";
 import { cx } from "@/utils/cx";
 
 type AuthCardFrameProps = {
@@ -15,13 +14,15 @@ type AuthCardFrameProps = {
 
 export const AuthCardFrame = ({ mode, title, body, children }: AuthCardFrameProps) => {
     const { t } = useI18n();
+    const [searchParams] = useSearchParams();
+    const nextPath = safeAppPath(searchParams.get("next"));
+    const nextQuery = nextPath ? `?next=${encodeURIComponent(nextPath)}` : "";
+    const registerTo = `/register${nextQuery}`;
+    const loginTo = `/login${nextQuery}`;
 
     return (
-        <div className="careplus-landing careplus-auth min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
-            <LandingHeader />
-            <PageBreadcrumb />
-            <section className="px-4 py-6 md:px-8 md:py-16">
-                <div className="mx-auto flex w-full max-w-110 flex-col gap-8 rounded-2xl bg-primary px-5 py-8 shadow-sm ring-1 ring-secondary sm:px-10 sm:py-10">
+        <section className="px-4 py-6 md:px-8 md:py-16">
+            <div className="mx-auto flex w-full max-w-110 flex-col gap-8 rounded-2xl bg-primary px-5 py-8 shadow-sm ring-1 ring-secondary sm:px-10 sm:py-10">
                 <div className="flex flex-col items-center gap-6 text-center">
                     <CarePlusLogo />
                     <div className="flex flex-col gap-2 md:gap-3">
@@ -31,36 +32,34 @@ export const AuthCardFrame = ({ mode, title, body, children }: AuthCardFrameProp
                 </div>
 
                 <nav aria-label={t.account} className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1 ring-1 ring-secondary">
-                    <a
-                        href="/register"
+                    <Link
+                        to={registerTo}
                         aria-current={mode === "register" ? "page" : undefined}
                         className={cx(
-                            "flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
+                            "flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-200 ease-out focus-visible:outline-2",
                             mode === "register"
                                 ? "bg-[#456f75] text-white ring-[#456f75]"
                                 : "bg-primary text-primary ring-secondary hover:bg-[#456f75] hover:text-white hover:ring-[#456f75] dark:bg-white/10 dark:text-white dark:ring-white/45",
                         )}
                     >
                         {t.signUp}
-                    </a>
-                    <a
-                        href="/login"
+                    </Link>
+                    <Link
+                        to={loginTo}
                         aria-current={mode === "login" ? "page" : undefined}
                         className={cx(
-                            "flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-100 ease-linear focus-visible:outline-2",
+                            "flex min-h-11 cursor-pointer items-center justify-center rounded-lg px-3 py-2.5 text-center text-sm font-semibold shadow-xs ring-1 outline-focus-ring transition duration-200 ease-out focus-visible:outline-2",
                             mode === "login"
                                 ? "bg-[#456f75] text-white ring-[#456f75]"
                                 : "bg-primary text-primary ring-secondary hover:bg-[#456f75] hover:text-white hover:ring-[#456f75] dark:bg-white/10 dark:text-white dark:ring-white/45",
                         )}
                     >
                         {t.logIn}
-                    </a>
+                    </Link>
                 </nav>
 
                 {children}
-                </div>
-            </section>
-            <LandingFooter />
-        </div>
+            </div>
+        </section>
     );
 };

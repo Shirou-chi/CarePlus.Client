@@ -9,13 +9,16 @@ type PatientPageTransitionProps = {
     children: (location: Location) => ReactNode;
 };
 
+const isAuthPath = (pathname: string) =>
+    pathname === "/login" || pathname === "/register" || pathname === "/forgot-password";
+
 /** Fade patient pages in/out on route change. Staff routes stay instant. */
 export const PatientPageTransition = ({ enabled, children }: PatientPageTransitionProps) => {
     const location = useLocation();
     const { profile } = useAuth();
     const { overdue, ready: invoicesReady } = useOutstandingInvoices();
     const [rendered, setRendered] = useState(location);
-    const [phase, setPhase] = useState<"enter" | "exit">("enter");
+    const [phase, setPhase] = useState<"enter" | "exit" | "auth">("enter");
     const skipLockedEnter = Boolean(profile && invoicesReady && overdue && isOverdueLockedPath(location.pathname));
 
     useEffect(() => {
@@ -33,6 +36,13 @@ export const PatientPageTransition = ({ enabled, children }: PatientPageTransiti
         if (skipLockedEnter || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
             setRendered(location);
             setPhase("enter");
+            return;
+        }
+
+        // Login ↔ signup (and forgot) keep the auth shell mounted; only the stage fades.
+        if (isAuthPath(location.pathname) && isAuthPath(rendered.pathname)) {
+            setRendered(location);
+            setPhase("auth");
             return;
         }
 

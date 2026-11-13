@@ -127,6 +127,7 @@ import { RouteProvider } from "@/providers/router-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { ChatWidget } from "@/components/marketing/chat/chat-widget";
 import { BackToTop } from "@/components/marketing/back-to-top";
+import { AuthLayout } from "@/components/auth/auth-layout";
 import { PatientPageTransition } from "@/components/marketing/page-transition";
 import "@/assets/styles/globals.css";
 
@@ -227,9 +228,11 @@ const AppRoutes = () => {
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/home" element={<HomePage />} />
                     <Route path="/about" element={<AboutPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route element={<AuthLayout />}>
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    </Route>
                     <Route path="/account" element={<AccountPage />} />
                     <Route path="/book" element={<BookingPage />} />
                     <Route path="/visits" element={<UpcomingVisitsPage />} />
