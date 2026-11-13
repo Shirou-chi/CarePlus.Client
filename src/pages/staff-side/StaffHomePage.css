@@ -75,6 +75,32 @@ body:has(.staff-page) .site-back-to-top {
   background: color-mix(in srgb, var(--staff-brand) 72%, var(--staff-subtle));
 }
 
+.staff-scrollbar {
+  scrollbar-color: var(--staff-brand) var(--staff-card);
+  scrollbar-width: thin;
+}
+
+.staff-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.staff-scrollbar::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: var(--staff-card);
+}
+
+.staff-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 2px solid var(--staff-card);
+  border-radius: 999px;
+  background: var(--staff-brand);
+}
+
+.staff-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--staff-teal);
+}
+
 .staff-page button,
 .staff-page input,
 .staff-page select {
@@ -653,25 +679,32 @@ body:has(.staff-page) .site-back-to-top {
 
 .staff-page .staff-notifications__mark-read {
   display: inline-flex;
-  min-height: 32px;
+  min-height: 30px;
   align-items: center;
   gap: 5px;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--staff-brand) 35%, var(--staff-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--staff-brand) 9%, var(--staff-card));
   color: var(--staff-brand);
   font-family: var(--font-body);
-  font-size: 0.68rem;
-  font-weight: 600;
+  font-size: 0.64rem;
+  font-weight: 700;
   cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease, transform 140ms ease;
 }
 
-.staff-notifications__header button:hover:not(:disabled) {
+.staff-page .staff-notifications__mark-read:hover:not(:disabled) {
+  border-color: var(--staff-brand);
+  background: color-mix(in srgb, var(--staff-brand) 16%, var(--staff-card));
   color: var(--staff-brand-deep);
+  transform: translateY(-1px);
 }
 
-.staff-notifications__header button:disabled {
+.staff-page .staff-notifications__mark-read:disabled {
+  border-color: var(--staff-line);
+  background: transparent;
+  color: var(--staff-muted);
   opacity: 0.45;
   cursor: default;
 }

@@ -29,6 +29,13 @@ export const personalHealthRecordApi = {
     async list() {
         return data(await request<ApiResponse<PersonalRecord[]>>("/api/PersonalHealthRecord", {}, true));
     },
+    async listForPatient(patientId: string) {
+        return data(await request<ApiResponse<PersonalRecord[]>>(
+            `/api/PersonalHealthRecord/Patient/${encodeURIComponent(patientId)}`,
+            {},
+            true,
+        ));
+    },
     async save(payload: PersonalRecordInput, id?: string) {
         return data(await request<ApiResponse<PersonalRecord>>(
             `/api/PersonalHealthRecord${id ? `/${encodeURIComponent(id)}` : ""}`,
