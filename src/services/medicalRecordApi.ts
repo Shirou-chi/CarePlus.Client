@@ -42,6 +42,15 @@ export const medicalRecordApi = {
     return unwrap(result, 'Unable to load medical records.')
   },
 
+  async retrieveForPatient(patientId: string): Promise<MedicalRecord[]> {
+    const result = await request<ApiResponse<MedicalRecord[]>>(
+      `/api/MedicalRecord/Patient/${encodeURIComponent(patientId)}`,
+      {},
+      true,
+    )
+    return unwrap(result, 'Unable to load previous medical records.')
+  },
+
   async create(payload: MedicalRecordCreateRequest): Promise<MedicalRecord> {
     const result = await request<ApiResponse<MedicalRecord>>('/api/MedicalRecord/Create', {
       method: 'POST',

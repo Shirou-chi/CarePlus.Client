@@ -59,7 +59,7 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
           </button>
           {notificationsOpen ? (
             <div className="staff-notifications" role="status">
-              <div className="staff-notifications__header"><strong>Notifications</strong><button type="button" onClick={() => void markAllRead()} disabled={!unread.length || notificationsLoading}>Mark all read</button></div>
+              <div className="staff-notifications__header"><strong>Notifications</strong><button className="staff-notifications__mark-read" type="button" onClick={() => void markAllRead()} disabled={!unread.length || notificationsLoading}><Icon name="check" size={13} /> Mark all as read</button></div>
               {notificationsError ? <div className="staff-notification-empty">Unable to load notifications.</div> : null}
               {notificationsLoading ? <div className="staff-notification-empty">Loading notifications…</div> : null}
               {!notificationsLoading && !notificationsError && !unread.length ? <div className="staff-notification-empty">No unread notifications.</div> : null}

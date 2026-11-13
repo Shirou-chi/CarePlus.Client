@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useTheme } from '@/components/theme/useTheme'
 import { useAuth } from '@/providers/auth-provider'
 import { queueApi, type QueueStatus, type StaffQueueEntry } from '@/services/queueApi'
@@ -8,7 +9,6 @@ import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { Icon, type IconName } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
-import { QueueConsultationDialog } from './QueueConsultationDialog'
 import '../StaffHomePage.css'
 import './StaffQueuePage.css'
 
@@ -42,6 +42,7 @@ const nextActions: Record<string, { status: string; label: string } | undefined>
 type QueueResult = { rows: StaffQueueEntry[]; error: string }
 
 export function StaffQueuePage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const canConsult = user?.role === 'Doctor' || user?.role === 'Admin'
@@ -53,7 +54,6 @@ export function StaffQueuePage() {
   const [reload, setReload] = useState(0)
   const [pendingId, setPendingId] = useState<string>()
   const [missedEntry, setMissedEntry] = useState<StaffQueueEntry>()
-  const [consultationEntry, setConsultationEntry] = useState<StaffQueueEntry>()
   const [actionError, setActionError] = useState('')
   const [notice, setNotice] = useState('')
 
@@ -116,7 +116,7 @@ export function StaffQueuePage() {
       applyQueueUpdate(updated)
       setMissedEntry(undefined)
       if (canConsult && updated.status === 'InConsultation') {
-        setConsultationEntry({ ...entry, status: updated.status, roomName: updated.roomName })
+        navigate(`/staff/queue/${encodeURIComponent(entry.queueId)}/consultation`)
       } else {
         setNotice(`${entry.queueNumber} · ${statusLabels[updated.status] ?? updated.status}`)
       }
@@ -127,13 +127,6 @@ export function StaffQueuePage() {
       setReload((value) => value + 1)
       setPendingId(undefined)
     }
-  }
-
-  function onConsultationCompleted(updated: QueueStatus) {
-    applyQueueUpdate(updated)
-    setConsultationEntry(undefined)
-    setNotice(`${updated.queueNumber} · Consultation completed`)
-    setReload((value) => value + 1)
   }
 
   return (
@@ -198,7 +191,7 @@ export function StaffQueuePage() {
                   </tr></thead>
                   <tbody>
                     {visibleRows.map((row) => {
-                        const resumeConsultation = canConsult && row.status === 'InConsultation'
+                      const resumeConsultation = canConsult && row.status === 'InConsultation'
                       const next = nextActions[row.status]
                       return (
                         <tr key={row.queueId}>
@@ -214,7 +207,7 @@ export function StaffQueuePage() {
                                   className={`staff-button staff-button--${canConsult && (resumeConsultation || next.status === 'InConsultation') ? 'primary' : 'secondary'}`}
                                   disabled={!!pendingId || !!current.error}
                                   type="button"
-                                  onClick={() => resumeConsultation ? setConsultationEntry(row) : void updateStatus(row, next.status)}
+                                  onClick={() => resumeConsultation ? navigate(`/staff/queue/${encodeURIComponent(row.queueId)}/consultation`) : void updateStatus(row, next.status)}
                                 >
                                   {pendingId === row.queueId ? 'Saving…' : resumeConsultation ? 'Resume consultation' : next.label}
                                 </button>
@@ -239,14 +232,6 @@ export function StaffQueuePage() {
         </div>
       </main>
 
-      {consultationEntry ? (
-        <QueueConsultationDialog
-          entry={consultationEntry}
-          key={consultationEntry.queueId}
-          onClose={() => setConsultationEntry(undefined)}
-          onCompleted={onConsultationCompleted}
-        />
-      ) : null}
       {missedEntry ? (
         <StaffDialog
           closeDisabled={!!pendingId}

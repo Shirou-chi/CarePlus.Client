@@ -42,6 +42,11 @@ export type StaffUpdateRequest = {
   role?: 'Admin' | 'Doctor' | 'Pharmacist'
 }
 
+export type StaffPasswordUpdateRequest = {
+  staffId: string
+  newPassword: string
+}
+
 type StaffRegisterResponse = {
   staffId: string
   userId: number
@@ -124,6 +129,17 @@ export const staffApi = {
 
     if (!result.isSuccess) {
       throw new Error(result.respMessage || 'Unable to update staff account.')
+    }
+  },
+
+  async updatePassword(payload: StaffPasswordUpdateRequest): Promise<void> {
+    const result = await request<ApiResponse<unknown>>('/api/Staff/Password', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }, true)
+
+    if (!result.isSuccess) {
+      throw new Error(result.respMessage || 'Unable to update staff password.')
     }
   },
 }
