@@ -56,6 +56,7 @@ const familyRuleMessage = (t: Copy, message: string) => {
     if (message === "No active patient account was found for this email.") return t.familyInviteNotFound;
     if (message === "You cannot invite yourself.") return t.familySelf;
     if (message === "This patient already belongs to a family.") return t.familyDuplicate;
+    if (message === "This patient already has a pending family invitation.") return t.familyDuplicate;
     if (message === "Only the family owner can invite members.") return t.familyInviteOwnerOnly;
     if (message === "Enter a valid email address.") return t.familyEmailInvalid;
     if (message === "We could not send the invitation email. Please try again later.") return t.familyInviteEmailFailed;
@@ -176,14 +177,26 @@ export const FamilyPage = () => {
                                     <Button
                                         color="primary"
                                         size="sm"
-                                        onClick={() => void familyApi.acceptInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)))}
+                                        onClick={() => {
+                                            setLoadError(null);
+                                            void familyApi
+                                                .acceptInvite(invite.member.familyMemberId)
+                                                .then(setOverview)
+                                                .catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
+                                        }}
                                     >
                                         {t.familyAccept}
                                     </Button>
                                     <Button
                                         color="secondary"
                                         size="sm"
-                                        onClick={() => void familyApi.declineInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed))}
+                                        onClick={() => {
+                                            setLoadError(null);
+                                            void familyApi
+                                                .declineInvite(invite.member.familyMemberId)
+                                                .then(setOverview)
+                                                .catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                                        }}
                                     >
                                         {t.familyDecline}
                                     </Button>
@@ -193,7 +206,7 @@ export const FamilyPage = () => {
                     </ul>
                 ) : null}
 
-                {!family ? (
+                {!family && invites.length === 0 ? (
                     <div className="mt-6 rounded-2xl bg-primary px-5 py-8 ring-1 ring-secondary">
                         <h2 className="text-lg font-semibold text-primary">{t.familyNone}</h2>
                         <p className="mt-2 max-w-xl text-sm text-tertiary">{t.familyNoneBody}</p>
@@ -201,7 +214,22 @@ export const FamilyPage = () => {
                             {t.familyCreate}
                         </Button>
                     </div>
-                ) : (
+                ) : !family && invites.length > 0 ? (
+                    <div className="mt-6 rounded-2xl bg-primary px-5 py-6 ring-1 ring-secondary">
+                        <p className="text-sm text-tertiary">{t.familyPendingCreateHint}</p>
+                        <Button
+                            color="secondary"
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => {
+                                setLoadError(null);
+                                setCreating(true);
+                            }}
+                        >
+                            {t.familyCreate}
+                        </Button>
+                    </div>
+                ) : family ? (
                     <>
                         <section className="mt-6 divide-y divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
                             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
@@ -257,7 +285,7 @@ export const FamilyPage = () => {
                             </>
                         ) : null}
                     </>
-                )}
+                ) : null}
             </main>
             <LandingFooter />
 
