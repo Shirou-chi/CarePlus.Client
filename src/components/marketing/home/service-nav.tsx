@@ -292,15 +292,24 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                     <Modal className="w-full max-w-md sm:max-w-xl md:max-w-2xl">
                         <Dialog className="relative flex w-full flex-col overflow-hidden rounded-2xl bg-primary p-5 shadow-xl ring-1 ring-secondary outline-hidden sm:p-6">
                             <div className="flex items-start justify-between gap-3">
-                                <div>
+                                <div className="min-w-0 flex-1 text-left">
                                     <Heading slot="title" className="text-lg font-semibold text-primary">
                                         {t.homeMoreServices}
                                     </Heading>
                                     <p className="mt-1 text-sm text-tertiary">{t.homeMoreServicesHint}</p>
                                 </div>
-                                {tourStep === null ? (
-                                    <CloseButton size="md" label="Close" className="cursor-pointer" onPress={() => setAllMenuOpen(false)} />
-                                ) : null}
+                                <CloseButton
+                                    size="md"
+                                    label="Close"
+                                    className="shrink-0 cursor-pointer"
+                                    onPress={() => {
+                                        if (tourStep !== null) {
+                                            closeTour();
+                                            return;
+                                        }
+                                        setAllMenuOpen(false);
+                                    }}
+                                />
                             </div>
                             <ul
                                 data-tour-all-menu=""

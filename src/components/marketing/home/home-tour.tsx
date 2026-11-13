@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/base/buttons/button";
 import { useI18n } from "@/providers/locale-provider";
 
@@ -203,10 +204,10 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         return () => window.removeEventListener("keydown", onKey);
     }, [onSkip]);
 
-    if (!box) return null;
+    if (!box || typeof document === "undefined") return null;
 
     const tipWidth = Math.min(320, window.innerWidth - 32);
-    const tipHeight = 200;
+    const tipHeight = 220;
     const gap = 16;
     const hole = {
         x: Math.max(8, box.left - 8),
@@ -218,23 +219,49 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
     const holeBottom = hole.y + hole.height;
     const hitsHole = (left: number, top: number) =>
         left < holeRight + 8 && left + tipWidth > hole.x - 8 && top < holeBottom + 8 && top + tipHeight > hole.y - 8;
-    let tipLeft = Math.max(8, Math.min(box.left + box.width / 2 - tipWidth / 2, window.innerWidth - tipWidth - 8));
+    const clampTip = (left: number, top: number) => ({
+        left: Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8)),
+        top: Math.max(8, Math.min(top, window.innerHeight - tipHeight - 8)),
+    });
+
+    let tipLeft = box.left + box.width / 2 - tipWidth / 2;
     let tipTop = holeBottom + gap;
-    if (tipTop + tipHeight > window.innerHeight - 8) tipTop = hole.y - gap - tipHeight;
+
+    // Inside the All modal, prefer a free edge of the viewport so the card is never clipped.
+    if (step >= 2) {
+        const below = holeBottom + gap;
+        const above = hole.y - gap - tipHeight;
+        if (below + tipHeight <= window.innerHeight - 8) {
+            tipTop = below;
+        } else if (above >= 8) {
+            tipTop = above;
+        } else {
+            tipTop = window.innerHeight - tipHeight - 12;
+            tipLeft = Math.max(8, (window.innerWidth - tipWidth) / 2);
+        }
+    } else if (tipTop + tipHeight > window.innerHeight - 8) {
+        tipTop = hole.y - gap - tipHeight;
+    }
+
+    ({ left: tipLeft, top: tipTop } = clampTip(tipLeft, tipTop));
     if (hitsHole(tipLeft, tipTop)) {
         const beside = hole.x - gap - tipWidth;
         tipLeft = beside >= 8 ? beside : Math.min(window.innerWidth - tipWidth - 8, holeRight + gap);
         tipTop = Math.max(8, Math.min(hole.y, window.innerHeight - tipHeight - 8));
+        ({ left: tipLeft, top: tipTop } = clampTip(tipLeft, tipTop));
     }
-    tipLeft = Math.max(8, Math.min(tipLeft, window.innerWidth - tipWidth - 8));
-    tipTop = Math.max(8, Math.min(tipTop, window.innerHeight - tipHeight - 8));
-    if (hitsHole(tipLeft, tipTop)) {
-        tipTop = Math.min(holeBottom + gap, window.innerHeight - tipHeight - 8);
-        tipLeft = Math.max(8, hole.x - gap - tipWidth);
+    if (hitsHole(tipLeft, tipTop) && step >= 2) {
+        ({ left: tipLeft, top: tipTop } = clampTip((window.innerWidth - tipWidth) / 2, window.innerHeight - tipHeight - 12));
     }
 
-    return (
-        <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    return createPortal(
+        <div
+            data-react-aria-top-layer="true"
+            className="fixed inset-0 z-[80]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+        >
             <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
                 <defs>
                     <mask id="careplus-tour-hole">
@@ -245,7 +272,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
                 <rect width="100%" height="100%" fill="rgba(4, 15, 28, 0.72)" mask="url(#careplus-tour-hole)" />
             </svg>
             <div
-                className="absolute z-[71] rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary"
+                className="absolute z-[81] max-h-[min(14rem,calc(100dvh-1rem))] overflow-y-auto rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary"
                 style={{ left: tipLeft, top: tipTop, width: tipWidth }}
             >
                 <p className="text-xs font-medium text-tertiary">
@@ -269,6 +296,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 };
