@@ -10,8 +10,10 @@ import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
 import { orderApi } from "@/services/orderApi";
-import { TOKEN_KEY } from "@/services/api";
+import { getAuthToken } from "@/services/api";
+import { stripeApi } from "@/services/stripeApi";
 import { clearCheckoutDraft, readCheckoutDraft } from "@/utils/checkout-draft";
+import { writePaymentCheckout } from "@/utils/payment-checkout";
 import { orderStatusLabel } from "@/utils/order-history";
 import { PROFILE_ADDRESS_ID } from "@/utils/delivery-address";
 import { formatRm, getClinicPharmacy, medicineName } from "@/utils/prescribed-medicine";
@@ -47,6 +49,36 @@ export const CheckoutPage = () => {
         if (placing) return;
         setPlacing(true);
         setPlaceError(null);
+        if (!getAuthToken() || profile.id.startsWith("fam-")) {
+            setPlaceError(t.checkoutPlaceFailed);
+            setPlacing(false);
+            return;
+        }
+
+        if (draft.paymentKind === "card" || draft.paymentKind === "fpx") {
+            try {
+                writePaymentCheckout({
+                    kind: "medicine",
+                    amount: total,
+                    methodLabel: draft.paymentLabel,
+                    method: draft.paymentKind,
+                    returnTo: "/orders",
+                    cancelTo: "/checkout",
+                });
+                const session = await stripeApi.createMedicineCheckout({
+                    amount: total,
+                    method: draft.paymentKind,
+                    methodLabel: draft.paymentLabel,
+                    cancelPath: "/checkout",
+                });
+                window.location.assign(session.url);
+            } catch (error) {
+                setPlaceError(error instanceof Error ? error.message : t.checkoutPlaceFailed);
+                setPlacing(false);
+            }
+            return;
+        }
+
         const lines = draft.lines.map((line) => {
             const medicine = catalog.find((item) => item.id === line.medicineId);
             return {
@@ -64,11 +96,6 @@ export const CheckoutPage = () => {
             pickedUp: orderStatusLabel(locale, "picked_up"),
             delivered: orderStatusLabel(locale, "delivered"),
         };
-        if (!localStorage.getItem(TOKEN_KEY) || profile.id.startsWith("fam-")) {
-            setPlaceError(t.checkoutPlaceFailed);
-            setPlacing(false);
-            return;
-        }
         let order;
         try {
             const addressId = draft.addressId && draft.addressId !== PROFILE_ADDRESS_ID ? Number(draft.addressId) : null;

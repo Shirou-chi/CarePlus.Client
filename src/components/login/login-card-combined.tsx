@@ -14,12 +14,70 @@ type LoginCardCombinedProps = {
     defaultEmail?: string;
     defaultPassword?: string;
     hint?: string;
+    registerHref?: string;
+    twoFactor?: { maskedEmail: string } | null;
     onSubmit: (payload: { email: string; password: string; rememberMe: boolean }) => void;
+    onVerifyTwoFactor?: (code: string) => void;
+    onResendTwoFactor?: () => void;
+    onBackFromTwoFactor?: () => void;
 };
 
-export const LoginCardCombined = ({ error, success, isLoading, defaultEmail, defaultPassword, hint, onSubmit }: LoginCardCombinedProps) => {
+export const LoginCardCombined = ({
+    error,
+    success,
+    isLoading,
+    defaultEmail,
+    defaultPassword,
+    hint,
+    registerHref = "/register",
+    twoFactor,
+    onSubmit,
+    onVerifyTwoFactor,
+    onResendTwoFactor,
+    onBackFromTwoFactor,
+}: LoginCardCombinedProps) => {
     const { t } = useI18n();
     const [rememberMe, setRememberMe] = useState(false);
+
+    if (twoFactor) {
+        return (
+            <AuthCardFrame mode="login" title={t.loginTwoFactorTitle} body={t.loginTwoFactorBody.replace("{email}", twoFactor.maskedEmail)}>
+                <Form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const data = Object.fromEntries(new FormData(e.currentTarget));
+                        onVerifyTwoFactor?.(String(data.code ?? "").trim());
+                    }}
+                    className="flex flex-col gap-7 [&_input]:min-h-12"
+                >
+                    <FormStatus error={error} success={success} />
+                    <Input
+                        isRequired
+                        label={t.settingsTwoFactorCodeLabel}
+                        type="text"
+                        name="code"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        size="lg"
+                        placeholder="000000"
+                        hint={t.settingsTwoFactorEmailHint}
+                    />
+                    <Button type="submit" size="lg" isLoading={isLoading} showTextWhileLoading className="min-h-12">
+                        {t.loginTwoFactorVerify}
+                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+                        <Button color="link-color" size="md" type="button" isDisabled={isLoading} onClick={() => onResendTwoFactor?.()}>
+                            {t.loginTwoFactorResend}
+                        </Button>
+                        <Button color="link-color" size="md" type="button" isDisabled={isLoading} onClick={() => onBackFromTwoFactor?.()}>
+                            {t.loginTwoFactorBack}
+                        </Button>
+                    </div>
+                </Form>
+            </AuthCardFrame>
+        );
+    }
 
     return (
         <AuthCardFrame mode="login" title={t.logInTitle} body={t.logInBody}>
@@ -66,7 +124,7 @@ export const LoginCardCombined = ({ error, success, isLoading, defaultEmail, def
 
             <div className="flex justify-center gap-1 py-1 text-center">
                 <span className="text-sm text-tertiary">{t.dontHaveAccount}</span>
-                <Button color="link-color" size="md" href="/register">
+                <Button color="link-color" size="md" href={registerHref}>
                     {t.signUp}
                 </Button>
             </div>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { TOKEN_KEY } from "@/services/api";
+import { getAuthToken } from "@/services/api";
 import { profileApi } from "@/services/profileApi";
 import { syncBrowserZoomCompensation } from "@/utils/browser-zoom";
 
@@ -165,7 +165,7 @@ export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "
 
     const setTheme = useCallback((next: Theme) => {
         setThemeState(next);
-        if ((next === "light" || next === "dark") && localStorage.getItem(TOKEN_KEY)) {
+        if ((next === "light" || next === "dark") && getAuthToken()) {
             void profileApi.saveAppSetting({ appearance: next }).catch(() => undefined);
         }
     }, []);
@@ -176,7 +176,7 @@ export const ThemeProvider = ({ children, defaultTheme = "light", storageKey = "
 
     const setTextSize = useCallback((next: TextSize) => {
         setTextSizeState(next);
-        if (localStorage.getItem(TOKEN_KEY)) {
+        if (getAuthToken()) {
             void profileApi.saveAppSetting({ textSize: next }).catch(() => undefined);
         }
     }, []);

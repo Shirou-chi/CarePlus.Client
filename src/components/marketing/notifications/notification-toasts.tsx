@@ -66,11 +66,24 @@ export const NotificationToasts = () => {
 
     const dismiss = useCallback((id: string) => setToasts((current) => current.filter((toast) => toast.id !== id)), []);
 
+    // Keep the toast from sitting on top of content while the user scrolls the page.
+    useEffect(() => {
+        if (toasts.length === 0) return;
+        let lastY = window.scrollY;
+        const onScroll = () => {
+            if (Math.abs(window.scrollY - lastY) < 24) return;
+            lastY = window.scrollY;
+            setToasts([]);
+        };
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, [toasts.length]);
+
     if (!profile || notificationLevel === "none" || toasts.length === 0) return null;
 
     return (
         <div className="pointer-events-none fixed inset-x-0 top-[4.5rem] z-[60] md:top-22" role="status" aria-live="polite">
-            <div className="mx-auto flex w-full max-w-container justify-end px-4 pt-3 md:px-8">
+            <div className="mx-auto flex w-full max-w-container justify-center px-4 pt-2 md:justify-end md:px-8 md:pt-3">
                 <div className="flex w-[22rem] max-w-full flex-col gap-2">
                     {toasts.map((toast) => (
                         <ToastCard key={toast.id} toast={toast} onDismiss={dismiss} onRead={markRead} />

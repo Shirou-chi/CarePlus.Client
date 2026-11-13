@@ -1,4 +1,4 @@
-import { baseUrl, messageFromBody, request, TOKEN_KEY, type ApiResponse } from "@/services/api";
+import { baseUrl, getAuthToken, messageFromBody, request, type ApiResponse } from "@/services/api";
 
 export type PersonalRecord = {
     id: string;
@@ -42,7 +42,7 @@ export const personalHealthRecordApi = {
     },
     async viewPdf(id: string) {
         const response = await fetch(`${baseUrl}/api/PersonalHealthRecord/${encodeURIComponent(id)}/pdf`, {
-            headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) ?? ""}` },
+            headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
         });
         if (!response.ok) throw new Error("Unable to open this PDF.");
         return URL.createObjectURL(await response.blob());

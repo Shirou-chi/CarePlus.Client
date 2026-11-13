@@ -3,7 +3,32 @@ import { OLD_STAFF_SESSION_KEY, SESSION_KEY } from '@/utils/auth'
 export const baseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export const TOKEN_KEY = 'careplus-token'
+export const REMEMBER_ME_KEY = 'careplus-remember-me'
 export const SESSION_EXPIRED_MESSAGE = 'Your session has expired or is invalid. Please sign in again.'
+
+/** Token may live in localStorage (remember me) or sessionStorage (browser session). */
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
+}
+
+export function saveAuthToken(token: string, rememberMe = true): void {
+  if (rememberMe) {
+    localStorage.setItem(TOKEN_KEY, token)
+    sessionStorage.removeItem(TOKEN_KEY)
+    localStorage.setItem(REMEMBER_ME_KEY, '1')
+  } else {
+    sessionStorage.setItem(TOKEN_KEY, token)
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.setItem(REMEMBER_ME_KEY, '0')
+  }
+}
+
+export function clearAuthToken(): void {
+  localStorage.removeItem(TOKEN_KEY)
+  sessionStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(REMEMBER_ME_KEY)
+}
 
 export type ApiResponse<T> = {
   isSuccess: boolean
@@ -101,9 +126,9 @@ function messageFromHttpStatus(status: number) {
 }
 
 function redirectExpiredSession(token: string) {
-  if (localStorage.getItem(TOKEN_KEY) !== token) return
+  if (getAuthToken() !== token) return
 
-  localStorage.removeItem(TOKEN_KEY)
+  clearAuthToken()
   localStorage.removeItem(SESSION_KEY)
   localStorage.removeItem(OLD_STAFF_SESSION_KEY)
 
@@ -123,7 +148,7 @@ export async function request<T>(
     headers.set('Content-Type', 'application/json')
   }
 
-  const token = requiresAuth ? localStorage.getItem(TOKEN_KEY) : null
+  const token = requiresAuth ? getAuthToken() : null
   if (requiresAuth && !token) {
     throw new Error('Please login first.')
   }
@@ -180,6 +205,22 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message, threadId }),
     }, true)
+  },
+
+  async importChatThreads(
+    threads: Array<{
+      title?: string
+      messages: Array<{ role: 'user' | 'assistant'; content: string; at?: number; disclaimer?: string }>
+    }>,
+  ): Promise<StoredChatThread[]> {
+    return request<StoredChatThread[]>(
+      '/api/chat/threads/import',
+      {
+        method: 'POST',
+        body: JSON.stringify({ threads }),
+      },
+      true,
+    )
   },
 
   async deleteChatThreads(threadIds: string[]): Promise<{ deleted: number }> {

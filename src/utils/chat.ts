@@ -25,6 +25,47 @@ export type ChatThread = {
 export const GUEST_CHAT_KEY = "careplus-chats-guest";
 export const userChatKey = (patientId: string) => `careplus-chats:${patientId}`;
 
+const PUBLIC_CHAT_PATHS = ["/", "/about", "/contact", "/announcements", "/login", "/register", "/forgot-password", "/doctors"];
+
+/** Keep post-login redirects on-site. */
+export const safeAppPath = (value: string | null | undefined) => {
+    if (!value) return null;
+    const path = value.trim();
+    if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/\\")) return null;
+    return path;
+};
+
+/** Guests hitting protected chat links go through login first, then return here. */
+export const chatLinkHref = (href: string, isGuest: boolean) => {
+    if (!isGuest || !href.startsWith("/")) return href;
+    const pathOnly = href.split(/[?#]/)[0] || href;
+    const isPublic = PUBLIC_CHAT_PATHS.some((path) => pathOnly === path || (path !== "/" && pathOnly.startsWith(`${path}/`)));
+    if (isPublic) return href;
+    return `/login?next=${encodeURIComponent(href)}`;
+};
+
+export const guestThreadsForImport = (threads: ChatThread[]) =>
+    threads
+        .filter((thread) => thread.messages.length > 0)
+        .slice(0, 10)
+        .map((thread) => ({
+            title: thread.title || undefined,
+            messages: thread.messages.slice(0, 40).map((message) => ({
+                role: message.role,
+                content: message.text,
+                at: message.at,
+                disclaimer: message.disclaimer,
+            })),
+        }));
+
+export const clearGuestChats = () => {
+    try {
+        sessionStorage.removeItem(GUEST_CHAT_KEY);
+    } catch {
+        // ponytail: private mode may block sessionStorage writes
+    }
+};
+
 export const MAX_CHAT_MESSAGE_CHARS = 2000;
 export const MAX_CHAT_MESSAGES_PER_HOUR = 15;
 export const MIN_CHAT_MESSAGE_INTERVAL_MS = 3_000;

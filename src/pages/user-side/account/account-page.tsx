@@ -32,7 +32,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { CreditCard } from "@/components/credit-card/credit-card";
 import { useAuth } from "@/providers/auth-provider";
-import { TOKEN_KEY } from "@/services/api";
+import { getAuthToken } from "@/services/api";
 import { authApi } from "@/services/authApi";
 import { profileApi, profilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
 import { useI18n, type Copy } from "@/providers/locale-provider";
@@ -421,7 +421,7 @@ export const AccountPage = () => {
 
     const saveNotificationLevel = (level: NotificationLevel) => {
         persistSettings({ ...settings, notificationLevel: level });
-        if (profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY)) {
+        if (profile.id.startsWith("fam-") || !getAuthToken()) {
             return;
         }
         void profileApi.saveAppSetting({ notification: level }).catch(() => undefined);
@@ -658,37 +658,27 @@ export const AccountPage = () => {
                     <p className="mt-2 max-w-3xl text-md text-tertiary">{t.settingsPageBody}</p>
                 </div>
 
-                <div className="mt-8 grid min-w-0 items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
-                    <aside className="sticky top-[4.5rem] z-20 -mx-4 min-w-0 border-b border-secondary bg-primary/90 px-4 py-2 backdrop-blur-md md:top-22 lg:top-28 lg:mx-0 lg:max-h-[calc(100dvh-8rem)] lg:border-b-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none dark:bg-[#0a0a0a]/92 lg:dark:bg-transparent">
-                        <nav aria-label={t.settingsPageTitle} className="flex min-w-0 gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 lg:flex-col lg:gap-1 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
-                            <SidebarLink
-                                label={t.settingsNavProfile}
-                                icon={User01}
-                                active={activeSection === "profile"}
-                                onClick={() => scrollToSection("profile")}
-                            />
-                            <SidebarLink
-                                label={t.settingsNavPreference}
-                                icon={Settings01}
-                                active={activeSection === "preference"}
-                                onClick={() => scrollToSection("preference")}
-                            />
-                            <SidebarLink
-                                label={t.settingsNavPayment}
-                                icon={CreditCard01}
-                                active={activeSection === "payment"}
-                                onClick={() => scrollToSection("payment")}
-                            />
-                            <SidebarLink
-                                label={t.settingsNavSecurity}
-                                icon={Shield01}
-                                active={activeSection === "security"}
-                                onClick={() => scrollToSection("security")}
-                            />
+                {/* Mobile: pin tabs under the site header so title/fields cannot paint over them while scrolling. */}
+                <aside className="fixed inset-x-0 top-[4.5rem] z-40 border-b border-secondary bg-primary px-4 py-2 md:top-22 lg:hidden dark:bg-[#0a0a0a]">
+                    <nav aria-label={t.settingsPageTitle} className="mx-auto flex min-w-0 max-w-container gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 [&::-webkit-scrollbar]:hidden">
+                        <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
+                        <SidebarLink label={t.settingsNavPreference} icon={Settings01} active={activeSection === "preference"} onClick={() => scrollToSection("preference")} />
+                        <SidebarLink label={t.settingsNavPayment} icon={CreditCard01} active={activeSection === "payment"} onClick={() => scrollToSection("payment")} />
+                        <SidebarLink label={t.settingsNavSecurity} icon={Shield01} active={activeSection === "security"} onClick={() => scrollToSection("security")} />
+                    </nav>
+                </aside>
+
+                <div className="mt-8 grid min-w-0 items-start gap-8 max-lg:pt-14 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+                    <aside className="sticky top-28 z-20 hidden min-w-0 lg:block lg:max-h-[calc(100dvh-8rem)]">
+                        <nav aria-label={t.settingsPageTitle} className="flex flex-col gap-1">
+                            <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
+                            <SidebarLink label={t.settingsNavPreference} icon={Settings01} active={activeSection === "preference"} onClick={() => scrollToSection("preference")} />
+                            <SidebarLink label={t.settingsNavPayment} icon={CreditCard01} active={activeSection === "payment"} onClick={() => scrollToSection("payment")} />
+                            <SidebarLink label={t.settingsNavSecurity} icon={Shield01} active={activeSection === "security"} onClick={() => scrollToSection("security")} />
                         </nav>
                     </aside>
 
-                    <div className="flex min-w-0 flex-col gap-16 pb-16">
+                    <div className="relative z-0 flex min-w-0 flex-col gap-16 pb-16">
                         <section
                             id="profile"
                             ref={(node) => {
@@ -1696,7 +1686,7 @@ const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: b
                         setFieldError(t.settingsPasswordMismatch);
                         return;
                     }
-                    if (!profile || profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY)) {
+                    if (!profile || profile.id.startsWith("fam-") || !getAuthToken()) {
                         setFieldSuccess(null);
                         setFieldError(t.settingsPasswordFailed);
                         return;

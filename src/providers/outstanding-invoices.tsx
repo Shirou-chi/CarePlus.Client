@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useAuth } from "@/providers/auth-provider";
-import { TOKEN_KEY } from "@/services/api";
+import { getAuthToken } from "@/services/api";
 import { invoiceApi } from "@/services/invoiceApi";
 import type { OutstandingInvoice } from "@/utils/invoices";
 
@@ -22,7 +22,7 @@ export const OutstandingInvoicesProvider = ({ children }: { children: ReactNode 
     const [error, setError] = useState<string | null>(null);
 
     const reload = useCallback(async () => {
-        if (!profile || profile.id.startsWith("fam-") || !localStorage.getItem(TOKEN_KEY)) {
+        if (!profile || profile.id.startsWith("fam-") || !getAuthToken()) {
             flushSync(() => {
                 setInvoices([]);
                 setError(null);

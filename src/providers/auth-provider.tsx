@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { SESSION_EXPIRED_MESSAGE, TOKEN_KEY } from "@/services/api";
+import { SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
@@ -31,7 +31,9 @@ type AuthContextValue = {
     isReady: boolean;
     isAuthenticated: boolean;
     hasCompletedTutorial: boolean | null;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, rememberMe?: boolean) => Promise<void | { requiresTwoFactor: true; challengeId: string; maskedEmail: string }>;
+    completeLoginTwoFactor: (challengeId: string, code: string, rememberMe?: boolean) => Promise<void>;
+    resendLoginTwoFactor: (challengeId: string) => Promise<{ challengeId: string; maskedEmail: string; expiresInSeconds: number }>;
     staffLogin: (identifier: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
     completeTutorial: () => Promise<void>;
@@ -55,7 +57,7 @@ function readStoredSession(): StoredSession | null {
     if (typeof window === "undefined") return null;
 
     try {
-        if (!localStorage.getItem(TOKEN_KEY)) return null;
+        if (!getAuthToken()) return null;
 
         const saved = localStorage.getItem(SESSION_KEY);
 
@@ -167,7 +169,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const user = session?.type === "staff" ? session.user : null;
 
     useEffect(() => {
-        const token = localStorage.getItem(TOKEN_KEY);
+        const token = getAuthToken();
         if (!token) {
             setHasCompletedTutorial(null);
             setIsReady(true);
@@ -175,7 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         let cancelled = false;
-        const isCurrentSession = () => !cancelled && localStorage.getItem(TOKEN_KEY) === token;
+        const isCurrentSession = () => !cancelled && getAuthToken() === token;
         authApi
             .getCurrentUser()
             .then(async (apiUser) => {
@@ -227,11 +229,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
     }, [applyLocale, applyTheme, applyTextSize]);
 
-    const login = async (email: string, password: string) => {
-        authApi.clearToken();
-        const { token } = await authApi.patientLogin(email.trim(), password);
-        authApi.saveToken(token);
-
+    const establishPatientSession = async (token: string, rememberMe = true) => {
+        authApi.saveToken(token, rememberMe);
         try {
             const apiUser = await authApi.getCurrentUser();
 
@@ -241,7 +240,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             const nextProfile = profileFromUser(apiUser);
             const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
-            if (localStorage.getItem(TOKEN_KEY) !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
+            if (getAuthToken() !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
 
             const nextSession: StoredSession = {
                 type: "patient",
@@ -251,9 +250,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setSession(nextSession);
             setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
         } catch (error) {
-            if (localStorage.getItem(TOKEN_KEY) === token) authApi.clearToken();
+            if (getAuthToken() === token) authApi.clearToken();
             throw error;
         }
+    };
+
+    const login = async (email: string, password: string, rememberMe = false) => {
+        authApi.clearToken();
+        const result = await authApi.patientLogin(email.trim(), password, rememberMe);
+        if (!("token" in result)) {
+            return {
+                requiresTwoFactor: true as const,
+                challengeId: result.challengeId,
+                maskedEmail: result.maskedEmail,
+            };
+        }
+
+        await establishPatientSession(result.token, rememberMe);
+    };
+
+    const completeLoginTwoFactor = async (challengeId: string, code: string, rememberMe = false) => {
+        authApi.clearToken();
+        const { token } = await authApi.verifyPatientLoginTwoFactor(challengeId, code, rememberMe);
+        await establishPatientSession(token, rememberMe);
+    };
+
+    const resendLoginTwoFactor = async (challengeId: string) => {
+        const result = await authApi.resendPatientLoginTwoFactor(challengeId);
+        return {
+            challengeId: result.challengeId,
+            maskedEmail: result.maskedEmail,
+            expiresInSeconds: result.expiresInSeconds,
+        };
     };
 
     const staffLogin = async (identifier: string, password: string) => {
@@ -271,7 +299,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 user: convertApiUser(apiUser),
             };
             const setting = await profileApi.getAppSetting().catch(() => null);
-            if (localStorage.getItem(TOKEN_KEY) !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
+            if (getAuthToken() !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
 
             if (setting) {
                 applyAppSetting("", setting, applyTheme, () => undefined, applyTextSize);
@@ -280,7 +308,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setSession(nextSession);
             setHasCompletedTutorial(null);
         } catch (error) {
-            if (localStorage.getItem(TOKEN_KEY) === token) authApi.clearToken();
+            if (getAuthToken() === token) authApi.clearToken();
             throw error;
         }
     };
@@ -299,7 +327,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (!profile) return;
 
         setHasCompletedTutorial(true);
-        if (!localStorage.getItem(TOKEN_KEY)) return;
+        if (!getAuthToken()) return;
 
         await profileApi.saveAppSetting({ hasCompletedTutorial: true });
     };
@@ -351,13 +379,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             isAuthenticated: session !== null,
             hasCompletedTutorial,
             login,
+            completeLoginTwoFactor,
+            resendLoginTwoFactor,
             staffLogin,
             logout,
             completeTutorial,
             updateProfile,
             updateStaffProfile,
         }),
-        [profile, user, isReady, session, hasCompletedTutorial, login, staffLogin, logout, completeTutorial, updateProfile, updateStaffProfile],
+        [profile, user, isReady, session, hasCompletedTutorial, login, completeLoginTwoFactor, resendLoginTwoFactor, staffLogin, logout, completeTutorial, updateProfile, updateStaffProfile],
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

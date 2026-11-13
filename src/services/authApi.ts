@@ -1,7 +1,8 @@
 import {
+  clearAuthToken,
   messageFromBody,
   request,
-  TOKEN_KEY,
+  saveAuthToken,
 } from './api'
 import type { ApiResponse, LoginResponse } from './api'
 
@@ -45,6 +46,16 @@ export type PasswordResetCodeSentResponse = {
   maskedEmail: string
   expiresInSeconds: number
 }
+
+export type LoginTwoFactorRequired = {
+  requiresTwoFactor: true
+  challengeId: string
+  maskedEmail: string
+  expiresInSeconds: number
+}
+
+/** Token login vs 2FA challenge. Discriminate with `"token" in result`. */
+export type PatientLoginResult = LoginResponse | LoginTwoFactorRequired
 
 export type PasswordResetCodeVerifiedResponse = {
   challengeId: string
@@ -111,13 +122,31 @@ export const authApi = {
     return unwrap(result, 'Staff login failed.')
   },
 
-  async patientLogin(identifier: string, password: string): Promise<LoginResponse> {
-    const result = await request<ApiResponse<LoginResponse>>('/api/Patient/Login', {
+  async patientLogin(identifier: string, password: string, rememberMe = false): Promise<PatientLoginResult> {
+    const result = await request<ApiResponse<PatientLoginResult>>('/api/Patient/Login', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, rememberMe }),
     })
 
     return unwrap(result, 'Patient login failed.')
+  },
+
+  async verifyPatientLoginTwoFactor(challengeId: string, code: string, rememberMe = false): Promise<LoginResponse> {
+    const result = await request<ApiResponse<LoginResponse>>('/api/Patient/Login/VerifyTwoFactor', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId, code, rememberMe }),
+    })
+
+    return unwrap(result, 'Unable to verify the code.')
+  },
+
+  async resendPatientLoginTwoFactor(challengeId: string): Promise<LoginTwoFactorRequired> {
+    const result = await request<ApiResponse<LoginTwoFactorRequired>>('/api/Patient/Login/ResendTwoFactor', {
+      method: 'POST',
+      body: JSON.stringify({ challengeId }),
+    })
+
+    return unwrap(result, 'Unable to resend the verification code.')
   },
 
   async patientRegister(
@@ -233,11 +262,11 @@ export const authApi = {
     return unwrap(result, 'Unable to retrieve current user.')
   },
 
-  saveToken(token: string): void {
-    localStorage.setItem(TOKEN_KEY, token)
+  saveToken(token: string, rememberMe = true): void {
+    saveAuthToken(token, rememberMe)
   },
 
   clearToken(): void {
-    localStorage.removeItem(TOKEN_KEY)
+    clearAuthToken()
   },
 }
