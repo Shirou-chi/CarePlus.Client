@@ -67,7 +67,7 @@ export const LandingFooter = () => {
           ];
 
     return (
-        <footer className="careplus-panel border-t border-secondary bg-primary dark:border-white/10">
+        <footer className="careplus-panel mt-auto border-t border-secondary bg-primary dark:border-white/10">
             <div className="mx-auto grid w-full max-w-container gap-10 px-4 py-12 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] md:gap-8 md:px-8 md:py-16">
                 <div className="max-w-sm">
                     <CarePlusLogo />

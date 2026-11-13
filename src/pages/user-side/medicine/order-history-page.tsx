@@ -106,10 +106,10 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
     if (!profile) return <Navigate to="/login" replace />;
 
     return (
-        <div className="careplus-landing min-h-dvh pt-[4.5rem] md:pt-22">
+        <div className="careplus-landing flex min-h-dvh flex-col pt-[4.5rem] md:pt-22">
             <LandingHeader />
             <PageBreadcrumb />
-            <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
+            <main className="mx-auto w-full max-w-container flex-1 px-4 py-8 md:px-8 md:py-10">
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{title}</h1>

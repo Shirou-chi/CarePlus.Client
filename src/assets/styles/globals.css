@@ -240,6 +240,23 @@ html:has(.careplus-landing),
     color-scheme: light;
 }
 
+/* Fill the viewport so a short page still pins the footer to the bottom. */
+html:has(.careplus-landing),
+html:has(.careplus-landing) body,
+html:has(.careplus-landing) #root,
+html:has(.careplus-landing) .careplus-page,
+html:has(.careplus-landing) .careplus-route {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+}
+
+html:has(.careplus-landing) .careplus-page,
+html:has(.careplus-landing) .careplus-route,
+.careplus-landing {
+    flex: 1;
+}
+
 .careplus-landing > footer {
     margin-top: auto;
 }
