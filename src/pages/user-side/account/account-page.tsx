@@ -660,8 +660,10 @@ export const AccountPage = () => {
     return (
         <div className="careplus-landing careplus-account min-h-dvh pt-[4.5rem] md:pt-22">
             <LandingHeader />
-            <PageBreadcrumb />
-            {/* Mobile: sticky under header, below the breadcrumb so Home > Account stays visible. */}
+            {/* Desktop only: on mobile the sticky section tabs sit under the header, so Home > Account above them looked cramped. */}
+            <div className="hidden lg:block">
+                <PageBreadcrumb />
+            </div>
             <aside className="sticky top-[4.5rem] z-40 border-b border-secondary bg-primary px-4 py-2 md:top-22 lg:hidden dark:bg-[#0a0a0a]">
                 <nav aria-label={t.settingsPageTitle} className="mx-auto flex min-w-0 max-w-container gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 [&::-webkit-scrollbar]:hidden">
                     <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
@@ -692,16 +694,16 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.profile = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavProfile} />
                             <FormStatus success={profileNotice?.success} error={profileNotice?.error} className="mt-4" />
                             <div className="mt-6 flex flex-col gap-4">
-                                <div className="flex min-w-0 items-center gap-4">
+                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                     <button
                                         type="button"
                                         aria-label={profile.avatarUrl ? t.settingsViewPhoto : t.settingsChangePhoto}
-                                        className="cursor-pointer rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                                        className="shrink-0 cursor-pointer rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                                         onClick={() => {
                                             if (profile.avatarUrl) {
                                                 setDialog({ type: "view-photo" });
@@ -710,21 +712,21 @@ export const AccountPage = () => {
                                             photoInputRef.current?.click();
                                         }}
                                     >
+                                        {/* md keeps name/email readable on phones; no verified tick (that badge is for social kits, not patient photos). */}
                                         <AvatarProfilePhoto
-                                            size="lg"
+                                            size="md"
                                             src={profile.avatarUrl ?? undefined}
                                             alt={profile.fullName}
                                             initials={profileInitials(profile.fullName)}
-                                            verified
                                         />
                                     </button>
                                     <div className="min-w-0 flex-1">
-                                        <h2 className="line-clamp-2 text-xl font-semibold break-words text-primary">{profile.fullName}</h2>
-                                        <p className="mt-1 text-md break-all text-tertiary">{profile.email}</p>
+                                        <h2 className="line-clamp-2 text-lg font-semibold break-words text-primary sm:text-xl">{profile.fullName}</h2>
+                                        <p className="mt-1 text-sm break-all text-tertiary sm:text-md">{profile.email}</p>
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                                    <Button color="secondary" size="sm" onClick={() => photoInputRef.current?.click()}>
+                                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
+                                    <Button color="secondary" size="sm" className="w-fit" onClick={() => photoInputRef.current?.click()}>
                                         {t.settingsChangePhoto}
                                     </Button>
                                     <p className="text-xs text-tertiary">{profile.avatarUrl ? t.settingsViewPhotoHint : t.settingsChangePhotoHint}</p>
@@ -830,7 +832,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.preference = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPreference} />
                             <div className="mt-6 flex flex-col gap-8">
@@ -906,7 +908,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.payment = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPayment} description={t.settingsPaymentBody} />
                             <FormStatus success={paymentNotice} className="mt-4" />
@@ -957,7 +959,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.security = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavSecurity} />
                             <FormStatus success={securityNotice?.success} error={securityNotice?.error} className="mt-4" />
