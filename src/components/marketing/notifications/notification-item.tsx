@@ -7,10 +7,13 @@ export const noticeKindLabel = (kind: NoticeKind, t: Copy) => {
     if (kind === "visit") return t.notifKindVisit;
     if (kind === "medicine") return t.notifKindMedicine;
     if (kind === "records") return t.notifKindRecords;
+    if (kind === "announcement") return t.notifKindAnnouncement;
+    if (kind === "payment") return t.notifKindPayment;
+    if (kind === "family") return t.notifKindFamily;
     return t.notifKindAccount;
 };
 
-export const noticeMessage = (item: ClinicNotice, t: Copy) => t[item.copyKey].replace("{actor}", item.actor);
+export const noticeMessage = (item: ClinicNotice, _t: Copy) => item.message;
 
 export const noticeMeta = (item: ClinicNotice, t: Copy, locale: "en" | "zh", now = Date.now()) =>
     `${formatNoticeAge(item.createdAt, now, locale)} · ${noticeKindLabel(item.kind, t)}`;
@@ -36,6 +39,6 @@ export const NotificationItem = ({ actor, initials, message, meta, unread, href,
             <span className={cx("block text-sm text-primary", unread ? "font-semibold" : "font-medium")}>{message}</span>
             <span className="mt-0.5 block text-xs text-tertiary">{meta}</span>
         </span>
-        {unread ? <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-[#0b1f38]" /> : <span className="mt-2 size-2 shrink-0" />}
+        {unread ? <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-[#0b1f38] dark:bg-brand-300" /> : <span className="mt-2 size-2 shrink-0" />}
     </a>
 );

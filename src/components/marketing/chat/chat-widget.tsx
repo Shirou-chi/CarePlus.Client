@@ -4,7 +4,9 @@ import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { CloseButton } from "@/components/base/buttons/close-button";
 import { ChatComposer } from "@/components/marketing/chat/chat-composer";
+import { ChatQuickPrompts } from "@/components/marketing/chat/chat-quick-prompts";
 import { ChatThreadView } from "@/components/marketing/chat/chat-thread";
+import { useAnimatedChatScroll } from "@/components/marketing/chat/use-animated-chat-scroll";
 import { useChat } from "@/providers/chat-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
@@ -16,13 +18,15 @@ const FAB_BOTTOM_ABOVE_STICKY =
 
 export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?: boolean }) => {
     const { t } = useI18n();
-    const { active, isGuest, send, sendError, clearSendError, startNew } = useChat();
+    const { active, isGuest, send, sendError, isSending, clearSendError, startNew } = useChat();
     const [open, setOpen] = useState(false);
     const [draft, setDraft] = useState("");
     const messages = active?.messages ?? [];
+    const latestMessageId = messages.at(-1)?.id;
+    const threadScrollRef = useAnimatedChatScroll(`${open}:${latestMessageId ?? "empty"}:${isSending}`, open);
 
-    const sendDraft = () => {
-        if (send(draft)) {
+    const sendDraft = async () => {
+        if (await send(draft)) {
             setDraft("");
         }
     };
@@ -30,9 +34,15 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
     const composerError =
         sendError === "too_long"
             ? t.chatErrorTooLong.replace("{max}", String(MAX_CHAT_MESSAGE_CHARS))
+            : sendError === "duplicate"
+              ? t.chatErrorDuplicate
+              : sendError === "cooldown"
+                ? t.chatErrorCooldown
             : sendError === "rate_limit"
               ? t.chatErrorRateLimit.replace("{limit}", String(MAX_CHAT_MESSAGES_PER_HOUR))
-              : null;
+              : sendError === "service_unavailable"
+                ? t.chatErrorUnavailable
+                : null;
 
     return (
         <div
@@ -50,10 +60,11 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
                         <CloseButton size="xs" label={t.chatClose} onPress={() => setOpen(false)} />
                     </header>
                     {isGuest ? <p className="border-b border-secondary bg-secondary px-3 py-2 text-xs text-tertiary">{t.chatGuestHint}</p> : null}
-                    <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                        {messages.length === 0 ? <p className="text-sm text-tertiary">{t.chatWidgetEmpty}</p> : <ChatThreadView messages={messages} compact />}
+                    <div ref={threadScrollRef} className="min-h-0 flex-1 overflow-y-auto p-3 [overflow-anchor:none]">
+                        {messages.length === 0 ? <p className="text-sm text-tertiary">{t.chatWidgetEmpty}</p> : <ChatThreadView messages={messages} compact isThinking={isSending} />}
                     </div>
                     <div className="border-t border-secondary p-3">
+                        <ChatQuickPrompts compact disabled={isSending} onSelect={(prompt) => void send(prompt)} />
                         <ChatComposer
                             compact
                             value={draft}
@@ -63,8 +74,9 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
                                 setDraft(value);
                             }}
                             onSend={sendDraft}
+                            isSending={isSending}
                         />
-                        <Button color="link-color" size="sm" className="mt-2" onPress={startNew}>
+                        <Button color="link-color" size="sm" className="mt-2" onClick={startNew}>
                             {t.chatNew}
                         </Button>
                     </div>
@@ -77,7 +89,7 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
                 aria-expanded={open}
                 className={cx(
                     "pointer-events-auto relative flex size-16 cursor-pointer items-center justify-center rounded-full shadow-lg outline-focus-ring transition duration-100 focus-visible:outline-2 focus-visible:outline-offset-2",
-                    open ? "careplus-ink text-white" : "bg-primary ring-2 ring-brand-solid hover:bg-secondary_subtle",
+                    open ? "careplus-ink text-white" : "bg-primary ring-2 ring-brand-solid hover:bg-secondary",
                 )}
                 onClick={() => setOpen((value) => !value)}
             >
@@ -92,7 +104,7 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
                         >
                             <MessageChatCircle className="size-4" />
                         </span>
-                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-brand-solid px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase shadow-sm">
+                        <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-brand-solid px-2 py-0.5 text-[10px] font-semibold tracking-wide whitespace-nowrap text-white uppercase shadow-sm">
                             {t.chatFabBadge}
                         </span>
                     </>

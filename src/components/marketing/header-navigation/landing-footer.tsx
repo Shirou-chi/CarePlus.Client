@@ -1,37 +1,73 @@
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { Button } from "@/components/base/buttons/button";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 
 export const LandingFooter = () => {
-    const { t } = useI18n();
-    const columns: { heading: string; links: { label: string; href: string }[] }[] = [
-        {
-            heading: t.product,
-            links: [
-                { label: t.home, href: "/home" },
-                { label: t.features, href: "/#features" },
-                { label: t.howItWorks, href: "/#how-it-works" },
-            ],
-        },
-        {
-            heading: t.account,
-            links: [
-                { label: t.logIn, href: "/login" },
-                { label: t.register, href: "/register" },
-            ],
-        },
-        {
-            heading: t.clinic,
-            links: [
-                { label: t.aboutUs, href: "/about" },
-                { label: t.homeNavDoctors, href: "/doctors" },
-                { label: t.homeNavContact, href: "/contact" },
-            ],
-        },
-    ];
+    const { t, locale } = useI18n();
+    const { profile } = useAuth();
+    const columns: { heading: string; links: { label: string; href: string }[] }[] = profile
+        ? [
+              {
+                  heading: t.product,
+                  links: [
+                      { label: t.home, href: "/home" },
+                      { label: t.bookVisit, href: "/book" },
+                      { label: t.upcomingVisits, href: "/visits" },
+                      { label: locale === "zh" ? "诊所排队" : "Clinic queue", href: "/queue" },
+                      { label: t.medTitle, href: "/medicine" },
+                  ],
+              },
+              {
+                  heading: t.account,
+                  links: [
+                      { label: t.viewProfile, href: "/account" },
+                      { label: t.notifications, href: "/notifications" },
+                      { label: t.familyProfiles, href: "/family" },
+                      { label: t.phrTitle, href: "/records" },
+                      { label: t.invoices, href: "/invoices" },
+                  ],
+              },
+              {
+                  heading: t.clinic,
+                  links: [
+                      { label: t.announcements, href: "/announcements" },
+                      { label: t.aboutUs, href: "/about" },
+                      { label: t.homeNavDoctors, href: "/doctors" },
+                      { label: t.homeNavContact, href: "/contact" },
+                  ],
+              },
+          ]
+        : [
+              {
+                  heading: t.product,
+                  links: [
+                      { label: t.home, href: "/" },
+                      { label: t.howItWorks, href: "/#how-it-works" },
+                      { label: t.homeNavMedicine, href: "/#medicine" },
+                      { label: t.homeNavFamily, href: "/#family" },
+                  ],
+              },
+              {
+                  heading: t.account,
+                  links: [
+                      { label: t.logIn, href: "/login" },
+                      { label: t.register, href: "/register" },
+                  ],
+              },
+              {
+                  heading: t.clinic,
+                  links: [
+                      { label: t.announcements, href: "/announcements" },
+                      { label: t.aboutUs, href: "/about" },
+                      { label: t.homeNavDoctors, href: "/doctors" },
+                      { label: t.homeNavContact, href: "/contact" },
+                  ],
+              },
+          ];
 
     return (
-        <footer className="careplus-panel border-t border-secondary bg-primary dark:border-white/10">
+        <footer className="careplus-panel mt-auto border-t border-secondary bg-primary dark:border-white/10">
             <div className="mx-auto grid w-full max-w-container gap-10 px-4 py-12 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] md:gap-8 md:px-8 md:py-16">
                 <div className="max-w-sm">
                     <CarePlusLogo />
@@ -52,9 +88,8 @@ export const LandingFooter = () => {
                     </div>
                 ))}
             </div>
-            <div className="mx-auto flex w-full max-w-container justify-between border-t border-secondary px-4 py-6 text-sm text-tertiary md:px-8">
+            <div className="border-t border-secondary px-4 py-6 text-center text-sm text-tertiary">
                 <p>© 2026 CarePlus</p>
-                <p>{t.patientSide}</p>
             </div>
         </footer>
     );

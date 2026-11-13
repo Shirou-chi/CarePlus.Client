@@ -43,14 +43,14 @@ export const MedicineCard = ({
             data-med-card
             className={cx(
                 "rounded-2xl bg-primary p-3.5 shadow-xs ring-1 ring-secondary",
-                list ? "flex items-stretch gap-4" : "flex h-full flex-col",
+                list ? "flex flex-wrap items-stretch gap-4 sm:flex-nowrap" : "flex h-full flex-col",
             )}
         >
             <Link href={`/medicine/${medicine.id}`} className={cx("min-w-0 outline-focus-ring", list ? "flex flex-1 items-stretch gap-4" : "flex flex-1 flex-col")}>
                 <div
                     data-med-hero
                     className={cx(
-                        "overflow-hidden rounded-2xl bg-[#f4f6f8]",
+                        "overflow-hidden rounded-2xl bg-[#f4f6f8] dark:bg-[#171717]",
                         list ? "size-28 shrink-0 sm:size-32" : "aspect-square w-full",
                     )}
                 >
@@ -72,8 +72,8 @@ export const MedicineCard = ({
                 </div>
             </Link>
 
-            <div className={cx("flex flex-col gap-3", list ? "shrink-0 self-end" : "mt-4")}>
-                <p className={cx("text-sm font-medium", inStock ? "text-[#0f766e]" : "text-fg-error-primary")}>
+            <div className={cx("flex flex-col gap-3", list ? "w-full sm:w-auto sm:shrink-0 sm:self-end" : "mt-4")}>
+                <p className={cx("text-sm font-medium", inStock ? "text-[#0f766e] dark:text-[#5eead4]" : "text-fg-error-primary")}>
                     {inStock ? inStockLabel : atLimitLabel}
                 </p>
                 <div className="flex items-center gap-2">

@@ -22,7 +22,7 @@ export const NavMenuItemLink = ({ href, icon: Icon, iconClassName, title, badge,
         )}
     >
         {isValidElement(Icon) && Icon}
-        {isReactComponent(Icon) && <Icon className={cx("mt-0.5 size-4 shrink-0 stroke-[2.3px] text-fg-brand-primary", iconClassName)} />}
+        {isReactComponent(Icon) && <Icon className={cx("mt-0.5 size-4 shrink-0 stroke-[2.3px] text-fg-brand-primary dark:text-brand-300", iconClassName)} />}
 
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-0.5">

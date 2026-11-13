@@ -1,43 +1,393 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { dummyLogin, readSession, writeSession, type Profile } from "@/utils/auth";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
+import { authApi, type CurrentUserResponse } from "@/services/authApi";
+import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
+import { useI18n } from "@/providers/locale-provider";
+import { useTheme, type TextSize } from "@/providers/theme-provider";
+import { SESSION_KEY, type Profile } from "@/utils/auth";
+import { TOASTED_NOTICES_KEY } from "@/utils/notifications";
+import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
+
+export type AuthUser = {
+    name: string;
+    username?: string;
+    email?: string;
+    userId?: string;
+    role?: string;
+    accountType?: string;
+    patientId?: string;
+    staffId?: string;
+    phone?: string;
+    status?: string;
+};
+
+type StoredSession =
+    | { type: "patient"; profile: Profile }
+    | { type: "staff"; user: AuthUser };
 
 type AuthContextValue = {
     profile: Profile | null;
+    user: AuthUser | null;
     isReady: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    isAuthenticated: boolean;
+    hasCompletedTutorial: boolean | null;
+    login: (email: string, password: string, rememberMe?: boolean) => Promise<void | { requiresTwoFactor: true; challengeId: string; maskedEmail: string }>;
+    completeLoginTwoFactor: (challengeId: string, code: string, rememberMe?: boolean) => Promise<void>;
+    resendLoginTwoFactor: (challengeId: string) => Promise<{ challengeId: string; maskedEmail: string; expiresInSeconds: number }>;
+    staffLogin: (identifier: string, password: string) => Promise<void>;
     logout: () => Promise<void>;
+    completeTutorial: () => Promise<void>;
     updateProfile: (patch: Partial<Profile>) => void;
+    updateStaffProfile: (patch: Partial<Pick<AuthUser, "name" | "phone" | "username">>) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Both patient and staff accounts use SESSION_KEY. Patient profiles are also
+// accepted in their older unwrapped format for backwards compatibility.
+function saveSession(session: StoredSession | null) {
+    if (session) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    } else {
+        localStorage.removeItem(SESSION_KEY);
+    }
+}
+
+function readStoredSession(): StoredSession | null {
+    if (typeof window === "undefined") return null;
+
+    try {
+        if (!getAuthToken()) return null;
+
+        const saved = localStorage.getItem(SESSION_KEY);
+
+        if (saved) {
+            const data = JSON.parse(saved) as StoredSession | Profile | { type: "patient"; profile: Profile; ownProfile?: Profile };
+
+            if ("type" in data && data.type === "patient") {
+                // Migrate sessions created by the retired family-account switcher
+                // back to the authenticated patient's own profile.
+                const patientSession = data as { type: "patient"; profile: Profile; ownProfile?: Profile };
+                return { type: "patient", profile: patientSession.ownProfile ?? patientSession.profile };
+            }
+
+            if ("type" in data && data.type === "staff") {
+                return data;
+            }
+
+            if ("fullName" in data && "email" in data) {
+                return { type: "patient", profile: data };
+            }
+        }
+
+    } catch {
+        return null;
+    }
+
+    return null;
+}
+
+function convertApiUser(user: CurrentUserResponse): AuthUser {
+    return {
+        name: user.name || user.username,
+        username: user.username,
+        email: user.email,
+        userId: String(user.userId),
+        role: user.role,
+        accountType: user.accountType,
+        patientId: user.patientId,
+        staffId: user.staffId,
+        phone: user.phone,
+        status: user.status,
+    };
+}
+
+export const profileFromUser = (user: CurrentUserResponse): Profile => ({
+    id: user.patientId || String(user.userId),
+    email: user.email,
+    fullName: user.name,
+    identityCard: user.identityCardNumber || null,
+    phone: user.phone || null,
+    dateOfBirth: user.dateOfBirth || null,
+    address: user.address || null,
+    gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
+    nationality: "Malaysian",
+    avatarUrl: profilePictureUrl(user.profilePicture),
+});
+
+const isNotificationLevel = (value: string | null | undefined): value is NotificationLevel =>
+    value === "all" || value === "reminder" || value === "none";
+
+async function loadPatientPreferences(
+    profileId: string,
+    applyTheme: (theme: "light" | "dark") => void,
+    applyLocale: (locale: "en" | "zh") => void,
+    applyTextSize: (textSize: TextSize) => void,
+): Promise<AppSettingResponse | null> {
+    const setting = await profileApi.getAppSetting();
+    if (!setting) {
+        applyTheme("light");
+        applyLocale("en");
+        applyTextSize("normal");
+        const current = readProfileSettings(profileId);
+        writeProfileSettings(profileId, { ...current, notificationLevel: "all" });
+        return null;
+    }
+
+    applyAppSetting(profileId, setting, applyTheme, applyLocale, applyTextSize);
+    return setting;
+}
+
+function applyAppSetting(
+    profileId: string,
+    setting: AppSettingResponse,
+    applyTheme: (theme: "light" | "dark") => void,
+    applyLocale: (locale: "en" | "zh") => void,
+    applyTextSize: (textSize: TextSize) => void,
+) {
+    if (setting.appearance === "light" || setting.appearance === "dark") {
+        applyTheme(setting.appearance);
+    }
+    if (setting.language === "en" || setting.language === "zh") {
+        applyLocale(setting.language);
+    }
+    applyTextSize(setting.textSize === "large" || setting.textSize === "larger" ? "large" : "normal");
+    if (profileId && isNotificationLevel(setting.notification)) {
+        const current = readProfileSettings(profileId);
+        writeProfileSettings(profileId, { ...current, notificationLevel: setting.notification });
+    }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [profile, setProfile] = useState<Profile | null>(() => (typeof window === "undefined" ? null : readSession()));
+    const { applyTheme, applyTextSize } = useTheme();
+    const { applyLocale } = useI18n();
+    const [session, setSession] = useState<StoredSession | null>(() => readStoredSession());
+    const [isReady, setIsReady] = useState(false);
+    const [hasCompletedTutorial, setHasCompletedTutorial] = useState<boolean | null>(null);
+
+    const profile = session?.type === "patient" ? session.profile : null;
+    const user = session?.type === "staff" ? session.user : null;
+
+    useEffect(() => {
+        const token = getAuthToken();
+        if (!token) {
+            setHasCompletedTutorial(null);
+            setIsReady(true);
+            return;
+        }
+
+        let cancelled = false;
+        const isCurrentSession = () => !cancelled && getAuthToken() === token;
+        authApi
+            .getCurrentUser()
+            .then(async (apiUser) => {
+                if (!isCurrentSession()) return;
+
+                if (apiUser.accountType === "Staff" || apiUser.staffId) {
+                    const nextSession: StoredSession = {
+                        type: "staff",
+                        user: convertApiUser(apiUser),
+                    };
+                    saveSession(nextSession);
+                    setSession(nextSession);
+                    setHasCompletedTutorial(null);
+                    const setting = await profileApi.getAppSetting().catch(() => null);
+                    if (setting && isCurrentSession()) {
+                        applyAppSetting("", setting, applyTheme, () => undefined, applyTextSize);
+                    }
+                    return;
+                }
+
+                const nextProfile = profileFromUser(apiUser);
+                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
+                if (!isCurrentSession()) return;
+
+                const nextSession: StoredSession = {
+                    type: "patient",
+                    profile: nextProfile,
+                };
+                saveSession(nextSession);
+                setSession(nextSession);
+                setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
+            })
+            .catch(() => {
+                if (!isCurrentSession()) return;
+                authApi.clearToken();
+                saveSession(null);
+                setSession(null);
+                setHasCompletedTutorial(null);
+                applyTheme("light");
+                applyLocale("en");
+                applyTextSize("normal");
+            })
+            .finally(() => {
+                if (!cancelled) setIsReady(true);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [applyLocale, applyTheme, applyTextSize]);
+
+    const establishPatientSession = async (token: string, rememberMe = true) => {
+        authApi.saveToken(token, rememberMe);
+        try {
+            const apiUser = await authApi.getCurrentUser();
+
+            if (apiUser.accountType === "Staff" || apiUser.staffId) {
+                throw new Error("This account is not a patient account.");
+            }
+
+            const nextProfile = profileFromUser(apiUser);
+            const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
+            if (getAuthToken() !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
+
+            const nextSession: StoredSession = {
+                type: "patient",
+                profile: nextProfile,
+            };
+            saveSession(nextSession);
+            setSession(nextSession);
+            setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
+        } catch (error) {
+            if (getAuthToken() === token) authApi.clearToken();
+            throw error;
+        }
+    };
+
+    const login = async (email: string, password: string, rememberMe = false) => {
+        authApi.clearToken();
+        const result = await authApi.patientLogin(email.trim(), password, rememberMe);
+        if (!("token" in result)) {
+            return {
+                requiresTwoFactor: true as const,
+                challengeId: result.challengeId,
+                maskedEmail: result.maskedEmail,
+            };
+        }
+
+        await establishPatientSession(result.token, rememberMe);
+    };
+
+    const completeLoginTwoFactor = async (challengeId: string, code: string, rememberMe = false) => {
+        authApi.clearToken();
+        const { token } = await authApi.verifyPatientLoginTwoFactor(challengeId, code, rememberMe);
+        await establishPatientSession(token, rememberMe);
+    };
+
+    const resendLoginTwoFactor = async (challengeId: string) => {
+        const result = await authApi.resendPatientLoginTwoFactor(challengeId);
+        return {
+            challengeId: result.challengeId,
+            maskedEmail: result.maskedEmail,
+            expiresInSeconds: result.expiresInSeconds,
+        };
+    };
+
+    const staffLogin = async (identifier: string, password: string) => {
+        const { token } = await authApi.staffLogin(identifier.trim(), password);
+        authApi.saveToken(token);
+
+        try {
+            const apiUser = await authApi.getCurrentUser();
+            if (apiUser.accountType !== "Staff" && !apiUser.staffId) {
+                throw new Error("This account is not a staff account.");
+            }
+
+            const nextSession: StoredSession = {
+                type: "staff",
+                user: convertApiUser(apiUser),
+            };
+            const setting = await profileApi.getAppSetting().catch(() => null);
+            if (getAuthToken() !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
+
+            if (setting) {
+                applyAppSetting("", setting, applyTheme, () => undefined, applyTextSize);
+            }
+            saveSession(nextSession);
+            setSession(nextSession);
+            setHasCompletedTutorial(null);
+        } catch (error) {
+            if (getAuthToken() === token) authApi.clearToken();
+            throw error;
+        }
+    };
+
+    const logout = async () => {
+        authApi.clearToken();
+        sessionStorage.removeItem(TOASTED_NOTICES_KEY);
+        saveSession(null);
+        setSession(null);
+        setHasCompletedTutorial(null);
+        applyTheme("light");
+        applyLocale("en");
+    };
+
+    const completeTutorial = async () => {
+        if (!profile) return;
+
+        setHasCompletedTutorial(true);
+        if (!getAuthToken()) return;
+
+        await profileApi.saveAppSetting({ hasCompletedTutorial: true });
+    };
+
+    const updateProfile = (patch: Partial<Profile>) => {
+        setSession((currentSession) => {
+            if (!currentSession || currentSession.type !== "patient") {
+                return currentSession;
+            }
+
+            const nextSession: StoredSession = {
+                type: "patient",
+                profile: {
+                    ...currentSession.profile,
+                    ...patch,
+                    nationality: "Malaysian",
+                },
+            };
+
+            saveSession(nextSession);
+            return nextSession;
+        });
+    };
+
+    const updateStaffProfile = (patch: Partial<Pick<AuthUser, "name" | "phone" | "username">>) => {
+        setSession((currentSession) => {
+            if (!currentSession || currentSession.type !== "staff") {
+                return currentSession;
+            }
+
+            const nextSession: StoredSession = {
+                type: "staff",
+                user: {
+                    ...currentSession.user,
+                    ...patch,
+                },
+            };
+
+            saveSession(nextSession);
+            return nextSession;
+        });
+    };
 
     const value = useMemo<AuthContextValue>(
         () => ({
             profile,
-            isReady: true,
-            login: async (email, password) => {
-                const next = dummyLogin(email, password);
-                setProfile(next);
-            },
-            logout: async () => {
-                writeSession(null);
-                setProfile(null);
-            },
-            updateProfile: (patch) => {
-                setProfile((current) => {
-                    if (!current) {
-                        return current;
-                    }
-                    const next = { ...current, ...patch, nationality: "Malaysian" };
-                    writeSession(next);
-                    return next;
-                });
-            },
+            user,
+            isReady,
+            isAuthenticated: session !== null,
+            hasCompletedTutorial,
+            login,
+            completeLoginTwoFactor,
+            resendLoginTwoFactor,
+            staffLogin,
+            logout,
+            completeTutorial,
+            updateProfile,
+            updateStaffProfile,
         }),
-        [profile],
+        [profile, user, isReady, session, hasCompletedTutorial, login, completeLoginTwoFactor, resendLoginTwoFactor, staffLogin, logout, completeTutorial, updateProfile, updateStaffProfile],
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

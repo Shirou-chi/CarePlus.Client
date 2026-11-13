@@ -2,10 +2,26 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+        <link rel="icon" type="image/png" href="/clinic-logo.png" />
+        <link rel="apple-touch-icon" href="/clinic-logo.png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content="CarePlus patient portal" />
         <meta name="theme-color" content="#0e7a86" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="CarePlus" />
+
+        <script>
+            // Apply the saved theme before React and the stylesheet render to avoid a light-mode flash.
+            const savedTheme = localStorage.getItem("ui-theme");
+            const isDarkTheme = savedTheme === "dark";
+            document.documentElement.classList.toggle("dark-mode", isDarkTheme);
+            document.documentElement.dataset.theme = isDarkTheme ? "dark" : "light";
+
+            const savedTextSize = localStorage.getItem("ui-text-size");
+            document.documentElement.dataset.textSize = savedTextSize === "large" || savedTextSize === "larger" ? "large" : "normal";
+        </script>
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,13 +33,5 @@
     <body class="size-full bg-primary antialiased">
         <div id="root"></div>
         <script type="module" src="/src/main.tsx"></script>
-        <script>
-            // On page load or when changing themes, best to add inline in `head` to avoid FOUC
-            if (localStorage.getItem("ui-theme") === "dark") {
-                document.documentElement.classList.add("dark-mode");
-            } else {
-                document.documentElement.classList.remove("dark-mode");
-            }
-        </script>
     </body>
 </html>

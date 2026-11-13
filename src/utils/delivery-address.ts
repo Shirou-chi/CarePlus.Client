@@ -1,5 +1,37 @@
 import type { Profile } from "@/utils/auth";
+import type { Copy } from "@/providers/locale-provider";
 import type { ProfileSettings } from "@/utils/profile-settings";
+import type { DeliveryAddressResponse } from "@/services/profileApi";
+
+export const DELIVERY_LABEL_IDS = ["home", "office", "other"] as const;
+export type DeliveryLabelId = (typeof DELIVERY_LABEL_IDS)[number];
+
+export const isDeliveryLabelId = (value: string): value is DeliveryLabelId =>
+    (DELIVERY_LABEL_IDS as readonly string[]).includes(value);
+
+export const deliveryLabelText = (label: string, t: Copy) => {
+    if (label === "home") return t.settingsLabelHome;
+    if (label === "office") return t.settingsLabelOffice;
+    if (label === "other") return t.settingsLabelOther;
+    return label;
+};
+
+export const splitDeliveryLine = (line: string) => {
+    const comma = line.indexOf(",");
+    if (comma > 0 && comma <= 30 && /\b\d{5}\b/.test(line.slice(comma + 1))) {
+        return { unit: line.slice(0, comma).trim(), street: line.slice(comma + 1).trim() };
+    }
+    return { unit: "", street: line };
+};
+
+export const formatDeliveryLine = (address: { unit?: string; address?: string }) => {
+    const unit = address.unit?.trim() ?? "";
+    const street = address.address?.trim() ?? "";
+    if (unit && street) {
+        return `${unit}, ${street}`;
+    }
+    return street || unit;
+};
 
 export type MalaysiaRegion = "west" | "east";
 
@@ -10,8 +42,22 @@ export const DELIVERY_FEE_EAST = 14;
 export type DeliveryAddress = {
     id: string;
     label: string;
-    line: string;
+    unit: string;
+    address: string;
     region: MalaysiaRegion;
+};
+
+export const normalizeStoredDeliveryAddress = (raw: Partial<DeliveryAddress> & { line?: string }): DeliveryAddress => {
+    const split = raw.address != null || raw.unit != null
+        ? { unit: raw.unit ?? "", street: raw.address ?? "" }
+        : splitDeliveryLine(raw.line ?? "");
+    return {
+        id: raw.id ?? "",
+        label: raw.label ?? "home",
+        unit: split.unit,
+        address: split.street,
+        region: raw.region ?? detectMalaysiaRegion(split.street || split.unit),
+    };
 };
 
 export type DeliveryOption = DeliveryAddress;
@@ -42,7 +88,8 @@ export const syncProfileAddressToDelivery = (
     const profileEntry: DeliveryAddress = {
         id: PROFILE_ADDRESS_ID,
         label: profileLabel,
-        line: trimmed,
+        unit: "",
+        address: trimmed,
         region: detectMalaysiaRegion(trimmed),
     };
 
@@ -51,6 +98,35 @@ export const syncProfileAddressToDelivery = (
         deliveryAddresses: [profileEntry, ...others],
         defaultDeliveryAddressId: settings.defaultDeliveryAddressId ?? PROFILE_ADDRESS_ID,
     };
+};
+
+export const applyDeliveryAddresses = (
+    settings: ProfileSettings,
+    rows: DeliveryAddressResponse[],
+    profileAddress: string | null,
+    profileLabel: string,
+): ProfileSettings => {
+    const saved: DeliveryAddress[] = rows.map((row) => ({
+        id: String(row.id),
+        label: row.label,
+        unit: row.unit,
+        address: row.address,
+        region: detectMalaysiaRegion(row.address),
+    }));
+    const apiDefault = rows.find((row) => row.isDefault);
+    const synced = syncProfileAddressToDelivery(
+        {
+            ...settings,
+            deliveryAddresses: saved,
+            defaultDeliveryAddressId: apiDefault ? String(apiDefault.id) : null,
+        },
+        profileAddress,
+        profileLabel,
+    );
+    if (!synced.defaultDeliveryAddressId && synced.deliveryAddresses[0]) {
+        synced.defaultDeliveryAddressId = synced.deliveryAddresses[0].id;
+    }
+    return synced;
 };
 
 export const availableDeliveryAddresses = (_profile: Profile, settings: ProfileSettings): DeliveryOption[] =>
