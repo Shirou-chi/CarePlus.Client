@@ -35,6 +35,7 @@ export type StaffQueueEntry = {
     queueId: string;
     queueNumber: string;
     appointmentId: string;
+    patientId: string;
     patientName: string;
     doctorName: string;
     visitType: string;

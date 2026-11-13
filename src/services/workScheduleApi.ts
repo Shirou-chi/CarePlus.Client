@@ -20,6 +20,7 @@ export type WorkScheduleCreateRequest = {
   staffId: string
   workingDate: string
   shift: WorkShift
+  roomId?: string
 }
 
 export type WorkScheduleUpdateRequest = {

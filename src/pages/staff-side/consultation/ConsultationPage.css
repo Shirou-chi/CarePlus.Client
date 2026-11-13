@@ -1,0 +1,79 @@
+.consultation-content { max-width: 1480px; }
+.consultation-page__topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.consultation-page__topbar h1 { margin: 0; color: var(--staff-ink); font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 400; letter-spacing: -0.055em; }
+.consultation-page__topbar p:last-child { margin: 9px 0 0; color: var(--staff-muted); font-size: 0.8rem; }
+.consultation-patient-banner { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 16px; padding: 18px 20px; border: 1px solid var(--staff-line); border-radius: 14px; background: var(--staff-card); }
+.consultation-patient-banner__identity { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.consultation-patient-banner__avatar { display: grid; flex: 0 0 auto; width: 46px; height: 46px; place-items: center; border-radius: 12px; background: rgba(49, 184, 173, 0.15); color: var(--staff-teal); }
+.consultation-patient-banner__eyebrow { color: var(--staff-brand); font-size: 0.67rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; }
+.consultation-patient-banner h2 { margin: 3px 0 0; color: var(--staff-ink); font-size: 1.25rem; }
+.consultation-patient-banner p { margin: 4px 0 0; color: var(--staff-muted); font-size: 0.72rem; }
+.consultation-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr); gap: 16px; align-items: start; }
+.consultation-context { display: grid; gap: 16px; min-width: 0; }
+.consultation-context-card, .consultation-form-card { padding: 18px; }
+.consultation-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; color: var(--staff-brand); }
+.consultation-card-heading h2 { margin: 4px 0 0; color: var(--staff-ink); font-size: 1rem; }
+.consultation-card-heading > div > span { display: block; margin-top: 5px; color: var(--staff-muted); font-size: 0.71rem; }
+.consultation-detail-list { display: grid; gap: 10px; margin: 0; }
+.consultation-detail-list div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; padding-bottom: 9px; border-bottom: 1px solid var(--staff-line); }
+.consultation-detail-list div:last-child { padding-bottom: 0; border-bottom: 0; }
+.consultation-detail-list dt { color: var(--staff-muted); font-size: 0.7rem; }
+.consultation-detail-list dd { margin: 0; color: var(--staff-ink); font-size: 0.73rem; font-weight: 600; }
+.consultation-muted-copy { margin: 0; color: var(--staff-muted); font-size: 0.74rem; line-height: 1.55; }
+.consultation-inline-error { margin: 10px 0 0; padding: 9px 11px; border: 1px solid rgba(225, 91, 91, 0.45); border-radius: 8px; background: rgba(225, 91, 91, 0.08); color: #e88a8a; font-size: 0.72rem; }
+.consultation-history-list, .consultation-personal-list { display: grid; gap: 9px; }
+.consultation-history-item, .consultation-personal-item { padding: 11px 12px; border: 1px solid var(--staff-line); border-radius: 9px; background: var(--staff-subtle); }
+.consultation-history-item > div, .consultation-personal-item > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.consultation-history-item strong, .consultation-personal-item strong { color: var(--staff-ink); font-size: 0.75rem; }
+.consultation-history-item span, .consultation-personal-item span { color: var(--staff-muted); font-size: 0.65rem; text-align: right; }
+.consultation-history-item p, .consultation-personal-item p { margin: 6px 0 0; color: var(--staff-muted); font-size: 0.7rem; line-height: 1.45; }
+.consultation-personal-item small { display: block; margin-top: 5px; color: var(--staff-muted); font-size: 0.66rem; }
+.consultation-form-card { position: sticky; top: 20px; }
+.consultation-form { display: grid; gap: 14px; }
+.consultation-form > fieldset, .consultation-medicine { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid var(--staff-line); border-radius: 10px; }
+.consultation-form legend, .consultation-medicine legend { padding: 0 5px; color: var(--staff-ink); font-size: 0.82rem; font-weight: 700; }
+.consultation-form legend small, .consultation-medicine legend small { color: var(--staff-muted); font-weight: 400; }
+.consultation-form label { display: grid; gap: 6px; color: var(--staff-ink); font-size: 0.73rem; font-weight: 700; }
+.consultation-form label span { color: var(--staff-ink); }
+.consultation-form label small { color: var(--staff-muted); font-weight: 400; }
+.consultation-form :is(input, select, textarea) { width: 100%; min-width: 0; min-height: 42px; padding: 9px 10px; border: 1px solid var(--staff-line); border-radius: 8px; outline: 0; background: var(--staff-subtle); color: var(--staff-ink); font: inherit; font-size: 0.75rem; font-weight: 400; }
+.consultation-form textarea { resize: vertical; }
+.consultation-form :is(input, select, textarea):focus { border-color: var(--staff-brand); box-shadow: 0 0 0 2px color-mix(in srgb, var(--staff-brand) 28%, transparent); }
+.consultation-form > fieldset > .staff-button { justify-self: start; }
+.consultation-prescription-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 0 1px; color: var(--staff-muted); font-size: 0.68rem; }
+.consultation-prescription-toolbar strong { color: var(--staff-brand); font-size: 0.68rem; }
+.consultation-prescription-empty { padding: 12px; border: 1px dashed var(--staff-line); border-radius: 9px; color: var(--staff-muted); font-size: 0.7rem; line-height: 1.45; }
+.consultation-medicine-list { display: grid; max-height: 430px; gap: 10px; overflow-y: auto; padding: 2px 5px 2px 1px; overscroll-behavior: contain; }
+.consultation-medicine__header { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.consultation-medicine__title { display: flex; min-width: 0; gap: 8px; align-items: center; }
+.consultation-medicine__title > span { display: grid; width: 23px; height: 23px; flex: 0 0 23px; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--staff-brand) 14%, var(--staff-card)); color: var(--staff-brand); font-size: 0.62rem; font-weight: 800; }
+.consultation-medicine__title strong { overflow: hidden; color: var(--staff-ink); font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
+.consultation-medicine__remove { display: inline-flex; flex: 0 0 auto; gap: 4px; align-items: center; padding: 5px 7px; border: 1px solid var(--staff-line); border-radius: 6px; background: transparent; color: var(--staff-muted); font-size: 0.62rem; cursor: pointer; }
+.consultation-medicine__remove:hover { border-color: rgba(225, 91, 91, 0.5); background: rgba(225, 91, 91, 0.08); color: #e88a8a; }
+.consultation-medicine__fields { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.55fr) minmax(0, 1fr); align-items: start; gap: 10px; }
+.consultation-medicine__fields > label, .consultation-medicine-picker { min-width: 0; align-self: start; }
+.consultation-medicine-picker { position: relative; width: 100%; max-width: 100%; }
+.consultation-medicine-picker.is-open .consultation-medicine-picker__menu { position: static; margin-top: 6px; }
+.consultation-medicine-picker__trigger { display: flex; box-sizing: border-box; width: 100%; min-width: 0; min-height: 38px; gap: 9px; align-items: center; justify-content: space-between; overflow: hidden; padding: 9px 10px; border: 1px solid var(--staff-line); border-radius: 7px; background: var(--staff-subtle); color: var(--staff-ink); font: inherit; font-size: .75rem; text-align: left; cursor: pointer; }
+.consultation-medicine-picker__trigger > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.consultation-medicine-picker__trigger:hover { border-color: color-mix(in srgb, var(--staff-teal) 42%, var(--staff-line)); }
+.consultation-medicine-picker__trigger:focus-visible { outline: 2px solid var(--staff-teal); outline-offset: 2px; }
+.consultation-medicine-picker__menu { position: absolute; z-index: 5; top: calc(100% + 6px); right: 0; left: 0; overflow: hidden; border: 1px solid var(--staff-line); border-radius: 8px; background: var(--staff-card); box-shadow: 0 14px 30px rgba(13, 39, 55, .2); }
+.consultation-medicine-picker__search { position: relative; display: flex; align-items: center; padding: 8px; border-bottom: 1px solid var(--staff-line); background: var(--staff-subtle); }
+.consultation-medicine-picker__search > .staff-icon { position: absolute; left: 17px; color: var(--staff-muted); pointer-events: none; }
+.consultation-medicine-picker__search input { width: 100%; min-height: 34px; padding: 8px 10px 8px 31px; border: 1px solid var(--staff-line); border-radius: 6px; background: var(--staff-card); color: var(--staff-ink); font: inherit; font-size: .72rem; }
+.consultation-medicine-picker__search input:focus { border-color: var(--staff-teal); outline: 2px solid color-mix(in srgb, var(--staff-teal) 22%, transparent); }
+.consultation-medicine-picker__options { display: grid; max-height: 220px; gap: 2px; overflow-y: auto; padding: 5px; }
+.consultation-medicine-picker__options button { width: 100%; padding: 9px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--staff-ink); font: inherit; font-size: .72rem; text-align: left; cursor: pointer; }
+.consultation-medicine-picker__options button:hover, .consultation-medicine-picker__options button.is-selected { background: color-mix(in srgb, var(--staff-teal) 12%, var(--staff-subtle)); color: var(--staff-brand); }
+.consultation-medicine-picker__empty { padding: 12px 10px; color: var(--staff-muted); font-size: .68rem; }
+.consultation-inline-success { margin: 10px 0 0; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--staff-brand) 40%, var(--staff-line)); border-radius: 8px; background: color-mix(in srgb, var(--staff-brand) 9%, var(--staff-card)); color: var(--staff-brand); font-size: 0.72rem; }
+.consultation-form__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
+.consultation-state { display: grid; justify-items: center; gap: 8px; min-height: 260px; padding: 35px 20px; border: 1px solid var(--staff-line); border-radius: 14px; background: var(--staff-card); color: var(--staff-muted); text-align: center; }
+.consultation-state .staff-icon { color: var(--staff-brand); }
+.consultation-state strong { color: var(--staff-ink); font-size: 0.9rem; }
+.consultation-state span { max-width: 440px; font-size: 0.74rem; }
+.consultation-state--error { border-color: rgba(225, 91, 91, 0.4); }
+@media (max-width: 980px) { .consultation-layout { grid-template-columns: 1fr; } .consultation-form-card { position: static; } }
+@media (max-width: 640px) { .consultation-page__topbar, .consultation-patient-banner { align-items: stretch; flex-direction: column; } .consultation-page__topbar .staff-button { align-self: flex-start; } .consultation-patient-banner { padding: 15px; } .consultation-detail-list div { grid-template-columns: 1fr; gap: 3px; } .consultation-medicine__fields { grid-template-columns: 1fr; } }
+@media (max-width: 420px) { .consultation-form__actions { justify-content: stretch; } .consultation-form__actions .staff-button { flex: 1; } }

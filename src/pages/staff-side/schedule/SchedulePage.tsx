@@ -498,6 +498,11 @@ export function SchedulePage() {
       return
     }
 
+    if (form.role === 'Doctor' && !scheduleRoomSelection) {
+      setDialogError('Choose a clinic room for the doctor schedule.')
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -532,45 +537,36 @@ export function SchedulePage() {
           activeScheduleDatesByStaff.set(schedule.staffId, dates)
         })
 
-      const createJobs = form.staffIds.flatMap((staffId) => {
-        const activeDates = activeScheduleDatesByStaff.get(staffId) ?? new Set<string>()
-        return workingDates
-          .filter((workingDate) => !activeDates.has(workingDate))
-          .map((workingDate) => ({ staffId, workingDate }))
-      })
       const requestedCount = form.staffIds.length * workingDates.length
-      const skippedCount = requestedCount - createJobs.length
-      const initialStaffErrors: Record<string, string> = {}
+      const blockedStaffErrors: Record<string, string> = {}
 
       form.staffIds.forEach((staffId) => {
         const activeDates = activeScheduleDatesByStaff.get(staffId) ?? new Set<string>()
-        if (!workingDates.some((workingDate) => !activeDates.has(workingDate))) {
-          initialStaffErrors[staffId] = 'All selected dates already have an active schedule.'
+        const conflictingDates = workingDates.filter((workingDate) => activeDates.has(workingDate))
+        if (conflictingDates.length) {
+          blockedStaffErrors[staffId] = `Already scheduled on: ${conflictingDates.map(formatDate).join(', ')}`
         }
       })
 
-      if (!createJobs.length) {
-        setStaffErrors(initialStaffErrors)
-        setDialogError(formatStaffErrors(initialStaffErrors) || 'All selected staff already have an active schedule on the selected dates.')
+      if (Object.keys(blockedStaffErrors).length) {
+        setStaffErrors(blockedStaffErrors)
+        setDialogError(`No schedules were added. Every selected ${form.role.toLowerCase()} must be available for all selected dates. ${formatStaffErrors(blockedStaffErrors)}`)
         return
       }
 
-      let roomAssigned = false
+      const createJobs = form.staffIds.flatMap((staffId) => workingDates.map((workingDate) => ({ staffId, workingDate })))
+
       let createdCount = 0
       const requestStaffErrors: Record<string, string> = {}
       for (const job of createJobs) {
         try {
-          const createdSchedule = await workScheduleApi.create({
+          await workScheduleApi.create({
             staffId: job.staffId,
             workingDate: job.workingDate,
             shift: form.shift,
+            roomId: form.role === 'Doctor' ? scheduleRoomSelection : undefined,
           })
           createdCount += 1
-
-          if (scheduleRoomSelection && selectedDoctorMembers.length === 1 && job.staffId === selectedDoctorMembers[0].staffId) {
-            await clinicRoomApi.assign({ scheduleId: createdSchedule.scheduleId, roomId: scheduleRoomSelection })
-            roomAssigned = true
-          }
         } catch (jobError) {
           const message = jobError instanceof Error ? jobError.message : 'Unable to create this schedule.'
           const dateMessage = `${formatDate(job.workingDate)}: ${message}`
@@ -580,7 +576,7 @@ export function SchedulePage() {
         }
       }
 
-      const allStaffErrors = { ...initialStaffErrors, ...requestStaffErrors }
+      const allStaffErrors = { ...requestStaffErrors }
       if (Object.keys(allStaffErrors).length) {
         setStaffErrors(allStaffErrors)
         setDialogError(formatStaffErrors(allStaffErrors))
@@ -591,7 +587,7 @@ export function SchedulePage() {
 
       setDialogOpen(false)
       await loadScheduleData()
-      announce(`${createdCount} working schedule${createdCount === 1 ? '' : 's'} created${skippedCount ? `, ${skippedCount} already existed` : ''}${roomAssigned ? ' and room assigned' : ''}.`)
+      announce(`${createdCount} working schedule${createdCount === 1 ? '' : 's'} created.`)
     } catch (saveError) {
       setDialogError(saveError instanceof Error ? saveError.message : 'Unable to create working schedule.')
     } finally {
@@ -627,13 +623,13 @@ export function SchedulePage() {
     setRoomAssignmentError('')
 
     try {
-      if (!roomSelection && selectedBlock.roomAssignmentId) {
-        await clinicRoomApi.removeAssignment(selectedBlock.roomAssignmentId)
-        announce('Clinic room assignment removed.')
-      } else if (roomSelection) {
-        await clinicRoomApi.assign({ scheduleId: selectedBlock.id, roomId: roomSelection })
-        announce('Clinic room assignment saved.')
+      if (!roomSelection) {
+        setRoomAssignmentError('A clinic room is required for doctor schedules.')
+        return
       }
+
+      await clinicRoomApi.assign({ scheduleId: selectedBlock.id, roomId: roomSelection })
+      announce('Clinic room assignment saved.')
 
       setSelectedBlock(null)
       await loadScheduleData()
@@ -732,10 +728,10 @@ export function SchedulePage() {
                   </div>
                   <span className={`schedule-room-status${selectedBlock.roomAssignmentId ? ' schedule-room-status--assigned' : ''}`}><i />{selectedBlock.roomAssignmentId ? 'Assigned' : 'Unassigned'}</span>
                 </div>
-                <label>Consultation room<select value={roomSelection} onChange={(event) => { setRoomAssignmentError(''); setRoomSelection(event.target.value) }} disabled={saving}><option value="">No room assigned</option>{rooms.filter((room) => room.status.toLowerCase() === 'available' || room.roomId === selectedBlock.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.roomName}{room.status.toLowerCase() === 'available' ? '' : ` · ${room.status}`}</option>)}</select></label>
+                <label>Consultation room<select required value={roomSelection} onChange={(event) => { setRoomAssignmentError(''); setRoomSelection(event.target.value) }} disabled={saving}><option disabled value="">Choose a room</option>{rooms.filter((room) => room.status.toLowerCase() === 'available' || room.roomId === selectedBlock.roomId).map((room) => <option key={room.roomId} value={room.roomId}>{room.roomName}{room.status.toLowerCase() === 'available' ? '' : ` · ${room.status}`}</option>)}</select></label>
                 <p className="schedule-room-assignment__hint">{rooms.filter((room) => room.status.toLowerCase() === 'available').length} room{rooms.filter((room) => room.status.toLowerCase() === 'available').length === 1 ? '' : 's'} available</p>
                 {roomAssignmentError ? <p className="schedule-room-assignment__error" role="alert"><Icon name="activity" size={14} /> <span>{roomAssignmentError}</span></p> : null}
-                <div className="schedule-room-assignment__actions"><button className="staff-button staff-button--secondary" type="button" onClick={() => { setRoomSelection(selectedBlock.roomId ?? ''); setRoomAssignmentError(''); setRoomAssignmentEditing(false) }} disabled={saving}>Cancel</button><button className="staff-button staff-button--primary" type="button" onClick={() => void saveRoomAssignment()} disabled={saving || roomSelection === (selectedBlock.roomId ?? '')}>{saving ? 'Saving…' : selectedBlock.roomAssignmentId && !roomSelection ? 'Remove assignment' : 'Save assignment'}</button></div>
+                <div className="schedule-room-assignment__actions"><button className="staff-button staff-button--secondary" type="button" onClick={() => { setRoomSelection(selectedBlock.roomId ?? ''); setRoomAssignmentError(''); setRoomAssignmentEditing(false) }} disabled={saving}>Cancel</button><button className="staff-button staff-button--primary" type="button" onClick={() => void saveRoomAssignment()} disabled={saving || !roomSelection || roomSelection === (selectedBlock.roomId ?? '')}>{saving ? 'Saving…' : 'Save assignment'}</button></div>
               </section>
             ) : null}
             <div className={`schedule-detail-actions${currentRole === 'Admin' ? '' : ' schedule-detail-actions--single'}`}>
@@ -788,11 +784,11 @@ export function SchedulePage() {
               <label>Working hours<select required value={form.shift} onChange={(event) => setForm((current) => ({ ...current, shift: event.target.value as WorkShift }))} disabled={saving}><option value="Morning">Morning · 06:00 AM – 05:30 PM</option><option value="Night">Night · 06:00 PM – 05:30 AM</option></select></label>
             </div>
             {form.role === 'Doctor' && selectedDoctorMembers.length === 1 ? <div className="schedule-dialog-room-field">
-              <label>Clinic room <select value={scheduleRoomSelection} onChange={(event) => setScheduleRoomSelection(event.target.value)} disabled={saving || selectedDoctorMembers.length !== 1}>
-                <option value="">No room assigned</option>
+              <label>Clinic room <select required value={scheduleRoomSelection} onChange={(event) => setScheduleRoomSelection(event.target.value)} disabled={saving || selectedDoctorMembers.length !== 1}>
+                <option disabled value="">Choose a clinic room</option>
                 {rooms.filter((room) => room.status.toLowerCase() === 'available').map((room) => <option key={room.roomId} value={room.roomId}>{room.roomName} · {room.roomId}</option>)}
               </select></label>
-              <small>Optional. The room is checked for date and shift conflicts before the schedule is saved.</small>
+              <small>Required. The room is checked for date and shift conflicts before the schedule is saved.</small>
             </div> : null}
             <div className="schedule-dialog__actions"><button className="staff-button staff-button--secondary" type="button" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving || !staff.length} type="submit">{saving ? 'Saving…' : 'Save schedule'}</button></div>
           </form>
