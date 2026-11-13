@@ -58,6 +58,8 @@ const familyRuleMessage = (t: Copy, message: string) => {
     if (message === "Only the family owner can invite members.") return t.familyInviteOwnerOnly;
     if (message === "Enter a valid email address.") return t.familyEmailInvalid;
     if (message === "We could not send the invitation email. Please try again later.") return t.familyInviteEmailFailed;
+    if (message === "Family name cannot contain HTML or script characters.") return t.familyNameInvalid;
+    if (message === "Family name must be between 2 and 100 characters.") return t.familyNameRequired;
     return message;
 };
 
@@ -410,11 +412,16 @@ const RenameDialog = ({ current, title, label, requiredMessage, onClose, onSave 
                         className="mt-4"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            if (name.trim().length < 2 || name.trim().length > 100) {
+                            const next = name.trim();
+                            if (next.length < 2 || next.length > 100) {
                                 setError(requiredMessage ?? t.familyNameRequired);
                                 return;
                             }
-                            onSave(name);
+                            if (/[<>`]/.test(next) || /javascript:/i.test(next)) {
+                                setError(t.familyNameInvalid);
+                                return;
+                            }
+                            onSave(next);
                         }}
                     >
                         <Input label={label ?? t.familyName} value={name} onChange={setName} maxLength={100} />
