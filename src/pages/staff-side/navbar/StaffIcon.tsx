@@ -1,5 +1,6 @@
 export type IconName =
   | 'activity'
+  | 'arrowLeft'
   | 'arrowUpRight'
   | 'bell'
   | 'box'
@@ -13,7 +14,9 @@ export type IconName =
   | 'download'
   | 'edit'
   | 'eye'
+  | 'file'
   | 'grid'
+  | 'heart'
   | 'logout'
   | 'menu'
   | 'moon'
@@ -26,10 +29,12 @@ export type IconName =
   | 'staff'
   | 'sun'
   | 'users'
+  | 'user'
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, string> = {
     activity: 'M3 12h4l2.2-7 4.2 14L16 12h5',
+    arrowLeft: 'M20 12H4m7-7-7 7 7 7',
     arrowUpRight: 'M7 17 17 7M8 7h9v9',
     bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
     box: 'M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9',
@@ -43,7 +48,9 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
     download: 'M12 3v12m0 0 4-4m-4 4-4-4M5 21h14',
     edit: 'M4 20h4l10.5-10.5a2.12 2.12 0 0 0-3-3L5 17v3ZM14.5 7.5l2 2',
     eye: 'M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6ZM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+    file: 'M6 3h8l4 4v14H6V3Zm8 0v5h4M9 12h6M9 16h6',
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+    heart: 'M20.8 8.7c0 5.2-8.8 10.3-8.8 10.3S3.2 13.9 3.2 8.7A4.7 4.7 0 0 1 12 6.2a4.7 4.7 0 0 1 8.8 2.5Z',
     logout: 'M10 17l5-5-5-5M15 12H3M21 19V5a2 2 0 0 0-2-2h-5',
     menu: 'M4 7h16M4 12h16M4 17h16',
     moon: 'M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z',
@@ -56,6 +63,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
     staff: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6',
     sun: 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4M16.5 12a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z',
     users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+    user: 'M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
   }
 
   return (

@@ -88,9 +88,9 @@ function dateKey(value: Date) {
   return [value.getFullYear(), String(value.getMonth() + 1).padStart(2, '0'), String(value.getDate()).padStart(2, '0')].join('-')
 }
 
-function isBookingSlotTooSoon(date: string, time: string) {
+function isBookingSlotInPast(date: string, time: string) {
   if (!date) return true
-  return new Date(`${date}T${time}:00`).getTime() < Date.now() + 30 * 60 * 1000
+  return new Date(`${date}T${time}:00`).getTime() <= Date.now()
 }
 
 function startOfWeek(value: Date) {
@@ -197,7 +197,7 @@ function AppointmentTimePicker({ date, dateSelected, shift, value, onChange, onS
           <button
             aria-pressed={value === slot.value}
             className={value === slot.value ? 'is-selected' : ''}
-            disabled={!dateSelected || isBookingSlotTooSoon(date, slot.value)}
+            disabled={!dateSelected || isBookingSlotInPast(date, slot.value)}
             key={slot.value}
             type="button"
             onClick={() => onChange(slot.value)}

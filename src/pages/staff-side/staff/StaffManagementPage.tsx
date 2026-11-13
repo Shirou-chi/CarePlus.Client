@@ -227,7 +227,12 @@ export function StaffManagementPage() {
           role: form.role,
           status: form.status,
         })
-        announce('Staff account updated.')
+        if (currentRole === 'Admin' && form.password) {
+          await staffApi.updatePassword({ staffId: editingStaff.staffId, newPassword: form.password })
+          announce('Staff account and password updated.')
+        } else {
+          announce('Staff account updated.')
+        }
       }
 
       setModalMode(null)
@@ -375,6 +380,7 @@ export function StaffManagementPage() {
                 <div className="staff-management-readonly"><span>Username</span><strong>{form.username}</strong><small>{form.email}</small></div>
                 <label>Full name<input minLength={3} required value={form.name} onChange={(event) => updateField('name', event.target.value)} /></label>
                 <label>Phone<input value={form.phone} onChange={(event) => updateField('phone', event.target.value)} /></label>
+                {currentRole === 'Admin' ? <label><span>New password <small>(optional)</small></span><input autoComplete="new-password" minLength={8} type="password" value={form.password} onChange={(event) => updateField('password', event.target.value)} /></label> : null}
               </>}
               <div className="staff-management-form-grid">
                 <label>Role<select value={form.role} onChange={(event) => updateField('role', event.target.value as StaffRole)}><option>Admin</option><option>Doctor</option><option>Pharmacist</option></select></label>

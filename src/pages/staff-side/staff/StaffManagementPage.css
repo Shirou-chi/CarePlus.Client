@@ -377,6 +377,18 @@
   font-weight: 700;
 }
 
+.staff-management-form label > span {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.staff-management-form label > span small {
+  color: var(--staff-muted);
+  font-size: 0.61rem;
+  font-weight: 400;
+}
+
 .staff-management-form input,
 .staff-management-form select {
   min-height: 40px;
