@@ -52,6 +52,12 @@ const calculateAge = (dateOfBirth: string | null) => {
 const familyRuleMessage = (t: Copy, message: string) => {
     if (message === "parent-underage") return t.familyParentUnderage;
     if (message === "parent-age-verification-required") return t.familyParentAgeUnavailable;
+    if (message === "No active patient account was found for this email.") return t.familyInviteNotFound;
+    if (message === "You cannot invite yourself.") return t.familySelf;
+    if (message === "This patient already belongs to a family.") return t.familyDuplicate;
+    if (message === "Only the family owner can invite members.") return t.familyInviteOwnerOnly;
+    if (message === "Enter a valid email address.") return t.familyEmailInvalid;
+    if (message === "We could not send the invitation email. Please try again later.") return t.familyInviteEmailFailed;
     return message;
 };
 
@@ -285,10 +291,14 @@ export const FamilyPage = () => {
             {adding ? (
                 <AddDialog
                     onClose={() => setAdding(false)}
-                    onSave={(person) => {
-                        void familyApi.invite(person.email, person.relation).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
-                        setAdding(false);
-                        return null;
+                    onSave={async (person) => {
+                        try {
+                            setOverview(await familyApi.invite(person.email, person.relation));
+                            setAdding(false);
+                            return null;
+                        } catch (cause) {
+                            return familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed);
+                        }
                     }}
                 />
             ) : null}
@@ -424,15 +434,16 @@ const RenameDialog = ({ current, title, label, requiredMessage, onClose, onSave 
     );
 };
 
-const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: { email: string; relation: FamilyRelation }) => string | null }) => {
+const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: { email: string; relation: FamilyRelation }) => Promise<string | null> }) => {
     const { t } = useI18n();
     const [email, setEmail] = useState("");
     const [relation, setRelation] = useState<FamilyRelation>("child");
     const [fieldError, setFieldError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
     const relationOptions = relations.map((id) => ({ id, label: relationLabel(t, id) }));
 
     return (
-        <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
+        <ModalOverlay isDismissable={!busy} isOpen onOpenChange={(open) => !open && !busy && onClose()}>
             <Modal className="w-full max-w-md">
                 <Dialog className={dialogClass}>
                     <h2 className="text-lg font-semibold text-primary">{t.familyAdd}</h2>
@@ -440,12 +451,18 @@ const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: 
                         className="mt-4 flex flex-col gap-4"
                         onSubmit={(event) => {
                             event.preventDefault();
+                            if (busy) return;
                             if (!emailOk(email.trim())) {
                                 setFieldError(t.familyEmailInvalid);
                                 return;
                             }
-                            const message = onSave({ email, relation });
-                            if (message) setFieldError(message);
+                            setFieldError(null);
+                            setBusy(true);
+                            void onSave({ email: email.trim(), relation })
+                                .then((message) => {
+                                    if (message) setFieldError(message);
+                                })
+                                .finally(() => setBusy(false));
                         }}
                     >
                         <Input
@@ -457,17 +474,18 @@ const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: 
                                 if (fieldError) setFieldError(null);
                             }}
                             isInvalid={Boolean(fieldError)}
-                            hint={fieldError ?? undefined}
+                            isDisabled={busy}
                         />
-                        <Select label={t.familyRelation} selectedKey={relation} onSelectionChange={(key) => key && setRelation(String(key) as FamilyRelation)} items={relationOptions}>
+                        <Select isDisabled={busy} label={t.familyRelation} selectedKey={relation} onSelectionChange={(key) => key && setRelation(String(key) as FamilyRelation)} items={relationOptions}>
                             {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
                         </Select>
+                        <FormStatus error={fieldError} />
                         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <Button type="button" color="tertiary" size="md" onClick={onClose}>
+                            <Button type="button" color="tertiary" size="md" isDisabled={busy} onClick={onClose}>
                                 {t.notifCancel}
                             </Button>
-                            <Button type="submit" color="primary" size="md">
-                                {t.familyInvite}
+                            <Button type="submit" color="primary" size="md" isDisabled={busy}>
+                                {busy ? t.familyInviteSending : t.familyInvite}
                             </Button>
                         </div>
                     </form>
