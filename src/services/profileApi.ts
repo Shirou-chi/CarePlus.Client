@@ -1,4 +1,4 @@
-import { baseUrl, messageFromBody, request } from "./api";
+import { baseUrl, getAuthToken, messageFromBody, request } from "./api";
 import type { ApiResponse } from "./api";
 import type { CurrentUserResponse } from "./authApi";
 
@@ -67,6 +67,16 @@ export const profilePictureUrl = (path: string | null | undefined) => {
     }
     return `${baseUrl}/api/${path.replace(/^\//, "")}`;
 };
+
+/** Authenticated media fetch for profile photos (static mount removed). */
+export async function resolveProfilePictureUrl(path: string | null | undefined): Promise<string | null> {
+    if (!path) return null;
+    const response = await fetch(`${baseUrl}/api/${path.replace(/^\//, "")}`, {
+        headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+    });
+    if (!response.ok) return null;
+    return URL.createObjectURL(await response.blob());
+}
 
 export const profileApi = {
     async uploadPhoto(file: File): Promise<CurrentUserResponse> {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
-import { leaveApi, leaveDocumentUrl, type LeaveRecord, type LeaveStatus } from '@/services/leaveApi'
+import { leaveApi, resolveLeaveDocumentUrl, type LeaveRecord, type LeaveStatus } from '@/services/leaveApi'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
@@ -126,7 +126,32 @@ function AdminLeaveReviewModal({ request, actionBusy, onClose, onStatus }: Admin
   const isPdf = extension === 'pdf'
   const isImage = extension === 'jpg' || extension === 'jpeg' || extension === 'png'
   const hasStoredFile = request.supportDocument.startsWith('leave-documents/')
-  const documentUrl = hasStoredFile ? leaveDocumentUrl(request.supportDocument) : ''
+  const [documentUrl, setDocumentUrl] = useState('')
+
+  useEffect(() => {
+    if (!hasStoredFile) {
+      setDocumentUrl('')
+      return
+    }
+    let cancelled = false
+    let objectUrl = ''
+    void resolveLeaveDocumentUrl(request.supportDocument)
+      .then((url) => {
+        if (cancelled) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        objectUrl = url
+        setDocumentUrl(url)
+      })
+      .catch(() => {
+        if (!cancelled) setDocumentUrl('')
+      })
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [hasStoredFile, request.supportDocument])
 
   return (
     <div className="leave-review-backdrop" role="presentation">
@@ -381,7 +406,7 @@ export function LeavePage() {
       </main>
 
       {isAdmin && selectedRequest ? <AdminLeaveReviewModal actionBusy={actionBusy} onClose={() => setSelectedRequest(null)} onStatus={(status) => void updateStatus(status)} request={selectedRequest} /> : null}
-      {selectedRequest ? <div className="leave-detail-backdrop" role="presentation" onClick={() => setSelectedRequest(null)}><aside aria-labelledby="leave-detail-title" aria-modal="true" className="leave-detail-drawer" role="dialog" onClick={(event) => event.stopPropagation()}><div className="leave-detail-drawer__header"><div><p className="staff-card__eyebrow">Leave request</p><h2 id="leave-detail-title">Request details</h2></div><button aria-label="Close leave request details" type="button" onClick={() => setSelectedRequest(null)}><Icon name="close" size={19} /></button></div><div className="leave-detail-profile"><span className={`leave-avatar leave-avatar--${roleTone(selectedRequest.role)}`}>{getInitials(selectedRequest.staffName || selectedRequest.username)}</span><span><strong>{selectedRequest.staffName || selectedRequest.username}</strong><small>{selectedRequest.role} · {selectedRequest.leaveId}</small></span><span className={`leave-status leave-status--${statusClass(selectedRequest.status)}`}><i />{statusLabel(selectedRequest.status)}</span></div><dl className="leave-detail-list"><div><dt>Leave ID</dt><dd>{selectedRequest.leaveId}</dd></div><div><dt>Submitted date</dt><dd>{formatDate(selectedRequest.createdAt)}</dd></div><div><dt>Staff member</dt><dd>{selectedRequest.staffName || selectedRequest.username}</dd></div><div><dt>Date</dt><dd>{formatDateRange(selectedRequest)}<small>{selectedRequest.durationDays} {selectedRequest.durationDays === 1 ? 'day' : 'days'}</small></dd></div><div><dt>Reason</dt><dd>{selectedRequest.reason}</dd></div><div><dt>Support document</dt><dd><a className="leave-document-link" href={leaveDocumentUrl(selectedRequest.supportDocument)} rel="noreferrer" target="_blank">{displayDocumentName(selectedRequest.supportDocument)}</a></dd></div></dl><div className={`leave-detail-actions${isAdmin && selectedRequest.status === 'Pending' ? '' : ' leave-detail-actions--single'}`}>{isAdmin && selectedRequest.status === 'Pending' ? <><button className="staff-button staff-button--secondary" disabled={actionBusy} type="button" onClick={() => void updateStatus('Declined')}>Decline</button><button className="staff-button staff-button--primary" disabled={actionBusy} type="button" onClick={() => void updateStatus('Approved')}>{actionBusy ? 'Saving…' : 'Approve request'}</button></> : <button className="staff-button staff-button--secondary" type="button" onClick={() => setSelectedRequest(null)}>Close details</button>}</div></aside></div> : null}
+      {selectedRequest ? <div className="leave-detail-backdrop" role="presentation" onClick={() => setSelectedRequest(null)}><aside aria-labelledby="leave-detail-title" aria-modal="true" className="leave-detail-drawer" role="dialog" onClick={(event) => event.stopPropagation()}><div className="leave-detail-drawer__header"><div><p className="staff-card__eyebrow">Leave request</p><h2 id="leave-detail-title">Request details</h2></div><button aria-label="Close leave request details" type="button" onClick={() => setSelectedRequest(null)}><Icon name="close" size={19} /></button></div><div className="leave-detail-profile"><span className={`leave-avatar leave-avatar--${roleTone(selectedRequest.role)}`}>{getInitials(selectedRequest.staffName || selectedRequest.username)}</span><span><strong>{selectedRequest.staffName || selectedRequest.username}</strong><small>{selectedRequest.role} · {selectedRequest.leaveId}</small></span><span className={`leave-status leave-status--${statusClass(selectedRequest.status)}`}><i />{statusLabel(selectedRequest.status)}</span></div><dl className="leave-detail-list"><div><dt>Leave ID</dt><dd>{selectedRequest.leaveId}</dd></div><div><dt>Submitted date</dt><dd>{formatDate(selectedRequest.createdAt)}</dd></div><div><dt>Staff member</dt><dd>{selectedRequest.staffName || selectedRequest.username}</dd></div><div><dt>Date</dt><dd>{formatDateRange(selectedRequest)}<small>{selectedRequest.durationDays} {selectedRequest.durationDays === 1 ? 'day' : 'days'}</small></dd></div><div><dt>Reason</dt><dd>{selectedRequest.reason}</dd></div><div><dt>Support document</dt><dd><a className="leave-document-link" href="#open-leave-document" onClick={(event) => { event.preventDefault(); void resolveLeaveDocumentUrl(selectedRequest.supportDocument).then((url) => window.open(url, '_blank')).catch(() => undefined) }}>{displayDocumentName(selectedRequest.supportDocument)}</a></dd></div></dl><div className={`leave-detail-actions${isAdmin && selectedRequest.status === 'Pending' ? '' : ' leave-detail-actions--single'}`}>{isAdmin && selectedRequest.status === 'Pending' ? <><button className="staff-button staff-button--secondary" disabled={actionBusy} type="button" onClick={() => void updateStatus('Declined')}>Decline</button><button className="staff-button staff-button--primary" disabled={actionBusy} type="button" onClick={() => void updateStatus('Approved')}>{actionBusy ? 'Saving…' : 'Approve request'}</button></> : <button className="staff-button staff-button--secondary" type="button" onClick={() => setSelectedRequest(null)}>Close details</button>}</div></aside></div> : null}
 
       {dialogOpen ? <div className="leave-dialog-backdrop" role="presentation"><section aria-labelledby="leave-request-title" aria-modal="true" className="leave-dialog" role="dialog" onClick={(event) => event.stopPropagation()}><div className="leave-dialog__header"><div><p className="staff-card__eyebrow">People operations</p><h2 id="leave-request-title">Request leave</h2></div><button aria-label="Close leave request form" type="button" onClick={() => setDialogOpen(false)}><Icon name="close" size={19} /></button></div><form onSubmit={submitRequest}><label>Staff member<select disabled={!isAdmin} value={form.staffId} onChange={(event) => setForm((current) => ({ ...current, staffId: event.target.value }))}>{isAdmin ? staff.map((member) => <option key={member.staffId} value={member.staffId}>{member.name} · {member.role}</option>) : <option value={user?.staffId ?? ''}>{user?.name || 'Signed-in staff member'} · {currentRole}</option>}</select></label><label className="leave-dialog__date-field">Leave dates<StaffDateFilter disabled={saving} emptyLabel="Choose a date or date range" label="Choose leave date or date range" minDate={todayInput()} onChange={(range) => { setRequestDateRange(range); setForm((current) => ({ ...current, startDate: range.start ?? '', endDate: range.end ?? range.start ?? '' })) }} selectionMode="range" value={requestDateRange} /><small className="leave-date-help">Choose one date or select a start and end date.</small></label><label>Reason<textarea required maxLength={500} placeholder="Add a short reason for your request" rows={4} value={form.reason} onChange={(event) => setForm((current) => ({ ...current, reason: event.target.value }))} /></label><label>Support document<input required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" type="file" onChange={(event) => setForm((current) => ({ ...current, supportDocument: event.target.files?.[0] ?? null }))} />{form.supportDocument ? <small className="leave-selected-file">Selected: {form.supportDocument.name}</small> : null}</label>{formError ? <p className="leave-form-error" role="alert">{formError}</p> : null}<div className="leave-dialog__actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={() => setDialogOpen(false)}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving} type="submit">{saving ? 'Submitting…' : 'Submit request'}</button></div></form></section></div> : null}
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}

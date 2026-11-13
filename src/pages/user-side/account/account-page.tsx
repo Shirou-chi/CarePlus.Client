@@ -34,7 +34,7 @@ import { CreditCard } from "@/components/credit-card/credit-card";
 import { useAuth } from "@/providers/auth-provider";
 import { getAuthToken } from "@/services/api";
 import { authApi } from "@/services/authApi";
-import { profileApi, profilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
+import { profileApi, resolveProfilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { type Profile } from "@/utils/auth";
@@ -153,7 +153,7 @@ export const AccountPage = () => {
         let cancelled = false;
         authApi
             .getCurrentUser()
-            .then((user) => {
+            .then(async (user) => {
                 if (!cancelled) {
                     updateProfile({
                         email: user.email,
@@ -163,7 +163,7 @@ export const AccountPage = () => {
                         dateOfBirth: user.dateOfBirth ?? null,
                         gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
                         address: user.address ?? null,
-                        avatarUrl: profilePictureUrl(user.profilePicture),
+                        avatarUrl: await resolveProfilePictureUrl(user.profilePicture),
                     });
                 }
             })
@@ -1144,7 +1144,7 @@ export const AccountPage = () => {
                                             }
                                             try {
                                                 const user = await profileApi.uploadPhoto(dialog.file);
-                                                updateProfile({ avatarUrl: profilePictureUrl(user.profilePicture) });
+                                                updateProfile({ avatarUrl: await resolveProfilePictureUrl(user.profilePicture) });
                                                 setProfileNotice({ success: t.settingsSaved });
                                                 setDialog(null);
                                             } catch (error) {

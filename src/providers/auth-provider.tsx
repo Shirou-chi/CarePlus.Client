@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
-import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
+import { profileApi, resolveProfilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme, type TextSize } from "@/providers/theme-provider";
 import { SESSION_KEY, type Profile } from "@/utils/auth";
@@ -102,7 +102,7 @@ function convertApiUser(user: CurrentUserResponse): AuthUser {
     };
 }
 
-export const profileFromUser = (user: CurrentUserResponse): Profile => ({
+export const profileFromUser = async (user: CurrentUserResponse): Promise<Profile> => ({
     id: user.patientId || String(user.userId),
     email: user.email,
     fullName: user.name,
@@ -112,7 +112,7 @@ export const profileFromUser = (user: CurrentUserResponse): Profile => ({
     address: user.address || null,
     gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
     nationality: "Malaysian",
-    avatarUrl: profilePictureUrl(user.profilePicture),
+    avatarUrl: await resolveProfilePictureUrl(user.profilePicture),
 });
 
 const isNotificationLevel = (value: string | null | undefined): value is NotificationLevel =>
@@ -198,7 +198,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     return;
                 }
 
-                const nextProfile = profileFromUser(apiUser);
+                const nextProfile = await profileFromUser(apiUser);
                 const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
                 if (!isCurrentSession()) return;
 
@@ -238,7 +238,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 throw new Error("This account is not a patient account.");
             }
 
-            const nextProfile = profileFromUser(apiUser);
+            const nextProfile = await profileFromUser(apiUser);
             const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
             if (getAuthToken() !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
 
