@@ -452,23 +452,21 @@ const FamilySteps = () => {
     );
 };
 
-type BeforeInstallPromptEvent = Event & {
-    prompt: () => Promise<void>;
-    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+const isIosDevice = () => {
+    if (typeof navigator === "undefined") return false;
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/i.test(ua)) return true;
+    // iPadOS 13+ often reports as MacIntel with touch
+    return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
 };
 
-const detectPhonePlatform = (): "ios" | "android" => {
-    if (typeof navigator === "undefined") return "android";
-    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ? "ios" : "android";
-};
+const detectPhonePlatform = (): "ios" | "android" => (isIosDevice() ? "ios" : "android");
 
 const PhoneHome = () => {
     const { t } = useI18n();
     const { theme, setTheme, textSize, setTextSize } = useTheme();
     const [howOpen, setHowOpen] = useState(false);
     const [platform, setPlatform] = useState<"ios" | "android">(detectPhonePlatform);
-    const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-    const [installBusy, setInstallBusy] = useState(false);
     const previewDark = theme === "dark";
     const previewLarge = textSize === "large";
     const points = [t.phoneHomePointTheme, t.phoneHomePointTextSize, t.phoneHomePointTabs, t.phoneHomePointFullscreen];
@@ -486,24 +484,12 @@ const PhoneHome = () => {
               ];
 
     useEffect(() => {
-        const onBeforeInstall = (event: Event) => {
-            event.preventDefault();
-            setInstallEvent(event as BeforeInstallPromptEvent);
-        };
-        window.addEventListener("beforeinstallprompt", onBeforeInstall);
-        return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+        setPlatform(detectPhonePlatform());
     }, []);
 
-    const handleInstall = async () => {
-        if (!installEvent) return;
-        setInstallBusy(true);
-        try {
-            await installEvent.prompt();
-            await installEvent.userChoice;
-            setInstallEvent(null);
-        } finally {
-            setInstallBusy(false);
-        }
+    const openHow = () => {
+        setPlatform(detectPhonePlatform());
+        setHowOpen(true);
     };
 
     return (
@@ -526,7 +512,7 @@ const PhoneHome = () => {
                             </li>
                         ))}
                     </ul>
-                    <Button color="secondary" size="md" iconLeading={Phone01} className="mt-8 w-fit" onClick={() => setHowOpen(true)}>
+                    <Button color="secondary" size="md" iconLeading={Phone01} className="mt-8 w-fit" onClick={openHow}>
                         {t.phoneHomeHow}
                     </Button>
                 </div>
@@ -597,18 +583,6 @@ const PhoneHome = () => {
                         </Heading>
                         <p className="mt-2 text-center text-sm text-tertiary">{t.phoneHomeHowSubtitle}</p>
 
-                        <Button
-                            color="secondary"
-                            size="lg"
-                            iconLeading={Download01}
-                            className="mt-5 w-full"
-                            isDisabled={installBusy}
-                            onClick={() => void (installEvent ? handleInstall() : undefined)}
-                        >
-                            {t.phoneHomeInstallNow}
-                        </Button>
-                        {!installEvent ? <p className="mt-2 text-center text-xs text-tertiary">{t.phoneHomeInstallUnavailable}</p> : null}
-
                         <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="tablist" aria-label="Phone platform">
                             <button
                                 type="button"
@@ -649,6 +623,7 @@ const PhoneHome = () => {
                         </ol>
 
                         {platform === "android" ? <p className="mt-4 text-center text-xs text-tertiary">{t.phoneHomeSamsungNote}</p> : null}
+                        {platform === "ios" ? <p className="mt-4 text-center text-xs text-tertiary">{t.phoneHomeIosSafariOnly}</p> : null}
 
                         <div className="mt-5 flex justify-end">
                             <Button color="primary" onClick={() => setHowOpen(false)}>

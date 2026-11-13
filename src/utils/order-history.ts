@@ -56,6 +56,9 @@ const knownStatuses: OrderStatus[] = ["processing", "waiting_delivery", "ready_p
 
 export const normalizeOrderStatus = (fulfilment: MedicineOrder["fulfilment"], status: string): OrderStatus => {
     const value = status.trim().toLowerCase();
+    if (value === "completed" || value === "dispensed") {
+        return fulfilment === "delivery" ? "delivered" : "picked_up";
+    }
     const known = knownStatuses.includes(value as OrderStatus) ? (value as OrderStatus) : "processing";
     if (fulfilment === "pickup" && known === "processing") return "ready_pickup";
     return known;
@@ -79,3 +82,8 @@ export const orderStatusColor = (status: OrderStatus): "warning" | "success" | "
     if (status === "ready_pickup") return "brand";
     return "gray";
 };
+
+/** Picked up or delivered; shown on dispensing history, not active order tracking. */
+export const isCompletedOrder = (status: OrderStatus) => status === "picked_up" || status === "delivered";
+
+export const isReadyPickupOrder = (status: OrderStatus) => status === "ready_pickup";

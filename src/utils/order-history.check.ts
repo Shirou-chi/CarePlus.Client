@@ -1,7 +1,12 @@
-import { normalizeOrderStatus, showsPaymentHistory, trackingStepsFor } from "./order-history.ts";
+import { isCompletedOrder, isReadyPickupOrder, normalizeOrderStatus, showsPaymentHistory, trackingStepsFor } from "./order-history.ts";
 
 const pickup = normalizeOrderStatus("pickup", "processing");
 if (pickup !== "ready_pickup") throw new Error("pickup should be ready to pickup");
+if (normalizeOrderStatus("pickup", "completed") !== "picked_up") throw new Error("completed pickup should be picked_up");
+if (normalizeOrderStatus("delivery", "dispensed") !== "delivered") throw new Error("dispensed delivery should be delivered");
+if (!isReadyPickupOrder("ready_pickup")) throw new Error("ready pickup helper");
+if (!isCompletedOrder("picked_up") || !isCompletedOrder("delivered")) throw new Error("completed helper");
+if (isCompletedOrder("ready_pickup")) throw new Error("ready should not be completed");
 const labels = { confirmed: "Order confirmed", ready: "Ready to pickup", pickedUp: "Picked up", delivered: "Delivered" };
 const steps = trackingStepsFor("pickup", pickup, labels);
 if (steps.join("|") !== "Order confirmed|Ready to pickup") throw new Error(steps.join("|"));

@@ -104,6 +104,7 @@ const LoginPage = page(() => import("@/pages/user-side/auth/login-page"), "Login
 const ClinicRecordsPage = page(() => import("@/pages/user-side/records/clinic-records-page"), "ClinicRecordsPage");
 const NotFound = page(() => import("@/pages/user-side/not-found"), "NotFound");
 const OrderHistoryPage = page(() => import("@/pages/user-side/medicine/order-history-page"), "OrderHistoryPage");
+const DispensingHistoryPage = page(() => import("@/pages/user-side/medicine/order-history-page"), "DispensingHistoryPage");
 const PrescribedMedicineBrowsePage = page(() => import("@/pages/user-side/medicine/prescribed-medicine-browse-page"), "PrescribedMedicineBrowsePage");
 const PrescribedMedicinePage = page(() => import("@/pages/user-side/medicine/prescribed-medicine-page"), "PrescribedMedicinePage");
 const CartPage = page(() => import("@/pages/user-side/medicine/cart-page"), "CartPage");
@@ -176,7 +177,7 @@ function StaffLoginRoute() {
 }
 
 const featurePath = (pathname: string) =>
-    ["/home", "/book", "/visits", "/history", "/queue", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
+    ["/home", "/book", "/visits", "/history", "/queue", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/dispensing-history", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
         (path) => pathname === path || pathname.startsWith(`${path}/`),
     );
 
@@ -241,6 +242,7 @@ const AppRoutes = () => {
                     <Route path="/cart" element={<CartPage />} />
                     <Route path="/checkout" element={<CheckoutPage />} />
                     <Route path="/orders" element={<OrderHistoryPage />} />
+                    <Route path="/dispensing-history" element={<DispensingHistoryPage />} />
                     <Route path="/clinic-records" element={<ClinicRecordsPage />} />
                     <Route path="/doctors" element={<DoctorsPage />} />
                     <Route path="/doctors/:id" element={<DoctorDetailPage />} />

@@ -14,6 +14,7 @@ import {
     Receipt,
     Settings01,
     Sun,
+    Package,
     Truck01,
     Type01,
     Users01,
@@ -124,6 +125,7 @@ const SheetBody = ({ close }: { close: () => void }) => {
                     <Tile label={t.sheetInvoices} Icon={Receipt} onPress={() => go("/invoices")} />
                     {overdue ? null : <Tile label={t.sheetPayments} Icon={CreditCard01} onPress={() => go("/payments")} />}
                     {overdue ? null : <Tile label={t.sheetOrders} Icon={Truck01} onPress={() => go("/orders")} />}
+                    {overdue ? null : <Tile label={t.sheetDispensing} Icon={Package} onPress={() => go("/dispensing-history")} />}
                 </TileGroup>
 
                 <section>

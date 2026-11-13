@@ -68,6 +68,7 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
         page("/medicine", t.medTitle, t.medSearch, "medicine pharmacy drug prescribed buy 药物 药房 处方"),
         page("/cart", t.cart, t.medCartEmptyHint, "shopping basket checkout 购物车 结算"),
         page("/orders", t.ordersTitle, t.ordersHint, "order history tracking delivery pickup 订单 物流 自提"),
+        page("/dispensing-history", t.dispensingTitle, t.dispensingBody, "dispensing history completed picked up delivered 发药 领取 送达"),
         page("/clinic-records", t.clinicRecordsTitle, t.clinicRecordsNavHint, "clinic records diagnosis prescription consultation 病历 诊断 处方"),
         page("/records", t.phrTitle, t.phrNavHint, "personal health records allergies blood pressure pdf 健康档案 过敏 血压"),
         page("/family", t.familyProfiles, t.familyProfilesHint, "family member invitation parent child 家人 家庭 邀请"),

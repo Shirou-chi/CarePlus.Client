@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Copy01, Receipt, SearchLg, Truck01 } from "@untitledui/icons";
+import { ChevronDown, Copy01, Package, Receipt, SearchLg, Truck01 } from "@untitledui/icons";
 import { Navigate, useLocation } from "react-router";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -18,14 +18,18 @@ import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy, type Locale } from "@/providers/locale-provider";
 import { copyText } from "@/utils/document-download";
 import { orderApi } from "@/services/orderApi";
-import { orderStatusColor, orderStatusLabel, showsPaymentHistory, type MedicineOrder } from "@/utils/order-history";
+import { isCompletedOrder, orderStatusColor, orderStatusLabel, showsPaymentHistory, type MedicineOrder } from "@/utils/order-history";
 import { CLINIC_POINT, locateAddress, mapEmbedSrc, type MapPoint } from "@/utils/order-map";
 import { formatRm, isMedicineId, medicineName, type Medicine } from "@/utils/prescribed-medicine";
 import { cx } from "@/utils/cx";
 
 type SortKey = "newest" | "oldest" | "total_high" | "total_low";
+type OrderScope = "active" | "completed";
 
-export const OrderHistoryPage = () => {
+export const OrderHistoryPage = () => <MedicineOrdersPage scope="active" />;
+export const DispensingHistoryPage = () => <MedicineOrdersPage scope="completed" />;
+
+const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const placedId = (useLocation().state as { placedId?: string } | null)?.placedId ?? null;
@@ -33,10 +37,15 @@ export const OrderHistoryPage = () => {
     const { medicines: catalog } = useMedicineCatalog();
     const [query, setQuery] = useState("");
     const [sort, setSort] = useState<SortKey>("newest");
-    const [expanded, setExpanded] = useState<string | null>(placedId);
+    const [expanded, setExpanded] = useState<string | null>(scope === "active" ? placedId : null);
     const [tracking, setTracking] = useState<MedicineOrder | null>(null);
     const [shot, setShot] = useState<Medicine | null>(null);
-    const [notice, setNotice] = useState<string | null>(placedId ? t.checkoutPlaced.replace("{id}", placedId) : null);
+    const [notice, setNotice] = useState<string | null>(scope === "active" && placedId ? t.checkoutPlaced.replace("{id}", placedId) : null);
+    const completed = scope === "completed";
+    const title = completed ? t.dispensingTitle : t.ordersTitle;
+    const emptyTitle = completed ? t.dispensingEmptyTitle : t.ordersEmptyTitle;
+    const emptyBody = completed ? t.dispensingEmptyBody : t.ordersEmptyBody;
+    const EmptyIcon = completed ? Package : Truck01;
 
     useEffect(() => {
         if (!profile?.id || profile.id.startsWith("fam-")) {
@@ -64,7 +73,8 @@ export const OrderHistoryPage = () => {
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        let list = orders.filter(
+        let list = orders.filter((order) => (completed ? isCompletedOrder(order.status) : !isCompletedOrder(order.status)));
+        list = list.filter(
             (order) =>
                 !q ||
                 order.id.toLowerCase().includes(q) ||
@@ -77,7 +87,7 @@ export const OrderHistoryPage = () => {
             return new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime();
         });
         return list;
-    }, [orders, query, sort]);
+    }, [completed, orders, query, sort]);
 
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
@@ -101,7 +111,21 @@ export const OrderHistoryPage = () => {
             <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
                 <div className="flex flex-wrap items-end justify-between gap-4">
-                    <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.ordersTitle}</h1>
+                    <div>
+                        <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{title}</h1>
+                        <p className="mt-2 max-w-xl text-sm text-tertiary">{completed ? t.dispensingBody : t.ordersHint}</p>
+                        <div className="mt-3 flex flex-wrap gap-3">
+                            {completed ? (
+                                <Button color="link-color" size="sm" href="/orders">
+                                    {t.ordersTrack}
+                                </Button>
+                            ) : (
+                                <Button color="link-color" size="sm" href="/dispensing-history">
+                                    {t.dispensingTitle}
+                                </Button>
+                            )}
+                        </div>
+                    </div>
                     <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                         <Input placeholder={t.search} icon={SearchLg} value={query} onChange={setQuery} className="w-full sm:w-64" />
                         <Select selectedKey={sort} onSelectionChange={(key) => setSort(String(key) as SortKey)} className="w-full sm:w-44" items={[
@@ -119,9 +143,9 @@ export const OrderHistoryPage = () => {
 
                 {filtered.length === 0 ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
-                        <FeaturedIcon icon={Truck01} color="gray" theme="light" size="lg" />
-                        <h2 className="mt-4 text-lg font-semibold text-primary">{query.trim() ? t.ordersNoMatch : t.ordersEmptyTitle}</h2>
-                        <p className="mt-2 text-sm text-tertiary">{query.trim() ? t.historyNoMatchBody : t.ordersEmptyBody}</p>
+                        <FeaturedIcon icon={EmptyIcon} color="gray" theme="light" size="lg" />
+                        <h2 className="mt-4 text-lg font-semibold text-primary">{query.trim() ? t.ordersNoMatch : emptyTitle}</h2>
+                        <p className="mt-2 text-sm text-tertiary">{query.trim() ? t.historyNoMatchBody : emptyBody}</p>
                     </div>
                 ) : null}
                 <ul className={filtered.length === 0 ? "hidden" : "mt-8 space-y-4"}>
