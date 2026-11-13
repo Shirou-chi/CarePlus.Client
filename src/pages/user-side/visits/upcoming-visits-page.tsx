@@ -94,6 +94,9 @@ export const UpcomingVisitsPage = () => {
     const actions = (visit: Appointment) => (
         <div className="mt-4 flex flex-col gap-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
             <div className="flex flex-wrap gap-2">
+                <Button color="primary" size="sm" onClick={() => navigate(`/queue?appointmentId=${encodeURIComponent(visit.id)}`)}>
+                    {t.visitsCheckQueue}
+                </Button>
                 <Button
                     color="secondary"
                     size="sm"

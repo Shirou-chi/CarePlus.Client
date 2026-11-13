@@ -16,9 +16,11 @@ type ChatHistoryPanelProps = {
 export const ChatHistoryPanel = ({ onPick }: ChatHistoryPanelProps) => {
     const { t } = useI18n();
     const { threads, active, isGuest, isHistoryLoading, historyError, select, startNew, deleteThreads } = useChat();
+    // Blank drafts (no messages yet) stay active for composing, but do not belong in history.
+    const historyThreads = threads.filter((thread) => thread.messages.length > 0);
     const [selected, setSelected] = useState<Set<string>>(() => new Set());
     const [pendingDeletion, setPendingDeletion] = useState<string[] | null>(null);
-    const allSelected = threads.length > 0 && selected.size === threads.length;
+    const allSelected = historyThreads.length > 0 && selected.size === historyThreads.length;
 
     const setThreadSelected = (id: string, checked: boolean) => {
         setSelected((current) => {
@@ -44,7 +46,7 @@ export const ChatHistoryPanel = ({ onPick }: ChatHistoryPanelProps) => {
             {historyError ? <p className="rounded-xl bg-error-secondary px-3 py-2 text-sm text-error-primary">{t.chatHistoryLoadError}</p> : null}
             {isHistoryLoading ? (
                 <p className="rounded-xl bg-secondary px-3 py-6 text-center text-sm text-tertiary">{t.chatLoadingHistory}</p>
-            ) : threads.length === 0 ? (
+            ) : historyThreads.length === 0 ? (
                 <EmptyState size="sm" className="py-8">
                     <EmptyState.Header pattern="none">
                         <EmptyState.FeaturedIcon icon={MessageChatCircle} color="gray" theme="modern" />
@@ -67,7 +69,7 @@ export const ChatHistoryPanel = ({ onPick }: ChatHistoryPanelProps) => {
                             label={t.chatSelectAll}
                             isSelected={allSelected}
                             isIndeterminate={selected.size > 0 && !allSelected}
-                            onChange={(checked) => setSelected(checked ? new Set(threads.map((thread) => thread.id)) : new Set())}
+                            onChange={(checked) => setSelected(checked ? new Set(historyThreads.map((thread) => thread.id)) : new Set())}
                         />
                         {selected.size > 0 ? (
                             <Button color="secondary-destructive" size="sm" iconLeading={Trash01} onClick={() => setPendingDeletion([...selected])}>
@@ -76,7 +78,7 @@ export const ChatHistoryPanel = ({ onPick }: ChatHistoryPanelProps) => {
                         ) : null}
                     </div>
                     <ul className="flex flex-col gap-1">
-                        {threads.map((thread) => (
+                        {historyThreads.map((thread) => (
                             <li
                                 key={thread.id}
                                 className={
