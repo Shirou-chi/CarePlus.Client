@@ -59,7 +59,8 @@
 .staff-settings-text-size__options { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--staff-subtle); }
 .staff-settings-text-size__option { min-height: 38px; border: 0; border-radius: 8px; background: transparent; color: var(--staff-muted); font-size: 0.78rem; font-weight: 700; cursor: pointer; }
 .staff-settings-text-size__option:hover { color: var(--staff-ink); }
-.staff-settings-text-size__option.is-selected { background: var(--staff-card); color: var(--staff-ink); box-shadow: 0 1px 2px rgba(16, 41, 58, 0.08); }
+.staff-settings-text-size__option.is-selected { background: var(--staff-brand); color: #ffffff; box-shadow: none; }
+:root[data-theme='dark'] .staff-settings-text-size__option.is-selected { color: #082c35; }
 
 .staff-settings-radio-list { display: grid; gap: 10px; }
 .staff-settings-radio-option { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 11px; align-items: start; padding: 15px 16px; border: 1px solid var(--staff-line); border-radius: 11px; background: var(--staff-card); cursor: pointer; transition: 160ms ease; }
