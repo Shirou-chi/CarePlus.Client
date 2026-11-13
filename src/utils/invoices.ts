@@ -1,5 +1,41 @@
 export type InvoiceStatus = "due" | "overdue";
 
+/** Paths blocked while an overdue invoice is unpaid. Account settings and invoice pay stay open. */
+export const isOverdueLockedPath = (pathname: string) =>
+    [
+        "/home",
+        "/book",
+        "/visits",
+        "/history",
+        "/queue",
+        "/payments",
+        "/records",
+        "/family",
+        "/medicine",
+        "/cart",
+        "/checkout",
+        "/orders",
+        "/dispensing-history",
+        "/clinic-records",
+        "/doctors",
+        "/chat",
+        "/notifications",
+        "/announcements",
+        "/about",
+        "/contact",
+    ].some((path) => pathname === path || pathname.startsWith(`${path}/`));
+
+/** Safe href while overdue: keep account/invoice routes, otherwise send to Outstanding invoices. */
+export const overdueSafeHref = (href: string, overdue: boolean) => {
+    if (!overdue) return href;
+    const path = href.split(/[?#]/)[0] || href;
+    if (path === "/account" || path.startsWith("/account/") || path === "/invoices" || path.startsWith("/invoices/") || path.startsWith("/pay/")) {
+        return href;
+    }
+    if (isOverdueLockedPath(path) || path === "/home") return "/invoices";
+    return href;
+};
+
 export type OutstandingInvoice = {
     id: string;
     recordId: string;

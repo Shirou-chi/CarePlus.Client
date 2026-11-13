@@ -1,12 +1,13 @@
 import { type ComponentType, StrictMode, Suspense, lazy, useEffect, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/providers/auth-provider";
 import { MobileBottomNav, shouldHideMobileBottomNav } from "@/components/marketing/header-navigation/mobile-bottom-nav";
 import { NotificationToasts } from "@/components/marketing/notifications/notification-toasts";
 import { HomePage } from "@/pages/user-side/home-page";
 import { LandingPage } from "@/pages/user-side/landing-page";
 import { AuthProvider } from "@/providers/auth-provider";
+import { isOverdueLockedPath } from "@/utils/invoices";
 
 // Every other page is its own chunk, so the first visit only downloads Landing/Home.
 const page = <K extends string>(loader: () => Promise<Record<K, ComponentType>>, name: K) =>
@@ -176,20 +177,24 @@ function StaffLoginRoute() {
     return <StaffLoginPage />;
 }
 
-const featurePath = (pathname: string) =>
-    ["/home", "/book", "/visits", "/history", "/queue", "/payments", "/records", "/family", "/medicine", "/cart", "/checkout", "/orders", "/dispensing-history", "/clinic-records", "/doctors", "/chat", "/notifications"].some(
-        (path) => pathname === path || pathname.startsWith(`${path}/`),
-    );
-
 const AppRoutes = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { profile, isReady } = useAuth();
     const { overdue, ready: invoicesReady } = useOutstandingInvoices();
     const bookStickyBar = location.pathname === "/book";
     const isStaffRoute = location.pathname.toLowerCase().startsWith("/staff");
     const showMobileBottomNav = Boolean(profile) && !isStaffRoute && !shouldHideMobileBottomNav(location.pathname);
+    const overdueLock = Boolean(profile && invoicesReady && overdue && isOverdueLockedPath(location.pathname));
 
     useLayoutEffect(() => {
+        if (!overdueLock) return;
+        // Replace before paint so the locked page never mounts / fades in.
+        navigate("/invoices", { replace: true });
+    }, [navigate, overdueLock]);
+
+    useLayoutEffect(() => {
+        if (overdueLock) return;
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         // Instant jump for patient page fades; hash links can still ease into place.
         const behavior = location.hash && !reduceMotion ? "smooth" : "auto";
@@ -200,16 +205,16 @@ const AppRoutes = () => {
             return;
         }
         window.scrollTo({ top: 0, behavior: "auto" });
-    }, [location.pathname, location.hash, location.key]);
+    }, [location.pathname, location.hash, location.key, overdueLock]);
 
     useEffect(() => {
         if (!isReady || isStaffRoute) return;
         prefetchPatientPages();
     }, [isReady, isStaffRoute]);
 
-    if (isReady && profile && location.pathname === "/") return <Navigate to="/home" replace />;
+    if (isReady && profile && location.pathname === "/") return <Navigate to={invoicesReady && overdue ? "/invoices" : "/home"} replace />;
     if (isReady && !profile && location.pathname === "/home") return <Navigate to="/" replace />;
-    if (invoicesReady && overdue && featurePath(location.pathname)) return <Navigate to="/invoices" replace />;
+    if (overdueLock) return <Navigate to="/invoices" replace />;
 
     return (
         <>

@@ -32,6 +32,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { CreditCard } from "@/components/credit-card/credit-card";
 import { useAuth } from "@/providers/auth-provider";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { getAuthToken } from "@/services/api";
 import { authApi } from "@/services/authApi";
 import { profileApi, resolveProfilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
@@ -110,9 +111,11 @@ const genderLabel = (value: string | null, t: Copy) => {
 
 export const AccountPage = () => {
     const { profile, isReady, updateProfile, logout } = useAuth();
+    const { invoices: outstandingInvoices } = useOutstandingInvoices();
     const { t, locale, setLocale } = useI18n();
     const { theme, setTheme, textSize, setTextSize } = useTheme();
     const navigate = useNavigate();
+    const deleteLockedByPayment = outstandingInvoices.length > 0;
     const [activeSection, setActiveSection] = useState<SectionId>("profile");
     const [settings, setSettings] = useState<ProfileSettings>(() =>
         profile ? readProfileSettings(profile.id) : readProfileSettings("guest"),
@@ -331,6 +334,7 @@ export const AccountPage = () => {
             const lockoutMessage = passwordLockoutMessage(message, t.accountLocked);
             if (lockoutMessage) return lockoutMessage;
             if (message === "Current password is incorrect.") return t.settingsCurrentPasswordWrong;
+            if (message === "Pay all outstanding invoices before deleting your account.") return t.settingsDeleteAccountPaymentBlocked;
             if (message === "Transfer family ownership before deleting your account.") return t.settingsDeleteAccountOwnerBlocked;
             return message || t.settingsDeleteAccountFailed;
         }
@@ -1022,13 +1026,20 @@ export const AccountPage = () => {
                                     <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                                         <div className="max-w-2xl">
                                             <p id="delete-account-description" className="text-sm text-tertiary">{t.settingsDeleteAccountBody}</p>
+                                            {deleteLockedByPayment ? (
+                                                <p className="mt-2 text-sm text-error-primary">{t.settingsDeleteAccountPaymentLockedHint}</p>
+                                            ) : null}
                                         </div>
                                         <Button
                                             color="secondary-destructive"
                                             size="sm"
                                             iconLeading={Trash01}
                                             aria-describedby="delete-account-description"
-                                            onClick={() => setDialog({ type: "delete-account" })}
+                                            isDisabled={deleteLockedByPayment}
+                                            onClick={() => {
+                                                if (deleteLockedByPayment) return;
+                                                setDialog({ type: "delete-account" });
+                                            }}
                                         >
                                             {t.settingsDeleteAccountButton}
                                         </Button>

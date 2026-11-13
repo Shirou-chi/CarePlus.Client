@@ -8,6 +8,7 @@ import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { announcementApi, type ApiAnnouncement } from "@/services/announcementApi";
 import { doctorApi, type DoctorRecord } from "@/services/doctorApi";
+import { overdueSafeHref } from "@/utils/invoices";
 
 type SearchItem = {
     title: string;
@@ -167,7 +168,7 @@ export const SiteSearch = () => {
         saveSearch(query);
         setIsOpen(false);
         setQuery("");
-        navigate(href);
+        navigate(overdue ? overdueSafeHref(href, true) : href);
     };
     const categoryName = (category: SearchItem["category"], language: Locale) => ({
         page: language === "zh" ? "页面" : "Page",
