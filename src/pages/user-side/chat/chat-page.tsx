@@ -129,7 +129,7 @@ export const ChatPage = () => {
                 ) : null}
 
                 <div className="mx-auto mt-4 flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl border border-primary/15 bg-primary shadow-xs ring-1 ring-primary/20 md:mt-6">
-                    <div ref={threadScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 [overflow-anchor:none]">
+                    <div ref={threadScrollRef} className="careplus-chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 [overflow-anchor:none]">
                         {messages.length === 0 ? (
                             <div className="flex w-full flex-col items-center pb-4">
                                 <FeaturedIcon icon={Stars02} size="xl" color="brand" theme="modern" />
