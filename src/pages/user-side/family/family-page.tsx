@@ -80,6 +80,7 @@ export const FamilyPage = () => {
     const [renaming, setRenaming] = useState(false);
     const [renamingSelf, setRenamingSelf] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [confirmCreateDecline, setConfirmCreateDecline] = useState(false);
     const [leaving, setLeaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -145,6 +146,22 @@ export const FamilyPage = () => {
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
 
+    const startCreateFamily = () => {
+        setLoadError(null);
+        if (invites.length > 0) {
+            setConfirmCreateDecline(true);
+            return;
+        }
+        setCreating(true);
+    };
+
+    const createDeclineBody =
+        invites.length > 1
+            ? t.familyCreateDeclineBodyMany
+            : t.familyCreateDeclineBody
+                  .replace("{name}", invites[0]?.family.members.find((member) => member.permission === "parent")?.name ?? invites[0]?.family.name ?? "")
+                  .replace("{family}", invites[0]?.family.name ?? "");
+
     const currentPatientId = overview?.currentPatientId || profile.id;
     const mine = family?.members.find((member) => member.id === currentPatientId) ?? null;
     const isParent = mine?.permission === "parent";
@@ -159,7 +176,7 @@ export const FamilyPage = () => {
             <main className="mx-auto w-full max-w-container px-4 py-6 md:px-8 md:py-10">
                 <div>
                     <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.familyProfiles}</h1>
-                    <p className="mt-2 max-w-2xl text-sm text-tertiary md:text-md">{t.familyBody}</p>
+                    <p className="mt-2 whitespace-nowrap text-sm text-tertiary md:text-md">{t.familyBody}</p>
                 </div>
                 {loadError ? <p role="alert" className="mt-5 rounded-xl bg-error-solid px-4 py-3 text-sm font-semibold text-white">{loadError}</p> : null}
                 {loading && !overview ? <p className="mt-5 rounded-xl bg-primary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.phrLoading}</p> : null}
@@ -210,22 +227,14 @@ export const FamilyPage = () => {
                     <div className="mt-6 rounded-2xl bg-primary px-5 py-8 ring-1 ring-secondary">
                         <h2 className="text-lg font-semibold text-primary">{t.familyNone}</h2>
                         <p className="mt-2 max-w-xl text-sm text-tertiary">{t.familyNoneBody}</p>
-                        <Button color="primary" size="sm" className="mt-4" onClick={() => setCreating(true)}>
+                        <Button color="primary" size="sm" className="mt-4" onClick={startCreateFamily}>
                             {t.familyCreate}
                         </Button>
                     </div>
                 ) : !family && invites.length > 0 ? (
                     <div className="mt-6 rounded-2xl bg-primary px-5 py-6 ring-1 ring-secondary">
                         <p className="text-sm text-tertiary">{t.familyPendingCreateHint}</p>
-                        <Button
-                            color="secondary"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => {
-                                setLoadError(null);
-                                setCreating(true);
-                            }}
-                        >
+                        <Button color="secondary" size="sm" className="mt-3" onClick={startCreateFamily}>
                             {t.familyCreate}
                         </Button>
                     </div>
@@ -296,6 +305,18 @@ export const FamilyPage = () => {
                     onSave={(name) => {
                         void familyApi.rename(name).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                         setRenaming(false);
+                    }}
+                />
+            ) : null}
+            {confirmCreateDecline ? (
+                <ConfirmDialog
+                    title={t.familyCreateDeclineTitle}
+                    body={createDeclineBody}
+                    confirm={t.familyCreateDeclineConfirm}
+                    onClose={() => setConfirmCreateDecline(false)}
+                    onConfirm={() => {
+                        setConfirmCreateDecline(false);
+                        setCreating(true);
                     }}
                 />
             ) : null}
