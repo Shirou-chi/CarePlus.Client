@@ -213,7 +213,7 @@ const AppRoutes = () => {
         prefetchPatientPages();
     }, [isReady, isStaffRoute]);
 
-    if (isReady && profile && location.pathname === "/") return <Navigate to={invoicesReady && overdue ? "/invoices" : "/home"} replace />;
+    if (isReady && profile && location.pathname === "/") return <Navigate to="/home" replace />;
     if (isReady && !profile && location.pathname === "/home") return <Navigate to="/" replace />;
     if (overdueLock) return <Navigate to="/invoices" replace />;
 

@@ -3,7 +3,6 @@ export type InvoiceStatus = "due" | "overdue";
 /** Paths blocked while an overdue invoice is unpaid. Account settings and invoice pay stay open. */
 export const isOverdueLockedPath = (pathname: string) =>
     [
-        "/home",
         "/book",
         "/visits",
         "/history",
@@ -24,14 +23,21 @@ export const isOverdueLockedPath = (pathname: string) =>
         "/contact",
     ].some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
-/** Safe href while overdue: keep account/invoice routes, otherwise send to Outstanding invoices. */
+/** Safe href while overdue: keep account/home/invoice routes, otherwise send to Outstanding invoices. */
 export const overdueSafeHref = (href: string, overdue: boolean) => {
     if (!overdue) return href;
     const path = href.split(/[?#]/)[0] || href;
-    if (path === "/account" || path.startsWith("/account/") || path === "/invoices" || path.startsWith("/invoices/") || path.startsWith("/pay/")) {
+    if (
+        path === "/account"
+        || path.startsWith("/account/")
+        || path === "/home"
+        || path === "/invoices"
+        || path.startsWith("/invoices/")
+        || path.startsWith("/pay/")
+    ) {
         return href;
     }
-    if (isOverdueLockedPath(path) || path === "/home") return "/invoices";
+    if (isOverdueLockedPath(path)) return "/invoices";
     return href;
 };
 

@@ -15,7 +15,6 @@ import {
     Users01,
 } from "@untitledui/icons";
 import { Link } from "react-router";
-import { ClinicCoverflow } from "@/components/marketing/home/clinic-coverflow";
 import { PromoCarousel } from "@/components/marketing/home/promo-carousel";
 import { ServiceNav } from "@/components/marketing/home/service-nav";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
@@ -23,12 +22,15 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { announcementApi, type ApiAnnouncement } from "@/services/announcementApi";
 import { appointmentApi, type Appointment } from "@/services/appointmentApi";
+import { formatRm } from "@/utils/prescribed-medicine";
 
 export const HomePage = () => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
+    const { invoices, ready: invoicesReady, overdue } = useOutstandingInvoices();
     const [nextVisit, setNextVisit] = useState<Appointment | null>(null);
     const [announcements, setAnnouncements] = useState<ApiAnnouncement[]>([]);
 
@@ -42,6 +44,10 @@ export const HomePage = () => {
     const dispensingHref = profile ? "/dispensing-history" : "/login";
     const invoicesHref = profile ? "/invoices" : "/login";
     const familyHref = profile ? "/family" : "/login";
+
+    const unpaidCount = invoices.length;
+    const overdueCount = invoices.filter((invoice) => invoice.status === "overdue").length;
+    const totalDue = invoices.reduce((sum, invoice) => sum + invoice.amountDue, 0);
 
     useEffect(() => {
         let cancelled = false;
@@ -89,7 +95,6 @@ export const HomePage = () => {
         { label: t.homeNavContact, hint: t.tourContact, href: "/contact", Icon: Mail01, tone: "bg-[#fef3c7] text-[#b45309]" },
     ];
 
-    // Full All directory: every row shortcut (except All) plus the extra services.
     const allMenuItems = [
         { label: t.homeNavBooking, hint: t.tourBook, href: bookHref, Icon: CalendarPlus01, tone: "bg-[#dbeafe] text-[#1d4ed8]" },
         { label: t.homeNavAppointment, hint: t.tourVisit, href: visitsHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
@@ -160,6 +165,9 @@ export const HomePage = () => {
                             <p className="text-sm text-tertiary">
                                 {nextVisit ? formatVisit(nextVisit.startAt) : t.homeStatusBookHint}
                             </p>
+                            {nextVisit ? (
+                                <p className="text-xs text-tertiary">{t.homeFeaturedVisitCheckIn}</p>
+                            ) : null}
                             <span className="mt-2 w-fit text-sm font-semibold text-brand-secondary">
                                 {nextVisit ? t.visitsCheckQueue : t.bookVisit}
                             </span>
@@ -167,7 +175,64 @@ export const HomePage = () => {
                     </Link>
                 </section>
 
-                <section className="mx-auto w-full max-w-container px-4 pb-2 md:px-8">
+                {profile ? (
+                    <section className="mx-auto w-full max-w-container px-4 pb-8 md:px-8 md:pb-10">
+                        <div className="flex items-end justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-bold text-primary md:text-xl">{t.homeBillsTitle}</h2>
+                                <p className="mt-1 text-sm text-tertiary">{t.homeBillsHint}</p>
+                            </div>
+                            <Link to="/invoices" className="shrink-0 text-sm font-semibold text-brand-secondary outline-focus-ring hover:underline focus-visible:outline-2">
+                                {t.notifViewAll}
+                            </Link>
+                        </div>
+
+                        {!invoicesReady ? (
+                            <div className="mt-4 h-28 animate-pulse rounded-2xl bg-secondary" aria-hidden />
+                        ) : unpaidCount === 0 ? (
+                            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary px-4 py-5 ring-1 ring-secondary">
+                                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#dcfce7] text-[#15803d]">
+                                    <Receipt className="size-5" />
+                                </span>
+                                <p className="text-sm text-tertiary">{t.homeBillsEmpty}</p>
+                            </div>
+                        ) : (
+                            <Link
+                                to="/invoices"
+                                className={`mt-4 flex flex-col gap-4 rounded-2xl px-4 py-5 outline-focus-ring transition focus-visible:outline-2 sm:flex-row sm:items-center sm:justify-between ${
+                                    overdue
+                                        ? "bg-primary ring-2 ring-error"
+                                        : "bg-primary ring-1 ring-secondary hover:ring-brand-secondary"
+                                }`}
+                            >
+                                <div className="flex min-w-0 items-start gap-3">
+                                    <span
+                                        className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${
+                                            overdue ? "bg-[#fee2e2] text-[#b91c1c]" : "bg-[#ffedd5] text-[#c2410c]"
+                                        }`}
+                                    >
+                                        <Receipt className="size-5" />
+                                    </span>
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-tertiary">
+                                            {t.homeBillsCount.replace("{count}", String(unpaidCount))}
+                                            {overdueCount > 0 ? ` · ${t.homeBillsOverdueCount.replace("{count}", String(overdueCount))}` : ""}
+                                        </p>
+                                        <p className={`mt-1 text-xl font-semibold ${overdue ? "text-error-primary" : "text-primary"}`}>
+                                            {formatRm(totalDue)}
+                                        </p>
+                                        <p className="mt-1 text-sm text-tertiary">{t.invoicesTotalDue}</p>
+                                    </div>
+                                </div>
+                                <span className="inline-flex w-fit items-center justify-center rounded-full bg-[#456f75] px-4 py-2.5 text-sm font-semibold text-white">
+                                    {t.homeBillsPay}
+                                </span>
+                            </Link>
+                        )}
+                    </section>
+                ) : null}
+
+                <section className="mx-auto w-full max-w-container px-4 pb-8 md:px-8 md:pb-10">
                     <div className="flex items-end justify-between gap-3">
                         <div>
                             <h2 className="text-lg font-bold text-primary md:text-xl">{t.announcements}</h2>
@@ -201,16 +266,6 @@ export const HomePage = () => {
                         </ul>
                     )}
                 </section>
-
-                <ClinicCoverflow
-                    cards={[
-                        { image: "/home/clinic-reception.webp", alt: t.clinicReception },
-                        { image: "/home/clinic-waiting-room.webp", alt: t.clinicWaiting },
-                        { image: "/home/clinic-examination-room.webp", alt: t.clinicExam },
-                        { image: "/home/clinic-corridor.webp", alt: t.clinicCorridor },
-                        { image: "/home/clinic-entrance.webp", alt: t.clinicEntrance },
-                    ]}
-                />
             </main>
             <LandingFooter />
         </div>
