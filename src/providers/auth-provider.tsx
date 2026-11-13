@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
+import { ApiRequestError, SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, resolveProfilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
@@ -200,7 +200,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
 
                 const nextProfile = await profileFromUser(apiUser);
-                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
                 if (!isCurrentSession()) return;
 
                 const nextSession: StoredSession = {
@@ -209,10 +208,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 };
                 saveSession(nextSession);
                 setSession(nextSession);
+
+                // Prefs are optional on boot; a prefs failure must not wipe a valid login.
+                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize).catch(() => null);
+                if (!isCurrentSession()) return;
                 setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
             })
-            .catch(() => {
+            .catch((error) => {
                 if (!isCurrentSession()) return;
+                // Only drop the session on a real auth rejection. Network / API-down
+                // must keep the cached profile so refresh does not dump you on landing.
+                const unauthorized =
+                    error instanceof ApiRequestError && error.status === 401
+                    || (error instanceof Error && error.message === SESSION_EXPIRED_MESSAGE);
+                if (!unauthorized) return;
+
                 authApi.clearToken();
                 saveSession(null);
                 setSession(null);

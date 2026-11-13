@@ -1,5 +1,19 @@
 import { useEffect, useState } from "react";
-import { CalendarCheck01, CalendarPlus01, Clock, MedicalCross, Receipt } from "@untitledui/icons";
+import {
+    ActivityHeart,
+    CalendarCheck01,
+    CalendarPlus01,
+    Clock,
+    File06,
+    Grid01,
+    Mail01,
+    MedicalCross,
+    Package,
+    Receipt,
+    Truck01,
+    UserSquare,
+    Users01,
+} from "@untitledui/icons";
 import { Link } from "react-router";
 import { ClinicCoverflow } from "@/components/marketing/home/clinic-coverflow";
 import { PromoCarousel } from "@/components/marketing/home/promo-carousel";
@@ -8,15 +22,41 @@ import { LandingFooter } from "@/components/marketing/header-navigation/landing-
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
-import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useI18n } from "@/providers/locale-provider";
+import { announcementApi, type ApiAnnouncement } from "@/services/announcementApi";
 import { appointmentApi, type Appointment } from "@/services/appointmentApi";
 
 export const HomePage = () => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
-    const { invoices, overdue } = useOutstandingInvoices();
     const [nextVisit, setNextVisit] = useState<Appointment | null>(null);
+    const [announcements, setAnnouncements] = useState<ApiAnnouncement[]>([]);
+
+    const bookHref = profile ? "/book" : "/login";
+    const visitsHref = profile ? "/visits" : "/login";
+    const queueHref = profile ? "/queue" : "/login";
+    const recordsHref = profile ? "/records" : "/login";
+    const clinicRecordsHref = profile ? "/clinic-records" : "/login";
+    const medicineHref = profile ? "/medicine" : "/login";
+    const ordersHref = profile ? "/orders" : "/login";
+    const dispensingHref = profile ? "/dispensing-history" : "/login";
+    const invoicesHref = profile ? "/invoices" : "/login";
+    const familyHref = profile ? "/family" : "/login";
+
+    useEffect(() => {
+        let cancelled = false;
+        void announcementApi
+            .list()
+            .then((rows) => {
+                if (!cancelled) setAnnouncements(rows.slice(0, 3));
+            })
+            .catch(() => {
+                if (!cancelled) setAnnouncements([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useEffect(() => {
         if (!profile) {
@@ -37,19 +77,25 @@ export const HomePage = () => {
         };
     }, [profile?.id]);
 
-    const bookHref = profile ? "/book" : "/login";
-    const visitsHref = profile ? "/visits" : "/login";
-    const queueHref = profile ? "/queue" : "/login";
-    const medicineHref = profile ? "/medicine" : "/login";
-    const invoicesHref = profile ? "/invoices" : "/login";
-    const dueTotal = invoices.reduce((sum, row) => sum + row.amountDue, 0);
-
-    const primaryNav = [
+    // Marketplace-style row: All + primary categories (keeps the old density without 13 peers).
+    const exploreItems = [
+        { label: t.homeAll, hint: t.homeAllHint, href: "#home-more-services", Icon: Grid01, tone: "bg-[#e5e7eb] text-[#374151]" },
         { label: t.homeNavBooking, hint: t.tourBook, href: bookHref, Icon: CalendarPlus01, tone: "bg-[#dbeafe] text-[#1d4ed8]" },
         { label: t.homeNavAppointment, hint: t.tourVisit, href: visitsHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
         { label: t.homeNavQueue, hint: t.tourQueue, href: queueHref, Icon: Clock, tone: "bg-[#e0f2fe] text-[#0369a1]" },
-        { label: t.homeNavBill, hint: t.tourBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" },
         { label: t.homeNavMedicine, hint: t.tourMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
+        { label: t.homeNavFamily, hint: t.tourFamily, href: familyHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },
+        { label: t.homeNavBill, hint: t.tourBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" },
+        { label: t.homeNavDoctors, hint: t.tourDoctors, href: "/doctors", Icon: UserSquare, tone: "bg-[#ccfbf1] text-[#0d9488]" },
+        { label: t.homeNavContact, hint: t.tourContact, href: "/contact", Icon: Mail01, tone: "bg-[#fef3c7] text-[#b45309]" },
+    ];
+
+    const moreServices = [
+        { label: t.visitHistory, href: profile ? "/history" : "/login", Icon: Clock },
+        { label: t.ordersTrack, href: ordersHref, Icon: Truck01 },
+        { label: t.dispensingTitle, href: dispensingHref, Icon: Package },
+        { label: t.homeNavClinicRecords, href: clinicRecordsHref, Icon: File06 },
+        { label: t.homeNavPhr, href: recordsHref, Icon: ActivityHeart },
     ];
 
     const formatVisit = (iso: string) =>
@@ -67,60 +113,121 @@ export const HomePage = () => {
             <LandingHeader />
             <PageBreadcrumb />
             <main>
-                {profile ? (
-                    <section className="mx-auto w-full max-w-container px-4 pt-6 md:px-8 md:pt-8">
-                        <h2 className="text-lg font-bold text-primary md:text-xl">{t.homeStatusTitle}</h2>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                            <Link
-                                to={nextVisit ? `/queue?appointmentId=${encodeURIComponent(nextVisit.id)}` : visitsHref}
-                                className="rounded-2xl bg-primary p-4 ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2"
-                            >
-                                <p className="text-xs font-semibold text-tertiary">{t.visitsNext}</p>
-                                <p className="mt-1 text-sm font-semibold text-primary">
-                                    {nextVisit ? formatVisit(nextVisit.startAt) : t.visitsEmptyTitle}
-                                </p>
-                                <p className="mt-1 truncate text-xs text-tertiary">{nextVisit ? nextVisit.doctorName : t.homeStatusBookHint}</p>
-                            </Link>
-                            <Link
-                                to={queueHref}
-                                className="rounded-2xl bg-primary p-4 ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2"
-                            >
-                                <p className="text-xs font-semibold text-tertiary">{t.homeNavQueue}</p>
-                                <p className="mt-1 text-sm font-semibold text-primary">{t.homeStatusQueueHint}</p>
-                            </Link>
-                            <Link
-                                to={invoicesHref}
-                                className="rounded-2xl bg-primary p-4 ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2"
-                            >
-                                <p className="text-xs font-semibold text-tertiary">{overdue ? t.invoicesOverdue : t.invoicesTotalDue}</p>
-                                <p className="mt-1 text-sm font-semibold text-primary">
-                                    {dueTotal > 0 ? `RM ${dueTotal.toFixed(2)}` : t.invoicesEmptyTitle}
-                                </p>
-                            </Link>
+                <PromoCarousel
+                    slides={[
+                        { image: "/home/promo-waiting.webp", title: t.promoWaiting, href: profile ? "/book" : "/register" },
+                        { image: "/home/promo-family.webp", title: t.promoFamily, href: profile ? "/family" : "/register" },
+                        { image: "/home/promo-screening.webp", title: t.promoScreening, href: profile ? "/book" : "/register" },
+                        { image: "/home/promo-hours.webp", title: t.promoHours, href: "/announcements" },
+                    ]}
+                />
+
+                <ServiceNav items={exploreItems} />
+
+                <section id="home-more-services" className="mx-auto w-full max-w-container scroll-mt-28 px-4 pb-2 md:px-8">
+                    <div className="flex items-end justify-between gap-3">
+                        <div>
+                            <h2 className="text-lg font-bold text-primary md:text-xl">{t.homeMoreServices}</h2>
+                            <p className="mt-1 text-sm text-tertiary">{t.homeMoreServicesHint}</p>
                         </div>
-                    </section>
-                ) : (
-                    <PromoCarousel
-                        slides={[
-                            { image: "/home/promo-waiting.webp", title: t.promoWaiting, href: "/register" },
-                            { image: "/home/promo-family.webp", title: t.promoFamily, href: "/register" },
-                            { image: "/home/promo-screening.webp", title: t.promoScreening, href: "/register" },
-                            { image: "/home/promo-hours.webp", title: t.promoHours, href: "/register" },
-                        ]}
-                    />
-                )}
-                <ServiceNav items={primaryNav} />
-                {profile ? null : (
-                    <ClinicCoverflow
-                        cards={[
-                            { image: "/home/clinic-reception.webp", alt: t.clinicReception },
-                            { image: "/home/clinic-waiting-room.webp", alt: t.clinicWaiting },
-                            { image: "/home/clinic-examination-room.webp", alt: t.clinicExam },
-                            { image: "/home/clinic-corridor.webp", alt: t.clinicCorridor },
-                            { image: "/home/clinic-entrance.webp", alt: t.clinicEntrance },
-                        ]}
-                    />
-                )}
+                    </div>
+                    <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        {moreServices.map((item) => (
+                            <li key={item.label}>
+                                <Link
+                                    to={item.href}
+                                    className="flex items-center gap-3 rounded-2xl bg-primary px-3 py-3 ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2"
+                                >
+                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-brand-primary">
+                                        <item.Icon className="size-5" />
+                                    </span>
+                                    <span className="min-w-0 text-sm font-semibold text-primary">{item.label}</span>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+
+                {/* Clinic stand-in for marketplace "Live auctions": next visit / book CTA. */}
+                <section className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
+                    <div className="flex items-end justify-between gap-3">
+                        <div>
+                            <h2 className="text-lg font-bold text-primary md:text-xl">{t.homeFeaturedVisit}</h2>
+                            <p className="mt-1 text-sm text-tertiary">{t.homeFeaturedVisitHint}</p>
+                        </div>
+                        <Link to={visitsHref} className="shrink-0 text-sm font-semibold text-brand-secondary outline-focus-ring hover:underline focus-visible:outline-2">
+                            {t.notifViewAll}
+                        </Link>
+                    </div>
+                    <Link
+                        to={nextVisit ? `/queue?appointmentId=${encodeURIComponent(nextVisit.id)}` : bookHref}
+                        className="mt-4 flex flex-col overflow-hidden rounded-2xl bg-primary ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2 sm:flex-row"
+                    >
+                        <div className="relative min-h-44 flex-1 bg-[linear-gradient(135deg,#0f766e_0%,#456f75_55%,#0a0a0a_100%)] sm:min-h-52 sm:max-w-sm">
+                            <img src="/home/clinic-waiting-room.webp" alt="" className="absolute inset-0 size-full object-cover opacity-55" />
+                            <span className="absolute top-3 left-3 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                                {nextVisit ? t.visitsConfirmed : t.bookVisit}
+                            </span>
+                        </div>
+                        <div className="flex flex-1 flex-col justify-center gap-2 p-5 md:p-6">
+                            <p className="text-xs font-semibold text-tertiary">{t.visitsNext}</p>
+                            <h3 className="text-xl font-semibold text-primary">
+                                {nextVisit ? nextVisit.doctorName : t.visitsEmptyTitle}
+                            </h3>
+                            <p className="text-sm text-tertiary">
+                                {nextVisit ? formatVisit(nextVisit.startAt) : t.homeStatusBookHint}
+                            </p>
+                            <span className="mt-2 w-fit text-sm font-semibold text-brand-secondary">
+                                {nextVisit ? t.visitsCheckQueue : t.bookVisit}
+                            </span>
+                        </div>
+                    </Link>
+                </section>
+
+                <section className="mx-auto w-full max-w-container px-4 pb-2 md:px-8">
+                    <div className="flex items-end justify-between gap-3">
+                        <div>
+                            <h2 className="text-lg font-bold text-primary md:text-xl">{t.announcements}</h2>
+                            <p className="mt-1 text-sm text-tertiary">{t.announcementsHint}</p>
+                        </div>
+                        <Link to="/announcements" className="shrink-0 text-sm font-semibold text-brand-secondary outline-focus-ring hover:underline focus-visible:outline-2">
+                            {t.notifViewAll}
+                        </Link>
+                    </div>
+                    {announcements.length === 0 ? (
+                        <p className="mt-4 rounded-2xl bg-primary px-4 py-6 text-sm text-tertiary ring-1 ring-secondary">{t.announcementsEmpty}</p>
+                    ) : (
+                        <ul className="mt-4 grid gap-3 md:grid-cols-3">
+                            {announcements.map((item) => {
+                                const title = locale === "zh" && item.titleZh ? item.titleZh : item.title;
+                                const body = locale === "zh" && item.bodyZh ? item.bodyZh : item.body;
+                                return (
+                                    <li key={item.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary">
+                                        <p className="text-xs font-semibold text-tertiary">
+                                            {new Date(item.postedOn).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
+                                                day: "numeric",
+                                                month: "short",
+                                                timeZone: "Asia/Kuala_Lumpur",
+                                            })}
+                                        </p>
+                                        <h3 className="mt-2 line-clamp-2 text-md font-semibold text-primary">{title}</h3>
+                                        <p className="mt-2 line-clamp-3 text-sm text-tertiary">{body}</p>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </section>
+
+                <ClinicCoverflow
+                    cards={[
+                        { image: "/home/clinic-reception.webp", alt: t.clinicReception },
+                        { image: "/home/clinic-waiting-room.webp", alt: t.clinicWaiting },
+                        { image: "/home/clinic-examination-room.webp", alt: t.clinicExam },
+                        { image: "/home/clinic-corridor.webp", alt: t.clinicCorridor },
+                        { image: "/home/clinic-entrance.webp", alt: t.clinicEntrance },
+                    ]}
+                />
             </main>
             <LandingFooter />
         </div>

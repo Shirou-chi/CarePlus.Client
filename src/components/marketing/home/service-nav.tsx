@@ -151,7 +151,7 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
 
     return (
         <nav ref={frame} aria-label={t.exploreCareplus} className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
-            <h2 className="text-lg font-bold text-primary md:text-xl">{profile ? t.homeShortcutsTitle : t.exploreCareplus}</h2>
+            <h2 className="text-lg font-bold text-primary md:text-xl">{t.exploreCareplus}</h2>
             <div
                 ref={scroller}
                 data-service-row=""
