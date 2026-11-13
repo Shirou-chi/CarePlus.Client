@@ -82,6 +82,7 @@ export const StripeReturnPage = () => {
                     {
                         fulfilment: draft.fulfilment,
                         paymentMethod: completed.methodLabel || draft.paymentLabel,
+                        stripeSessionId: sessionId,
                         deliveryAddressId: Number.isFinite(addressId) ? addressId : null,
                         deliveryFee: draft.deliveryFee,
                         lines,

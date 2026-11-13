@@ -18,6 +18,8 @@ type MedicineOrderResponse = {
 export type PlaceMedicineOrderRequest = {
     fulfilment: "pickup" | "delivery";
     paymentMethod: string;
+    /** Required for card/FPX; server verifies Stripe paid this session before marking Paid. */
+    stripeSessionId?: string | null;
     deliveryAddressId?: number | null;
     deliveryFee: number;
     lines: { medicineId: string; name: string; detail: string; unitPrice: number; qty: number }[];
