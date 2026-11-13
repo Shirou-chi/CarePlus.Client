@@ -30,57 +30,6 @@ export type HealthScore = {
     trendPercent: number | null;
 };
 
-const at = (daysAgo: number, hour: number, minute = 0) => {
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    date.setHours(hour, minute, 0, 0);
-    return date.toISOString();
-};
-
-const onDay = (isoDate: string) => new Date(`${isoDate}T00:00:00+08:00`).toISOString();
-
-export const dummyReadings: BloodPressureReading[] = [
-    { id: "bp-1", systolic: 128, diastolic: 82, recordedAt: at(21, 7, 30), notes: "Home monitor, after breakfast." },
-    { id: "bp-2", systolic: 124, diastolic: 80, recordedAt: at(14, 7, 15), notes: null },
-    { id: "bp-3", systolic: 118, diastolic: 76, recordedAt: at(7, 8, 0), notes: "Clinic waiting room." },
-    { id: "bp-4", systolic: 116, diastolic: 74, recordedAt: at(2, 7, 45), notes: null },
-];
-
-export const dummyItems: HealthItem[] = [
-    { id: "al-1", kind: "allergy", label: "Penicillin", notes: "Rash as a teenager." },
-    { id: "al-2", kind: "allergy", label: "Prawn", notes: null },
-    { id: "co-1", kind: "condition", label: "Tension headache", notes: "Worse after long screens." },
-    { id: "co-2", kind: "condition", label: "Seasonal rhinitis", notes: null },
-    { id: "hi-1", kind: "history", label: "Childhood asthma", notes: "Quiet since secondary school." },
-    { id: "hi-2", kind: "history", label: "Appendectomy, 2018", notes: null },
-];
-
-export const dummyHistory: MedicalHistoryEntry[] = [
-    {
-        id: "mh-1",
-        treatment: "Wisdom tooth extraction",
-        facility: "Pantai Hospital Kuala Lumpur",
-        treatedAt: onDay("2024-03-12"),
-        notes: "Local anaesthetic. No follow-up needed.",
-    },
-    {
-        id: "mh-2",
-        treatment: "Full body check",
-        facility: "Sunway Medical Centre",
-        treatedAt: onDay("2025-11-02"),
-        notes: "Lipids slightly high. Diet advice given.",
-    },
-    {
-        id: "mh-3",
-        treatment: "Physiotherapy for ankle sprain",
-        facility: "Klinik Mediviron Setapak",
-        treatedAt: onDay("2026-01-18"),
-        notes: "Six sessions. Walking is fine now.",
-    },
-];
-
-export const newRecordId = () => `local-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
 export const scoreHealth = (readings: BloodPressureReading[], items: HealthItem[]): HealthScore => {
     const sorted = [...readings].sort((left, right) => left.recordedAt.localeCompare(right.recordedAt));
     const latest = sorted.at(-1);

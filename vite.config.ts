@@ -7,11 +7,21 @@ export default defineConfig({
     plugins: [react(), tailwindcss()],
     resolve: {
         alias: {
-            "@": path.resolve(__dirname, "./src"),
+            "@": path.resolve(import.meta.dirname, "./src"),
         },
+        // Keep React and ReactDOM on one physical module instance. Without
+        // this, Vite can prebundle React twice (especially on Windows when
+        // path casing differs), which causes the Invalid hook call crash.
+        dedupe: ["react", "react-dom"],
     },
     server: {
         port: 5174,
         strictPort: true,
+        proxy: {
+            "/api": {
+                target: "http://localhost:5156",
+                changeOrigin: true,
+            },
+        },
     },
 });

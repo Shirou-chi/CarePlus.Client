@@ -54,6 +54,8 @@ interface CalendarProps extends AriaCalendarProps<DateValue> {
 
 export const Calendar = ({ highlightedDates, className, children, ...props }: CalendarProps) => {
     const context = useSlottedContext(AriaCalendarContext);
+    const todayDate = today(getLocalTimeZone());
+    const todayIsUnavailable = props.isDateUnavailable?.(todayDate) ?? false;
 
     const ContextWrapper = context ? Fragment : CalendarContextProvider;
 
@@ -75,9 +77,10 @@ export const Calendar = ({ highlightedDates, className, children, ...props }: Ca
                                     slot={null}
                                     size="sm"
                                     color="secondary"
+                                    isDisabled={todayIsUnavailable}
                                     onClick={() => {
-                                        state.setValue(today(getLocalTimeZone()));
-                                        state.setFocusedDate(today(getLocalTimeZone()));
+                                        state.setValue(todayDate);
+                                        state.setFocusedDate(todayDate);
                                     }}
                                 >
                                     Today

@@ -8,17 +8,21 @@ import { Button, type ButtonProps } from "@/components/base/buttons/button";
 import { cx } from "@/utils/cx";
 import { Calendar } from "./calendar";
 
-const highlightedDates = [today(getLocalTimeZone())];
+const defaultHighlightedDates = [today(getLocalTimeZone())];
 
 interface DatePickerProps extends AriaDatePickerProps<DateValue> {
     /** The function to call when the apply button is clicked. */
     onApply?: () => void;
     /** The function to call when the cancel button is clicked. */
     onCancel?: () => void;
+    /** Shown on the button when no date is selected. */
+    placeholder?: string;
     size?: ButtonProps["size"];
+    /** Dates that receive a small visual marker in the calendar. */
+    highlightedDates?: DateValue[];
 }
 
-export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, onCancel, size = "sm", ...props }: DatePickerProps) => {
+export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, onCancel, placeholder = "Select date", size = "sm", highlightedDates = defaultHighlightedDates, ...props }: DatePickerProps) => {
     const formatter = useDateFormatter({
         month: "short",
         day: "numeric",
@@ -26,7 +30,7 @@ export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, 
     });
     const [value, setValue] = useControlledState(valueProp, defaultValue || null, onChange);
 
-    const formattedDate = value ? formatter.format(value.toDate(getLocalTimeZone())) : "Select date";
+    const formattedDate = value ? formatter.format(value.toDate(getLocalTimeZone())) : placeholder;
 
     return (
         <AriaDatePicker aria-label="Date picker" shouldCloseOnSelect={false} {...props} value={value} onChange={setValue}>
@@ -52,7 +56,7 @@ export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, 
                     {({ close }) => (
                         <>
                             <div className="flex px-6 py-5">
-                                <Calendar highlightedDates={highlightedDates} />
+                                <Calendar {...props} highlightedDates={highlightedDates} />
                             </div>
                             <div className="grid grid-cols-2 gap-3 border-t border-secondary p-4">
                                 <Button

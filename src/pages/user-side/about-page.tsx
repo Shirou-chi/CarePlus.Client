@@ -1,18 +1,19 @@
-import { ArrowRight, CalendarCheck01, File06, HeartHand, MedicalCross, Users01 } from "@untitledui/icons";
+import { CalendarCheck01, File06, HeartHand, MedicalCross, Users01 } from "@untitledui/icons";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
+import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 
 const clinicPhotos = [
-    { src: "/home/clinic-reception.png", altKey: "clinicReception" as const },
-    { src: "/home/clinic-consult.png", altKey: "clinicConsult" as const },
-    { src: "/home/clinic-pharmacy.png", altKey: "clinicPharmacy" as const },
-    { src: "/home/clinic-treatment.png", altKey: "clinicTreatment" as const },
-    { src: "/home/clinic-lounge.png", altKey: "clinicLounge" as const },
+    { src: "/home/clinic-reception.webp", altKey: "clinicReception" as const },
+    { src: "/home/clinic-waiting-room.webp", altKey: "clinicWaiting" as const },
+    { src: "/home/clinic-examination-room.webp", altKey: "clinicExam" as const },
+    { src: "/home/clinic-corridor.webp", altKey: "clinicCorridor" as const },
+    { src: "/home/clinic-entrance.webp", altKey: "clinicEntrance" as const },
 ];
 
 export const AboutPage = () => {
@@ -44,6 +45,7 @@ export const AboutPage = () => {
     return (
         <div className="careplus-landing min-h-dvh overflow-x-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
+            <PageBreadcrumb />
             <main>
                 <section className="mx-auto w-full max-w-container px-4 py-12 md:px-8 md:py-20">
                     <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -95,7 +97,7 @@ export const AboutPage = () => {
                 <section className="mx-auto w-full max-w-container px-4 py-14 md:px-8 md:py-20">
                     <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
                         <div className="overflow-hidden rounded-3xl ring-1 ring-primary/15">
-                            <img src="/home/clinic-consult.png" alt={t.clinicConsult} className="aspect-[4/3] size-full object-cover" />
+                            <img src="/home/clinic-examination-room.webp" alt={t.clinicExam} className="aspect-[4/3] size-full object-cover" />
                         </div>
                         <div>
                             <p className="text-sm font-semibold text-brand-secondary">{t.aboutMissionTitle}</p>
@@ -122,13 +124,13 @@ export const AboutPage = () => {
                             {portalModules.map((item) => (
                                 <article
                                     key={item.title}
-                                    className="rounded-2xl border border-primary/15 bg-secondary_subtle p-6 ring-1 ring-primary/10"
+                                    className="rounded-2xl border border-secondary bg-primary p-6 ring-1 ring-secondary"
                                 >
                                     <FeaturedIcon icon={item.icon} color="brand" theme="light" size="md" />
                                     <h3 className="mt-4 text-lg font-semibold text-primary">{item.title}</h3>
                                     <p className="mt-2 text-md text-tertiary">{item.body}</p>
-                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
-                                        <div className="careplus-ink h-full rounded-full" style={{ width: `${item.share}%` }} />
+                                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#b8d5dc] ring-1 ring-black/10 dark:bg-[#3d668a] dark:ring-white/10">
+                                        <div className="h-full rounded-full bg-black dark:bg-[#72e6f0]" style={{ width: `${item.share}%` }} />
                                     </div>
                                 </article>
                             ))}
@@ -156,8 +158,8 @@ export const AboutPage = () => {
                                         <span className="font-medium text-primary">{item.label}</span>
                                         <span className="text-tertiary">{item.pct}%</span>
                                     </div>
-                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
-                                        <div className="h-full rounded-full bg-brand-solid" style={{ width: `${item.pct}%` }} />
+                                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#b8d5dc] ring-1 ring-black/10 dark:bg-[#3d668a] dark:ring-white/10">
+                                        <div className="h-full rounded-full bg-black dark:bg-[#72e6f0]" style={{ width: `${item.pct}%` }} />
                                     </div>
                                 </li>
                             ))}
@@ -173,11 +175,11 @@ export const AboutPage = () => {
                         </h2>
                         <p className="mt-3 text-lg text-tertiary">{t.aboutGalleryBody}</p>
                     </div>
-                    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="-mx-4 mt-8 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5 [&::-webkit-scrollbar]:hidden">
                         {clinicPhotos.map((photo) => (
-                            <figure key={photo.src} className="overflow-hidden rounded-2xl ring-1 ring-primary/15">
+                            <figure key={photo.src} className="w-[72%] shrink-0 snap-start overflow-hidden rounded-2xl ring-1 ring-primary/15 sm:w-auto">
                                 <img src={photo.src} alt={t[photo.altKey]} className="aspect-[4/5] size-full object-cover" />
-                                <figcaption className="border-t border-primary/10 bg-secondary_subtle px-3 py-2 text-xs font-medium text-secondary">
+                                <figcaption className="border-t border-secondary bg-secondary px-3 py-2 text-xs font-medium text-secondary">
                                     {t[photo.altKey]}
                                 </figcaption>
                             </figure>
@@ -186,7 +188,7 @@ export const AboutPage = () => {
                 </section>
 
                 <section className="px-4 pb-16 md:px-8 md:pb-24">
-                    <div className="careplus-ink mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14">
+                    <div className="mx-auto flex w-full max-w-container flex-col gap-6 rounded-[2rem] bg-black px-8 py-10 md:flex-row md:items-center md:justify-between md:px-12 md:py-14">
                         <div className="max-w-xl">
                             <FeaturedIcon icon={HeartHand} color="gray" theme="dark" size="lg" />
                             <h2 className="mt-4 text-display-xs font-semibold text-white md:text-display-sm">{t.aboutCtaTitle}</h2>

@@ -85,7 +85,7 @@ export const SelectItem = ({
                 <div
                     className={cx(
                         "flex cursor-pointer items-center rounded-md outline-hidden select-none",
-                        (state.isFocused || state.isHovered || (state.isSelected && selectionIndicator !== "checkbox")) && "bg-primary_hover",
+                        (state.isFocused || state.isHovered || (state.isSelected && selectionIndicator !== "checkbox")) && "bg-quaternary",
                         state.isDisabled && "cursor-not-allowed opacity-50",
                         state.isFocusVisible && "ring-2 ring-focus-ring ring-inset",
 

@@ -1,33 +1,45 @@
 import { type FC, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import {
     CalendarCheck01,
+    Bell01,
     ShoppingCart01,
     ChevronDown,
     ChevronRight,
-    File06,
+    Globe01,
     Grid01,
+    HelpCircle,
+    File06,
+    MedicalCross,
     Moon01,
     Receipt,
-    SearchMd,
     Sun,
     User01,
     Users01,
     Trash01,
+    Type01,
 } from "@untitledui/icons";
-import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Link as AriaLink, Popover as AriaPopover } from "react-aria-components";
+import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { NavMenuItemLink } from "@/components/marketing/header-navigation/base-components/nav-menu-item";
+import { AccountSheet } from "@/components/marketing/header-navigation/account-sheet";
+import { shouldHideMobileBottomNav } from "@/components/marketing/header-navigation/mobile-bottom-nav";
+import { SiteSearch } from "@/components/marketing/header-navigation/site-search";
+import { requestHomeTour } from "@/components/marketing/home/home-tour";
 import { HeaderNotifications } from "@/components/marketing/notifications/header-notifications";
 import { useAuth } from "@/providers/auth-provider";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useCart } from "@/providers/cart-provider";
+import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
-import { formatRm } from "@/utils/prescribed-medicine";
+import { formatRm, medicineName } from "@/utils/prescribed-medicine";
 
 type ServiceLink = {
     title: string;
@@ -44,12 +56,23 @@ type ServiceGroup = {
 };
 
 const iconGhost =
-    "inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:text-white";
+    "inline-flex cursor-pointer items-center justify-center rounded-md p-2 lg:p-1.5 text-fg-quaternary outline-focus-ring hover:text-[#456f75] focus-visible:outline-2 focus-visible:outline-offset-2 dark:text-brand-300 dark:hover:text-white";
 
 const useServiceGroups = (): ServiceGroup[] => {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
     const { profile } = useAuth();
     const bookHref = profile ? "/book" : "/login";
+    const visitsHref = profile ? "/visits" : "/login";
+    const queueHref = profile ? "/queue" : "/login";
+    const invoicesHref = profile ? "/invoices" : "/login";
+    const paymentsHref = profile ? "/payments" : "/login";
+    const ordersHref = profile ? "/orders" : "/login";
+    const familyHref = profile ? "/family" : "/login";
+    const recordsHref = profile ? "/clinic-records" : "/login";
+    const healthRecordsHref = profile ? "/records" : "/login";
+    const medicineHref = profile ? "/medicine" : "/login";
+    const cartHref = profile ? "/cart" : "/login";
+    const notificationsHref = profile ? "/notifications" : "/login";
     return [
         {
             id: "visits",
@@ -58,8 +81,9 @@ const useServiceGroups = (): ServiceGroup[] => {
             Icon: CalendarCheck01,
             links: [
                 { title: t.bookVisit, subtitle: t.bookVisitHint, href: bookHref },
-                { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: "#features" },
-                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: "#features" },
+                { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: visitsHref },
+                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: profile ? "/history" : "/login" },
+                { title: locale === "zh" ? "诊所排队" : "Clinic queue", subtitle: locale === "zh" ? "报到并查看实时排队进度" : "Check in and follow your live queue", href: queueHref },
             ],
         },
         {
@@ -68,8 +92,19 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.recordsHint,
             Icon: File06,
             links: [
-                { title: t.notes, subtitle: t.notesHint, href: "#features" },
-                { title: t.labs, subtitle: t.labsHint, href: "#features" },
+                { title: t.clinicRecordsTitle, subtitle: t.clinicRecordsNavHint, href: recordsHref },
+                { title: t.phrTitle, subtitle: t.phrNavHint, href: healthRecordsHref },
+            ],
+        },
+        {
+            id: "medicine",
+            title: t.homeNavMedicine,
+            subtitle: t.medSearch,
+            Icon: MedicalCross,
+            links: [
+                { title: t.medTitle, subtitle: t.medSearch, href: medicineHref },
+                { title: t.cart, subtitle: t.medCartEmptyHint, href: cartHref },
+                { title: t.ordersTitle, subtitle: t.ordersHint, href: ordersHref },
             ],
         },
         {
@@ -78,8 +113,8 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.billsHint,
             Icon: Receipt,
             links: [
-                { title: t.invoices, subtitle: t.invoicesHint, href: "#features" },
-                { title: t.payments, subtitle: t.paymentsHint, href: "#features" },
+                { title: t.invoices, subtitle: t.invoicesHint, href: invoicesHref },
+                { title: t.payments, subtitle: t.paymentsHint, href: paymentsHref },
             ],
         },
         {
@@ -87,54 +122,122 @@ const useServiceGroups = (): ServiceGroup[] => {
             title: t.family,
             subtitle: t.familyHint,
             Icon: Users01,
-            links: [{ title: t.familyProfiles, subtitle: t.familyProfilesHint, href: "#features" }],
+            links: [{ title: t.familyProfiles, subtitle: t.familyProfilesHint, href: familyHref }],
         },
         {
-            id: "account",
-            title: t.account,
-            subtitle: t.accountHint,
-            Icon: User01,
+            id: "announcements",
+            title: locale === "zh" ? "公告与通知" : "Announcements",
+            subtitle: t.announcementsHint,
+            Icon: Bell01,
             links: [
-                { title: t.createAccount, subtitle: t.createAccountHint, href: "/register" },
-                { title: t.signIn, subtitle: t.logInHint, href: "/login" },
-                { title: t.resetPassword, subtitle: t.resetPasswordHint, href: "/login" },
+                { title: t.announcements, subtitle: t.announcementsHint, href: "/announcements" },
+                { title: t.notifications, subtitle: profile ? t.notifEmptyHint : t.notifGuestHint, href: notificationsHref },
             ],
         },
     ];
 };
 
-export const LandingHeader = () => {
-    const { t } = useI18n();
+const useOverdueLock = () => {
     const { profile } = useAuth();
+    const { overdue } = useOutstandingInvoices();
+    return Boolean(profile && overdue);
+};
+
+export const LandingHeader = () => {
+    const { t, locale, setLocale } = useI18n();
+    const { theme, setTheme, textSize, setTextSize } = useTheme();
+    const { profile, logout } = useAuth();
+    const navigate = useNavigate();
+    const overdue = useOverdueLock();
     const signedInName = profile?.fullName.split(" ")[0] ?? t.signIn;
-    const accountHref = profile ? "/account" : "/login";
+    const signOut = async () => {
+        await logout();
+        navigate("/login");
+    };
 
     return (
-        <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/90 backdrop-blur-md dark:border-white/10 dark:bg-[#0b2036]/92">
+        <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/90 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/92">
             <div className="mx-auto flex h-[4.5rem] w-full max-w-container items-center justify-between gap-4 px-4 md:h-22 md:px-8">
-                <CarePlusLogo href={profile ? "/home" : "/"} />
+                <CarePlusLogo href={profile ? "/home" : "/"} className="max-[479px]:[&>span]:sr-only" />
 
                 <div className="hidden items-center lg:flex">
                     <ServicesMega />
                     <NavIcons />
-                    <div className="ml-12 flex items-center gap-3">
-                        <ThemeToggle />
-                        <LanguageSwitch />
-                    </div>
+                    {profile ? null : (
+                        <div className="ml-12 flex items-center gap-3">
+                            <ThemeToggle />
+                            <TextSizeToggle />
+                            <LanguageSwitch />
+                        </div>
+                    )}
+                    {profile ? <TourButton /> : null}
                     <div className="mx-3 h-8 w-px bg-border-secondary" />
-                    <a href={accountHref} className="flex items-center gap-2.5 rounded-full py-1 pr-2 pl-1 outline-focus-ring hover:bg-[#456f75]/20 focus-visible:outline-2 dark:hover:bg-white/15">
-                        <Avatar size="md" src={profile?.avatarUrl} alt={profile?.fullName ?? signedInName} />
-                        <span className="leading-tight">
-                            <span className="block text-xs text-tertiary">{t.hello}</span>
-                            <span className="block max-w-[7rem] truncate text-sm font-semibold text-primary">{signedInName}</span>
-                        </span>
-                    </a>
+                    {profile ? (
+                        <Dropdown.Root>
+                            <AriaButton
+                                data-tour="account"
+                                aria-label={`${t.hello} ${signedInName}`}
+                                className="group flex cursor-pointer items-center gap-2.5 rounded-full py-1 pr-3 pl-1 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-[#456f75] focus-visible:outline-2 data-[pressed]:bg-[#456f75]"
+                            >
+                                <Avatar size="md" src={profile.avatarUrl} alt="" />
+                                <span className="leading-tight">
+                                    <span className="block text-xs text-tertiary group-hover:text-white group-data-[pressed]:text-white">{t.hello}</span>
+                                    <span className="block max-w-[7rem] truncate text-sm font-semibold text-primary group-hover:text-white group-data-[pressed]:text-white">{signedInName}</span>
+                                </span>
+                            </AriaButton>
+                            <Dropdown.Popover>
+                                <Dropdown.Menu>
+                                    <Dropdown.Item icon={User01} selectionIndicator="none" onAction={() => navigate("/account")}>
+                                        {t.viewProfile}
+                                    </Dropdown.Item>
+                                    <Dropdown.Separator />
+                                    <Dropdown.Item icon={theme === "dark" ? Sun : Moon01} selectionIndicator="none" onAction={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                                        {theme === "dark" ? t.themeToLight : t.themeToDark}
+                                    </Dropdown.Item>
+                                    <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none" onAction={() => setLocale(locale === "en" ? "zh" : "en")}>
+                                        {t.language}
+                                    </Dropdown.Item>
+                                    <Dropdown.Item
+                                        icon={Type01}
+                                        addon={textSize === "large" ? "A+" : "A"}
+                                        selectionIndicator="none"
+                                        onAction={() => setTextSize(textSize === "large" ? "normal" : "large")}
+                                    >
+                                        {t.settingsTextSize}
+                                    </Dropdown.Item>
+                                    <Dropdown.Separator />
+                                    <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
+                                        {t.signOut}
+                                    </Dropdown.Item>
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown.Root>
+                    ) : (
+                        <a href="/login" className="group flex items-center gap-2.5 rounded-full py-1 pr-3 pl-1 text-left outline-focus-ring transition duration-100 ease-linear hover:bg-[#456f75] focus-visible:outline-2">
+                            <Avatar size="md" alt={signedInName} />
+                            <span className="leading-tight">
+                                <span className="block text-xs text-tertiary group-hover:text-white">{t.hello}</span>
+                                <span className="block max-w-[7rem] truncate text-sm font-semibold text-primary group-hover:text-white">{signedInName}</span>
+                            </span>
+                        </a>
+                    )}
                 </div>
 
-                <div className="flex items-center gap-1 lg:hidden">
-                    <HeaderNotifications />
-                    <HeaderCart />
-                    <MobileNav />
+                <div className="flex min-w-0 shrink items-center gap-0.5 lg:hidden">
+                    {profile ? (
+                        <>
+                            <SiteSearch />
+                            {overdue ? null : <HeaderNotifications />}
+                            {overdue ? null : <HeaderCart />}
+                            <MobileAccount />
+                        </>
+                    ) : (
+                        <>
+                            <ThemeToggle />
+                            <TextSizeToggle />
+                            <LanguageSwitch />
+                        </>
+                    )}
                 </div>
             </div>
         </header>
@@ -142,23 +245,20 @@ export const LandingHeader = () => {
 };
 
 const NavIcons = () => {
-    const { t } = useI18n();
+    const overdue = useOverdueLock();
 
     return (
         <div className="ml-3 flex items-center gap-0.5">
-            <Tooltip title={t.search}>
-                <AriaLink aria-label={t.search} className={iconGhost} href="#get-started">
-                    <SearchMd className="size-5" />
-                </AriaLink>
-            </Tooltip>
-            <HeaderNotifications />
-            <HeaderCart />
+            <SiteSearch />
+            {overdue ? null : <HeaderNotifications />}
+            {overdue ? null : <HeaderCart />}
         </div>
     );
 };
 
 const HeaderCart = () => {
-    const { t } = useI18n();
+    const { t, locale } = useI18n();
+    useMedicineCatalog();
     const { lines, count, bump, clear } = useCart();
 
     return (
@@ -173,19 +273,24 @@ const HeaderCart = () => {
                     </span>
                 ) : null}
             </AriaButton>
-            <AriaPopover className="w-80 shadow-lg" offset={8} placement="bottom end">
+            <AriaPopover className="w-[min(100vw-1.5rem,20rem)] shadow-lg" offset={8} placement="bottom end">
                 <AriaDialog className="outline-hidden" aria-label={t.cart}>
                     <div className="rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary_alt">
                         <p className="text-sm font-semibold text-primary">{t.cart}</p>
                         {lines.length === 0 ? (
-                            <p className="mt-2 text-sm text-tertiary">{t.medCartEmptyHint}</p>
+                            <>
+                                <p className="mt-2 text-sm text-tertiary">{t.medCartEmptyHint}</p>
+                                <Button color="secondary" size="sm" href="/medicine" className="mt-4 w-full">
+                                    {t.medCartBrowseMedicines}
+                                </Button>
+                            </>
                         ) : (
                             <>
-                                <ul className="mt-3 flex flex-col gap-3">
+                                <ul className="mt-3 flex max-h-[50dvh] flex-col gap-3 overflow-y-auto">
                                     {lines.map((line) => (
                                         <li key={line.medicineId} className="flex items-start justify-between gap-3">
                                             <span className="min-w-0">
-                                                <span className="block text-sm font-medium text-primary">{line.name}</span>
+                                                <span className="block text-sm font-medium text-primary">{medicineName(locale, line.medicineId, line.name)}</span>
                                                 <span className="mt-0.5 block text-xs text-tertiary">
                                                     {t.medPickup} · ×{line.qty}
                                                 </span>
@@ -197,7 +302,7 @@ const HeaderCart = () => {
                                 <Button color="primary" size="sm" href="/cart" className="mt-4 w-full">
                                     {t.medCartView}
                                 </Button>
-                                <Button color="secondary" size="sm" iconLeading={Trash01} className="mt-2 w-full" onPress={clear}>
+                                <Button color="secondary" size="sm" iconLeading={Trash01} className="mt-2 w-full" onClick={clear}>
                                     {t.medClearCart}
                                 </Button>
                             </>
@@ -221,6 +326,32 @@ const ThemeToggle = () => {
                 {isDark ? <Sun className="size-5" /> : <Moon01 className="size-5" />}
             </AriaButton>
         </Tooltip>
+    );
+};
+
+const TextSizeToggle = () => {
+    const { textSize, setTextSize } = useTheme();
+    const { t } = useI18n();
+
+    return (
+        <ButtonGroup
+            size="sm"
+            className="careplus-text-size"
+            disallowEmptySelection
+            selectedKeys={new Set([textSize])}
+            onSelectionChange={(keys) => {
+                const next = [...keys][0];
+                if (next === "normal" || next === "large") setTextSize(next);
+            }}
+            aria-label={t.settingsTextSize}
+        >
+            <ButtonGroupItem id="normal" aria-label={t.settingsTextSizeNormal}>
+                A
+            </ButtonGroupItem>
+            <ButtonGroupItem id="large" aria-label={t.settingsTextSizeLarge}>
+                A+
+            </ButtonGroupItem>
+        </ButtonGroup>
     );
 };
 
@@ -258,13 +389,13 @@ const ServicesMega = () => {
                 className="flex items-center gap-2 rounded-full bg-secondary px-3.5 py-2 text-sm font-semibold text-secondary ring-1 ring-secondary ring-inset outline-focus-ring hover:bg-[#456f75] hover:text-white hover:ring-transparent focus-visible:outline-2"
                 aria-haspopup="true"
             >
-                <Grid01 className="size-4 text-fg-quaternary" />
+                <Grid01 className="size-4 text-fg-quaternary dark:text-brand-300" />
                 {t.services}
-                <ChevronDown className="size-4 text-fg-quaternary transition group-hover:rotate-180" />
+                <ChevronDown className="size-4 text-fg-quaternary transition group-hover:rotate-180 dark:text-brand-300" />
             </button>
 
             <div className="invisible absolute top-full right-0 z-50 pt-3 opacity-0 transition duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-                <div className="flex min-w-[40rem] overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-secondary_alt">
+                <div className="careplus-panel flex min-w-[40rem] overflow-hidden rounded-2xl bg-primary shadow-lg ring-1 ring-secondary_alt">
                     <ul className="w-56 shrink-0 border-r border-secondary bg-secondary_alt py-2">
                         {serviceGroups.map((group) => {
                             const Icon = group.Icon;
@@ -280,7 +411,7 @@ const ServicesMega = () => {
                                             isActive ? "bg-primary text-primary" : "text-secondary hover:bg-primary hover:text-primary",
                                         )}
                                     >
-                                        <Icon className="size-4 shrink-0 text-fg-brand-primary" />
+                                        <Icon className="size-4 shrink-0 text-fg-brand-primary dark:text-brand-300" />
                                         <span className="min-w-0 flex-1">
                                             <span className="block text-sm font-semibold">{group.title}</span>
                                         </span>
@@ -306,70 +437,38 @@ const ServicesMega = () => {
     );
 };
 
-const MobileNav = () => {
+const TourButton = () => {
     const { t } = useI18n();
-    const serviceGroups = useServiceGroups();
+    const navigate = useNavigate();
 
     return (
-        <AriaDialogTrigger>
-            <AriaButton
-                aria-label="Toggle navigation menu"
-                className={({ isFocusVisible, isHovered }) =>
-                    cx(
-                        "group cursor-pointer rounded-lg p-2 lg:hidden",
-                        isHovered && "bg-primary_hover",
-                        isFocusVisible && "outline-2 outline-offset-2 outline-focus-ring",
-                    )
-                }
-            >
-                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path
-                        className="hidden text-secondary group-aria-expanded:block"
-                        d="M18 6L6 18M6 6L18 18"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
-                    <path
-                        className="text-secondary group-aria-expanded:hidden"
-                        d="M3 12H21M3 6H21M3 18H21"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
-                </svg>
-            </AriaButton>
-            <AriaPopover className="w-[min(100vw-1.5rem,24rem)] shadow-lg lg:hidden" offset={8} placement="bottom end">
-                <AriaDialog className="outline-hidden">
-                    <nav className="max-h-[80dvh] overflow-y-auto rounded-2xl bg-primary p-3 shadow-lg ring-1 ring-secondary_alt">
-                        <p className="px-2 pb-2 text-sm font-semibold text-tertiary">{t.services}</p>
-                        {serviceGroups.map((group) => (
-                            <details key={group.id} className="border-b border-secondary">
-                                <summary className="cursor-pointer list-none px-2 py-3 text-md font-semibold text-primary">{group.title}</summary>
-                                <ul className="pb-2">
-                                    {group.links.map((link) => (
-                                        <li key={link.title}>
-                                            <NavMenuItemLink href={link.href} title={link.title} subtitle={link.subtitle} />
-                                        </li>
-                                    ))}
-                                </ul>
-                            </details>
-                        ))}
-                        <div className="mt-3 flex items-center justify-between gap-3 px-2 py-2">
-                            <ThemeToggle />
-                            <LanguageSwitch />
-                        </div>
-                        <div className="mt-1 flex flex-col gap-2 px-2 pb-2">
-                            <a href="/login" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
-                                {t.logIn}
-                            </a>
-                            <a href="/register" className="careplus-ink rounded-lg px-3 py-2.5 text-center text-md font-semibold text-white">
-                                {t.signUp}
-                            </a>
-                        </div>
-                    </nav>
-                </AriaDialog>
-            </AriaPopover>
-        </AriaDialogTrigger>
+        <button
+            type="button"
+            data-tour="tutorial"
+            aria-label={t.tourNavTitle}
+            className={iconGhost}
+            onClick={() => {
+                requestHomeTour();
+                if (window.location.pathname !== "/home") navigate("/home");
+            }}
+        >
+            <HelpCircle className="size-5" />
+        </button>
     );
 };
+
+const MobileAccount = () => {
+    const { t } = useI18n();
+    const { profile } = useAuth();
+    const { pathname } = useLocation();
+    if (!profile || !shouldHideMobileBottomNav(pathname)) return null;
+
+    return (
+        <AccountSheet>
+            <AriaButton data-tour="account" aria-label={t.viewProfile} className="cursor-pointer rounded-full p-0.5 outline-focus-ring focus-visible:outline-2">
+                <Avatar size="sm" src={profile.avatarUrl} alt="" />
+            </AriaButton>
+        </AccountSheet>
+    );
+};
+
