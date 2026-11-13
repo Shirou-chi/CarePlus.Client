@@ -290,18 +290,18 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                     }}
                 >
                     <Modal className="w-full max-w-md sm:max-w-xl md:max-w-2xl">
-                        <Dialog className="relative flex w-full flex-col overflow-hidden rounded-2xl bg-primary p-5 shadow-xl ring-1 ring-secondary outline-hidden sm:p-6">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0 flex-1 text-left">
-                                    <Heading slot="title" className="text-lg font-semibold text-primary">
+                        <Dialog className="relative flex w-full flex-col items-stretch overflow-hidden rounded-2xl bg-primary p-5 text-left shadow-xl ring-1 ring-secondary outline-hidden sm:p-6">
+                            <div className="flex w-full items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1 pr-2 text-left">
+                                    <Heading slot="title" className="text-left text-lg font-semibold text-primary">
                                         {t.homeMoreServices}
                                     </Heading>
-                                    <p className="mt-1 text-sm text-tertiary">{t.homeMoreServicesHint}</p>
+                                    <p className="mt-1 text-left text-sm text-tertiary">{t.homeMoreServicesHint}</p>
                                 </div>
                                 <CloseButton
                                     size="md"
                                     label="Close"
-                                    className="shrink-0 cursor-pointer"
+                                    className="-mt-1 -mr-1 shrink-0 cursor-pointer"
                                     onPress={() => {
                                         if (tourStep !== null) {
                                             closeTour();
@@ -313,7 +313,7 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                             </div>
                             <ul
                                 data-tour-all-menu=""
-                                className="mt-5 grid max-h-[min(32rem,70dvh)] grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto overscroll-contain sm:grid-cols-4 sm:gap-x-4 sm:gap-y-6"
+                                className="mt-5 grid max-h-[min(28rem,58dvh)] w-full grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto overscroll-contain sm:grid-cols-4 sm:gap-x-4 sm:gap-y-6"
                             >
                                 {allItems.map((item, index) => (
                                     <li

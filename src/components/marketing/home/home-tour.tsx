@@ -88,11 +88,6 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
 
             const scroller = target.closest<HTMLElement>("[data-service-row]") ?? null;
             const menuScroller = target.closest<HTMLElement>("[data-tour-all-menu]") ?? null;
-            target.scrollIntoView({ block: "nearest", inline: "nearest" });
-            if (menuScroller) {
-                const top = target.offsetTop - menuScroller.clientHeight / 2 + target.offsetHeight / 2;
-                menuScroller.scrollTo({ top: Math.max(0, top), behavior: "auto" });
-            }
             if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
 
             const row = document.querySelector<HTMLElement>("[data-service-row]");
@@ -100,6 +95,16 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
 
             const max = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
             const desired = scroller ? Math.max(0, Math.min(target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2, max)) : 0;
+            const menuFrom = menuScroller?.scrollTop ?? 0;
+            const menuDesired = (() => {
+                if (!menuScroller) return 0;
+                const menuRect = menuScroller.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect();
+                // Keep the item in the upper-middle of the menu so the tip has room below.
+                const ideal = targetRect.top - menuRect.top - menuRect.height * 0.28;
+                return Math.max(0, Math.min(menuScroller.scrollTop + ideal, menuScroller.scrollHeight - menuScroller.clientHeight));
+            })();
+
             const mobile = window.matchMedia("(max-width: 1023px)").matches;
             const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
             const header = 88;
@@ -109,22 +114,21 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
             const fromWindowY = window.scrollY;
 
             const verticalDelta = () => {
-                // Step 0 points at Me / Tutorial in a fixed bar; scrolling the page only bounces.
-                if (step === 0) return 0;
-                // All-menu items live in a fixed modal; window scroll does not help.
-                if (step >= 2) return 0;
+                if (step === 0 || step >= 2) return 0;
                 const rect = target.getBoundingClientRect();
                 if (rect.top >= header && rect.bottom <= window.innerHeight - bottomPad) return 0;
                 return rect.top - header - 24;
             };
 
             const needsHScroll = Boolean(scroller) && Math.abs(desired - fromScroll) > 1;
+            const needsMenuScroll = Boolean(menuScroller) && Math.abs(menuDesired - menuFrom) > 1;
             const vDelta = verticalDelta();
             const needsVScroll = Math.abs(vDelta) > 1;
 
-            if (reduce || (!needsHScroll && !needsVScroll)) {
+            if (reduce || (!needsHScroll && !needsVScroll && !needsMenuScroll)) {
                 animating.current = false;
                 if (scroller) scroller.scrollLeft = desired;
+                if (menuScroller) menuScroller.scrollTop = menuDesired;
                 if (needsVScroll) window.scrollBy({ top: vDelta, behavior: "auto" });
                 remember(readBox(target));
                 return;
@@ -143,6 +147,9 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
 
                 if (scroller) {
                     scroller.scrollLeft = needsHScroll ? fromScroll + (desired - fromScroll) * eased : desired;
+                }
+                if (menuScroller) {
+                    menuScroller.scrollTop = needsMenuScroll ? menuFrom + (menuDesired - menuFrom) * eased : menuDesired;
                 }
                 if (needsVScroll) {
                     window.scrollTo({ top: fromWindowY + (targetWindowY - fromWindowY) * eased, behavior: "auto" });
@@ -227,16 +234,16 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
     let tipLeft = box.left + box.width / 2 - tipWidth / 2;
     let tipTop = holeBottom + gap;
 
-    // Inside the All modal, prefer a free edge of the viewport so the card is never clipped.
+    // Inside the All modal, prefer below the item; if that clips, pin above it.
     if (step >= 2) {
         const below = holeBottom + gap;
         const above = hole.y - gap - tipHeight;
-        if (below + tipHeight <= window.innerHeight - 8) {
+        if (below + tipHeight <= window.innerHeight - 12) {
             tipTop = below;
         } else if (above >= 8) {
             tipTop = above;
         } else {
-            tipTop = window.innerHeight - tipHeight - 12;
+            tipTop = Math.max(8, Math.min(below, window.innerHeight - tipHeight - 12));
             tipLeft = Math.max(8, (window.innerWidth - tipWidth) / 2);
         }
     } else if (tipTop + tipHeight > window.innerHeight - 8) {
