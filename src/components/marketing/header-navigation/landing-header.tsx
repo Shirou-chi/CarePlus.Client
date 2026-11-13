@@ -237,8 +237,13 @@ export const LandingHeader = () => {
                     ) : (
                         <>
                             <ThemeToggle />
-                            <TextSizeToggle />
                             <LanguageSwitch />
+                            <a
+                                href="/login"
+                                className="ml-1 rounded-full bg-[#456f75] px-3 py-1.5 text-sm font-semibold text-white outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                            >
+                                {t.signIn}
+                            </a>
                         </>
                     )}
                 </div>

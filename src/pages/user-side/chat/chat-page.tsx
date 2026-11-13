@@ -1,5 +1,5 @@
 import { useEffect, useState, type FC } from "react";
-import { CalendarCheck01, File06, LayoutLeft, MedicalCross, Plus, Stars02 } from "@untitledui/icons";
+import { CalendarCheck01, LayoutLeft, Plus, Stars02 } from "@untitledui/icons";
 import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -57,32 +57,15 @@ export const ChatPage = () => {
     const messages = active?.messages ?? [];
     const latestMessageId = messages.at(-1)?.id;
     const threadScrollRef = useAnimatedChatScroll(`${latestMessageId ?? "empty"}:${isSending}`);
-    const prompts: Prompt[] = [
-        {
-            id: "book",
-            Icon: CalendarCheck01,
-            title: t.chatAskBook,
-            body: t.chatAskBookBody,
-            cta: t.chatAskNow,
-            prompt: t.chatAskBookPrompt,
-        },
-        {
-            id: "records",
-            Icon: File06,
-            title: t.chatAskRecords,
-            body: t.chatAskRecordsBody,
-            cta: t.chatAskNow,
-            prompt: t.chatAskRecordsPrompt,
-        },
-        {
-            id: "medicine",
-            Icon: MedicalCross,
-            title: t.chatAskMeds,
-            body: t.chatAskMedsBody,
-            cta: t.chatAskNow,
-            prompt: t.chatAskMedsPrompt,
-        },
-    ];
+    const primaryPrompt: Prompt = {
+        id: "book",
+        Icon: CalendarCheck01,
+        title: t.chatAskBook,
+        body: t.chatAskBookBody,
+        cta: t.chatAskNow,
+        prompt: t.chatAskBookPrompt,
+    };
+    const PrimaryPromptIcon = primaryPrompt.Icon;
 
     useEffect(() => {
         resetChatViewport();
@@ -136,29 +119,39 @@ export const ChatPage = () => {
                     </div>
                 </div>
 
-                {isGuest ? <p className="mt-4 shrink-0 rounded-xl bg-primary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.chatGuestHint}</p> : null}
+                {isGuest ? (
+                    <div className="mt-4 flex shrink-0 flex-wrap items-center gap-3 rounded-xl bg-primary px-4 py-3 ring-1 ring-secondary">
+                        <p className="min-w-0 flex-1 text-sm text-tertiary">{t.chatGuestHint}</p>
+                        <Button href="/login" color="primary" size="sm">
+                            {t.signIn}
+                        </Button>
+                    </div>
+                ) : null}
 
                 <div className="mx-auto mt-6 flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl border border-primary/15 bg-primary shadow-xs ring-1 ring-primary/20">
                     <div ref={threadScrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5 [overflow-anchor:none]">
                         {messages.length === 0 ? (
                             <div className="flex w-full flex-col items-center pb-2">
                                 <FeaturedIcon icon={Stars02} size="xl" color="brand" theme="modern" />
-                                <h1 className="mt-6 text-center text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">
+                                <h1 className="mt-4 text-center text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">
                                     {hello}
                                 </h1>
                                 <p className="mt-2 text-center text-md text-tertiary">{t.chatSubhead}</p>
-                                <ul className="mt-10 grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    {prompts.map((item) => (
-                                        <li key={item.id} className="flex h-full flex-col rounded-2xl bg-secondary p-5 ring-1 ring-secondary">
-                                            <item.Icon className="size-5 text-fg-brand-primary" />
-                                            <h2 className="mt-4 text-md font-semibold text-primary">{item.title}</h2>
-                                            <p className="mt-2 flex-1 text-sm text-tertiary">{item.body}</p>
-                                            <Button color="secondary" size="sm" className="mt-5 w-full rounded-full" isDisabled={isSending} onClick={() => void send(item.prompt)}>
-                                                {item.cta}
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
+                                {/* One primary prompt stays above the fold; more live in quick prompts under the composer. */}
+                                <div className="mt-6 w-full max-w-md rounded-2xl bg-secondary p-5 ring-1 ring-secondary">
+                                    <PrimaryPromptIcon className="size-5 text-fg-brand-primary" />
+                                    <h2 className="mt-3 text-md font-semibold text-primary">{primaryPrompt.title}</h2>
+                                    <p className="mt-2 text-sm text-tertiary">{primaryPrompt.body}</p>
+                                    <Button
+                                        color="primary"
+                                        size="sm"
+                                        className="mt-4 w-full rounded-full"
+                                        isDisabled={isSending}
+                                        onClick={() => void send(primaryPrompt.prompt)}
+                                    >
+                                        {primaryPrompt.cta}
+                                    </Button>
+                                </div>
                             </div>
                         ) : (
                             <ChatThreadView messages={messages} isThinking={isSending} />

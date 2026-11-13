@@ -18,7 +18,6 @@ export const isOverdueLockedPath = (pathname: string) =>
         "/dispensing-history",
         "/clinic-records",
         "/doctors",
-        "/chat",
         "/notifications",
         "/announcements",
         "/about",

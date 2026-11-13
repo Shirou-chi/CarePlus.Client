@@ -143,11 +143,15 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
         const tutorialVisible = [...document.querySelectorAll<HTMLElement>("[data-tour='tutorial']")].some((node) => node.getClientRects().length > 0);
         return tutorialVisible ? t.tourNav : t.tourNavMobile;
     };
-    const tourItem = tourStep === null ? null : tourStep === 0 ? { label: t.tourNavTitle, hint: tourNavHint() } : items[tourStep - 1];
+    // ponytail: keep the tour to intro + first 2 shortcuts (3 steps max); rest live in Me / Services
+    const tourItemCount = Math.min(items.length, 2);
+    const tourTotal = tourItemCount + 1;
+    const tourItem =
+        tourStep === null ? null : tourStep === 0 ? { label: t.tourNavTitle, hint: tourNavHint() } : items[tourStep - 1] ?? null;
 
     return (
         <nav ref={frame} aria-label={t.exploreCareplus} className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
-            <h2 className="text-lg font-bold text-primary md:text-xl">{t.exploreCareplus}</h2>
+            <h2 className="text-lg font-bold text-primary md:text-xl">{profile ? t.homeShortcutsTitle : t.exploreCareplus}</h2>
             <div
                 ref={scroller}
                 data-service-row=""
@@ -193,14 +197,14 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
                     label={tourItem.label}
                     hint={tourItem.hint}
                     step={tourStep}
-                    total={items.length + 1}
+                    total={tourTotal}
                     targets={itemRefs}
                     onSkip={closeTour}
                     onBack={() => {
                         if (tourStep > 0) setTourStep(tourStep - 1);
                     }}
                     onNext={() => {
-                        if (tourStep + 1 < items.length + 1) {
+                        if (tourStep + 1 < tourTotal) {
                             setTourStep(tourStep + 1);
                             return;
                         }

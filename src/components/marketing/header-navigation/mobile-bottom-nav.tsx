@@ -1,4 +1,4 @@
-import { CalendarCheck01, HomeLine, MessageChatCircle, Plus } from "@untitledui/icons";
+import { CalendarCheck01, HomeLine, MessageChatCircle, Plus, Receipt } from "@untitledui/icons";
 import { Button as AriaButton } from "react-aria-components";
 import { NavLink, useLocation } from "react-router";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -36,11 +36,15 @@ export const MobileBottomNav = () => {
 
     if (!profile || shouldHideMobileBottomNav(pathname)) return null;
 
+    // Overdue: center action is honestly "Pay"; visits become bills; chat stays chat (unlocked for help).
     const bookHref = overdue ? "/invoices" : "/book";
+    const bookLabel = overdue ? t.navPay : t.navBook;
     const visitsHref = overdue ? "/invoices" : "/visits";
-    const chatHref = overdue ? "/invoices" : "/chat";
+    const visitsLabel = overdue ? t.homeNavBill : t.navVisits;
     const meActive = pathname === "/account";
-    const bookActive = pathname === "/book" || pathname.startsWith("/book/") || (overdue && pathname.startsWith("/invoices"));
+    const bookActive = overdue
+        ? pathname.startsWith("/invoices")
+        : pathname === "/book" || pathname.startsWith("/book/");
 
     return (
         <nav
@@ -49,20 +53,26 @@ export const MobileBottomNav = () => {
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
             <div className="mx-auto grid h-16 max-w-lg grid-cols-5 items-center px-1 pb-1 pt-0.5">
-                <Tab to="/home" label={t.navHome} Icon={HomeLine} />
-                <Tab to={visitsHref} label={t.navVisits} Icon={CalendarCheck01} match="/visits" also="/history" />
+                <Tab to={overdue ? "/invoices" : "/home"} label={overdue ? t.navPay : t.navHome} Icon={overdue ? Receipt : HomeLine} match={overdue ? "/invoices" : "/home"} />
+                <Tab
+                    to={visitsHref}
+                    label={visitsLabel}
+                    Icon={overdue ? Receipt : CalendarCheck01}
+                    match={overdue ? "/invoices" : "/visits"}
+                    also={overdue ? undefined : "/history"}
+                />
                 <NavLink
                     to={bookHref}
-                    aria-label={t.navBook}
+                    aria-label={bookLabel}
                     aria-current={bookActive ? "page" : undefined}
                     className="relative -top-4 flex flex-col items-center justify-center outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
                     <span className="careplus-ink flex size-14 items-center justify-center rounded-full text-white shadow-lg ring-4 ring-white dark:ring-[#0a0a0a]">
-                        <Plus className="size-7" />
+                        {overdue ? <Receipt className="size-7" /> : <Plus className="size-7" />}
                     </span>
-                    <span className={cx("mt-0.5 text-[11px] font-semibold leading-none", bookActive ? "text-brand-secondary" : "text-tertiary")}>{t.navBook}</span>
+                    <span className={cx("mt-0.5 text-[11px] font-semibold leading-none", bookActive ? "text-brand-secondary" : "text-tertiary")}>{bookLabel}</span>
                 </NavLink>
-                <Tab to={chatHref} label={t.navChat} Icon={MessageChatCircle} match="/chat" />
+                <Tab to="/chat" label={t.navChat} Icon={MessageChatCircle} match="/chat" />
                 <AccountSheet>
                     <AriaButton
                         data-tour="account"
