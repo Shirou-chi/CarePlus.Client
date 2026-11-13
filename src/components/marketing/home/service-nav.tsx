@@ -313,7 +313,7 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                             </div>
                             <ul
                                 data-tour-all-menu=""
-                                className="mt-5 grid max-h-[min(28rem,58dvh)] w-full grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto overscroll-contain sm:grid-cols-4 sm:gap-x-4 sm:gap-y-6"
+                                className="careplus-all-menu mt-5 grid max-h-[min(28rem,58dvh)] w-full grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto overscroll-contain sm:grid-cols-4 sm:gap-x-4 sm:gap-y-6"
                             >
                                 {allItems.map((item, index) => (
                                     <li

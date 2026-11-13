@@ -22,6 +22,35 @@
     scrollbar-width: none; /* Firefox */
 }
 
+/* Thin dark scrollbar for the All-services modal grid. */
+.careplus-all-menu {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 70%, transparent) transparent;
+}
+
+.careplus-all-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.careplus-all-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.careplus-all-menu::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 55%, transparent);
+}
+
+.careplus-all-menu::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 80%, transparent);
+}
+
+.careplus-all-menu::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
+    width: 0;
+}
+
 @utility transition-inherit-all {
     transition-property: inherit;
     transition-duration: inherit;
