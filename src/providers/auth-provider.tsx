@@ -113,6 +113,7 @@ export const profileFromUser = async (user: CurrentUserResponse): Promise<Profil
     gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
     nationality: "Malaysian",
     avatarUrl: await resolveProfilePictureUrl(user.profilePicture),
+    pictureKey: user.profilePicture || null,
 });
 
 const isNotificationLevel = (value: string | null | undefined): value is NotificationLevel =>
@@ -228,6 +229,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             cancelled = true;
         };
     }, [applyLocale, applyTheme, applyTextSize]);
+
+    // ponytail: poll so a photo/name change on phone shows up on PC without a full refresh
+    useEffect(() => {
+        if (!isReady || !profile) return;
+
+        let cancelled = false;
+        let inFlight = false;
+
+        const syncProfile = async () => {
+            if (inFlight || document.visibilityState !== "visible") return;
+            inFlight = true;
+            try {
+                const apiUser = await authApi.getCurrentUser();
+                if (cancelled || apiUser.accountType === "Staff" || apiUser.staffId) return;
+
+                const current = readStoredSession();
+                if (!current || current.type !== "patient") return;
+                const prev = current.profile;
+                const nextKey = apiUser.profilePicture || null;
+                const pictureChanged = (prev.pictureKey ?? null) !== nextKey;
+                const fieldsChanged =
+                    prev.fullName !== apiUser.name ||
+                    prev.email !== apiUser.email ||
+                    prev.phone !== (apiUser.phone || null) ||
+                    prev.address !== (apiUser.address || null) ||
+                    pictureChanged;
+                if (!fieldsChanged) return;
+
+                const nextProfile = pictureChanged
+                    ? await profileFromUser(apiUser)
+                    : {
+                          ...prev,
+                          fullName: apiUser.name,
+                          email: apiUser.email,
+                          phone: apiUser.phone || null,
+                          address: apiUser.address || null,
+                          pictureKey: nextKey,
+                      };
+                if (cancelled) return;
+                if (pictureChanged && prev.avatarUrl?.startsWith("blob:")) {
+                    URL.revokeObjectURL(prev.avatarUrl);
+                }
+                const nextSession: StoredSession = { type: "patient", profile: nextProfile };
+                saveSession(nextSession);
+                setSession(nextSession);
+            } catch {
+                // keep the local session; next tick can retry
+            } finally {
+                inFlight = false;
+            }
+        };
+
+        void syncProfile();
+        const timer = window.setInterval(() => void syncProfile(), 12_000);
+        const onVisible = () => {
+            if (document.visibilityState === "visible") void syncProfile();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
+    }, [isReady, profile?.id]);
 
     const establishPatientSession = async (token: string, rememberMe = true) => {
         authApi.saveToken(token, rememberMe);

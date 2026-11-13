@@ -85,7 +85,7 @@ import { isValidLocalPhone, parsePhoneLocal } from "@/utils/phone";
 import { PasswordStrengthBar } from "@/components/base/input/password-strength";
 import { cx } from "@/utils/cx";
 
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const SECTIONS = ["profile", "preference", "payment", "security"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
@@ -657,23 +657,22 @@ export const AccountPage = () => {
         <div className="careplus-landing careplus-account min-h-dvh pt-[4.5rem] md:pt-22">
             <LandingHeader />
             <PageBreadcrumb />
+            {/* Mobile: sticky under header, below the breadcrumb so Home > Account stays visible. */}
+            <aside className="sticky top-[4.5rem] z-40 border-b border-secondary bg-primary px-4 py-2 md:top-22 lg:hidden dark:bg-[#0a0a0a]">
+                <nav aria-label={t.settingsPageTitle} className="mx-auto flex min-w-0 max-w-container gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 [&::-webkit-scrollbar]:hidden">
+                    <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
+                    <SidebarLink label={t.settingsNavPreference} icon={Settings01} active={activeSection === "preference"} onClick={() => scrollToSection("preference")} />
+                    <SidebarLink label={t.settingsNavPayment} icon={CreditCard01} active={activeSection === "payment"} onClick={() => scrollToSection("payment")} />
+                    <SidebarLink label={t.settingsNavSecurity} icon={Shield01} active={activeSection === "security"} onClick={() => scrollToSection("security")} />
+                </nav>
+            </aside>
             <main className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
                 <div>
                     <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.settingsPageTitle}</h1>
                     <p className="mt-2 max-w-3xl text-md text-tertiary">{t.settingsPageBody}</p>
                 </div>
 
-                {/* Mobile: pin tabs under the site header so title/fields cannot paint over them while scrolling. */}
-                <aside className="fixed inset-x-0 top-[4.5rem] z-40 border-b border-secondary bg-primary px-4 py-2 md:top-22 lg:hidden dark:bg-[#0a0a0a]">
-                    <nav aria-label={t.settingsPageTitle} className="mx-auto flex min-w-0 max-w-container gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 [&::-webkit-scrollbar]:hidden">
-                        <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
-                        <SidebarLink label={t.settingsNavPreference} icon={Settings01} active={activeSection === "preference"} onClick={() => scrollToSection("preference")} />
-                        <SidebarLink label={t.settingsNavPayment} icon={CreditCard01} active={activeSection === "payment"} onClick={() => scrollToSection("payment")} />
-                        <SidebarLink label={t.settingsNavSecurity} icon={Shield01} active={activeSection === "security"} onClick={() => scrollToSection("security")} />
-                    </nav>
-                </aside>
-
-                <div className="mt-8 grid min-w-0 items-start gap-8 max-lg:pt-14 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+                <div className="mt-8 grid min-w-0 items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
                     <aside className="sticky top-28 z-20 hidden min-w-0 lg:block lg:max-h-[calc(100dvh-8rem)]">
                         <nav aria-label={t.settingsPageTitle} className="flex flex-col gap-1">
                             <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
@@ -1102,19 +1101,27 @@ export const AccountPage = () => {
                                 {profile.fullName}
                             </Heading>
                             <img src={profile.avatarUrl} alt={profile.fullName} className="mt-4 max-h-[70vh] w-full rounded-xl bg-secondary object-contain" />
-                            <div className="mt-6 flex justify-end gap-3">
+                            <div className="relative mt-6 flex justify-end gap-3">
                                 <Button color="secondary" onClick={() => setDialog(null)}>
                                     {t.notifCancel}
                                 </Button>
-                                <Button
-                                    color="primary"
-                                    onClick={() => {
-                                        setDialog(null);
-                                        photoInputRef.current?.click();
-                                    }}
-                                >
-                                    {t.settingsChangePhoto}
-                                </Button>
+                                {/* Overlay input so mobile OS menus anchor here, not the page Change photo control. */}
+                                <div className="relative inline-flex">
+                                    <Button color="primary" className="pointer-events-none">
+                                        {t.settingsChangePhoto}
+                                    </Button>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        aria-label={t.settingsChangePhoto}
+                                        className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                                        onChange={(event) => {
+                                            onPhotoSelected(event.target.files?.[0]);
+                                            event.target.value = "";
+                                            setDialog(null);
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </Dialog>
                     </Modal>
@@ -1144,7 +1151,10 @@ export const AccountPage = () => {
                                             }
                                             try {
                                                 const user = await profileApi.uploadPhoto(dialog.file);
-                                                updateProfile({ avatarUrl: await resolveProfilePictureUrl(user.profilePicture) });
+                                                updateProfile({
+                                                    avatarUrl: await resolveProfilePictureUrl(user.profilePicture),
+                                                    pictureKey: user.profilePicture || null,
+                                                });
                                                 setProfileNotice({ success: t.settingsSaved });
                                                 setDialog(null);
                                             } catch (error) {

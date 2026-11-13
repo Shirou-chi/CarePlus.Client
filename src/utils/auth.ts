@@ -9,6 +9,8 @@ export type Profile = {
     gender: string | null;
     nationality: string | null;
     avatarUrl: string | null;
+    /** Server path for the profile photo; used to detect cross-device updates without refreshing. */
+    pictureKey?: string | null;
 };
 
 export const SESSION_KEY = "careplus-session";

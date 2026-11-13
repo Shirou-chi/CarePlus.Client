@@ -1156,7 +1156,7 @@ const copy = {
         settingsInvalidCardHolder: "Enter the name on the card (2–26 letters).",
         settingsInvalidCvv: "Enter a valid 3–4 digit security code.",
         settingsDuplicateCard: "This card is already saved on your account.",
-        settingsInvalidPhoto: "Choose a JPG, PNG, or WebP image under 2 MB.",
+        settingsInvalidPhoto: "Choose a JPG, PNG, or WebP image under 5 MB.",
     },
     zh: {
         services: "服务",
@@ -2303,7 +2303,7 @@ const copy = {
         settingsInvalidCardHolder: "请输入持卡人姓名（2–26 个字母）。",
         settingsInvalidCvv: "请输入有效的 3–4 位安全码。",
         settingsDuplicateCard: "此卡已保存在您的账户中。",
-        settingsInvalidPhoto: "请选择小于 2 MB 的 JPG、PNG 或 WebP 图片。",
+        settingsInvalidPhoto: "请选择小于 5 MB 的 JPG、PNG 或 WebP 图片。",
     },
 } as const;
 

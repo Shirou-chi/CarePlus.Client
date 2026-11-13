@@ -1,10 +1,9 @@
-import { useState, type FC } from "react";
+import { useEffect, useState, type FC } from "react";
 import { CalendarCheck01, File06, LayoutLeft, MedicalCross, Plus, Stars02 } from "@untitledui/icons";
 import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { ChatComposer } from "@/components/marketing/chat/chat-composer";
@@ -16,6 +15,13 @@ import { useAuth } from "@/providers/auth-provider";
 import { useChat } from "@/providers/chat-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { greetingSlot, MAX_CHAT_MESSAGE_CHARS, MAX_CHAT_MESSAGES_PER_HOUR } from "@/utils/chat";
+
+const resetChatViewport = () => {
+    // ponytail: iOS Safari leaves the page scrolled after the keyboard closes
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+};
 
 type Prompt = {
     id: string;
@@ -32,6 +38,14 @@ export const ChatPage = () => {
     const { active, isGuest, send, sendError, isSending, clearSendError, startNew } = useChat();
     const [draft, setDraft] = useState("");
     const [historyOpen, setHistoryOpen] = useState(false);
+
+    // Logged-in: leaving /chat and coming back mounts this page again with a blank chat; prior threads stay in history.
+    useEffect(() => {
+        if (isGuest) return;
+        startNew();
+        setDraft("");
+        clearSendError();
+    }, []);
     const slot = greetingSlot();
     const hello = profile
         ? (slot === "morning" ? t.chatMorningNamed : slot === "afternoon" ? t.chatAfternoonNamed : t.chatEveningNamed).replace("{name}", profile.fullName)
@@ -70,9 +84,28 @@ export const ChatPage = () => {
         },
     ];
 
+    useEffect(() => {
+        resetChatViewport();
+        let lastHeight = window.visualViewport?.height ?? window.innerHeight;
+        const onViewport = () => {
+            const height = window.visualViewport?.height ?? window.innerHeight;
+            // Only snap back when the keyboard is closing (viewport grows again).
+            if (height > lastHeight + 40) {
+                resetChatViewport();
+            }
+            lastHeight = height;
+        };
+        window.visualViewport?.addEventListener("resize", onViewport);
+        return () => window.visualViewport?.removeEventListener("resize", onViewport);
+    }, []);
+
     const sendDraft = async () => {
         if (await send(draft)) {
             setDraft("");
+            // Dismiss the keyboard so the layout can snap back.
+            (document.activeElement as HTMLElement | null)?.blur?.();
+            window.setTimeout(resetChatViewport, 50);
+            window.setTimeout(resetChatViewport, 300);
         }
     };
 
@@ -90,9 +123,9 @@ export const ChatPage = () => {
                 : null;
 
     return (
-        <div className="careplus-landing flex min-h-dvh flex-col overflow-x-hidden pt-[4.5rem] md:pt-22">
+        <div className="careplus-landing flex h-dvh max-h-dvh flex-col overflow-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
-            <main className="careplus-chat-main mx-auto flex h-[calc(100dvh-4.5rem)] w-full max-w-container flex-col overflow-hidden px-4 py-4 md:h-[calc(100dvh-5.5rem)] md:px-8 md:py-6">
+            <main className="careplus-chat-main mx-auto flex h-[calc(100dvh-4.5rem)] w-full max-w-container flex-1 flex-col overflow-hidden px-4 py-4 md:h-[calc(100dvh-5.5rem)] md:px-8 md:py-6">
                 <PageBreadcrumb contained={false} />
                 <div className="flex shrink-0 items-center gap-2">
                     <Button color="secondary" size="sm" iconLeading={Plus} onClick={startNew}>
@@ -148,7 +181,6 @@ export const ChatPage = () => {
                     </div>
                 </div>
             </main>
-            <LandingFooter />
 
             <SlideoutMenu isOpen={historyOpen} onOpenChange={setHistoryOpen}>
                 {({ close }) => (
