@@ -6,6 +6,7 @@ import { HintText } from "@/components/base/input/hint-text";
 import { Label } from "@/components/base/input/label";
 import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { cx, sortCx } from "@/utils/cx";
+import { containsDangerousMarkup, dangerousMarkupMessage } from "@/utils/plain-text";
 
 export interface InputBaseProps extends Omit<AriaInputProps, "size"> {
     /** Tooltip message on hover. */
@@ -272,10 +273,29 @@ export const Input = ({
     tooltipClassName,
     max,
     type = "text",
+    onChange,
+    isInvalid: isInvalidProp,
     ...props
 }: InputProps) => {
+    const [markupError, setMarkupError] = useState<string | null>(null);
+    const skipMarkupGuard = type === "password";
+
     return (
-        <TextField aria-label={!label ? placeholder : undefined} {...props} size={size} className={className}>
+        <TextField
+            aria-label={!label ? placeholder : undefined}
+            {...props}
+            size={size}
+            className={className}
+            isInvalid={Boolean(isInvalidProp || markupError)}
+            onChange={(value) => {
+                if (!skipMarkupGuard && containsDangerousMarkup(value)) {
+                    setMarkupError(dangerousMarkupMessage);
+                    return;
+                }
+                setMarkupError(null);
+                onChange?.(value);
+            }}
+        >
             {({ isRequired, isInvalid }) => (
                 <>
                     {label && (
@@ -302,7 +322,7 @@ export const Input = ({
                         }}
                     />
 
-                    {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+                    {(markupError || hint) && <HintText isInvalid={isInvalid}>{markupError ?? hint}</HintText>}
                 </>
             )}
         </TextField>

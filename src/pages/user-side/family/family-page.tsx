@@ -14,6 +14,7 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { familyApi, type FamilyMember, type FamilyOverview, type FamilyPermission, type FamilyRelation } from "@/services/familyApi";
+import { containsDangerousMarkup } from "@/utils/plain-text";
 
 const relations: FamilyRelation[] = ["parent", "child"];
 const grantPermissions: FamilyPermission[] = ["parent", "child"];
@@ -58,7 +59,9 @@ const familyRuleMessage = (t: Copy, message: string) => {
     if (message === "Only the family owner can invite members.") return t.familyInviteOwnerOnly;
     if (message === "Enter a valid email address.") return t.familyEmailInvalid;
     if (message === "We could not send the invitation email. Please try again later.") return t.familyInviteEmailFailed;
-    if (message === "Family name cannot contain HTML or script characters.") return t.familyNameInvalid;
+    if (message === "Family name cannot contain HTML or script characters." || message === "Text fields cannot contain HTML or script characters.") {
+        return t.familyNameInvalid;
+    }
     if (message === "Family name must be between 2 and 100 characters.") return t.familyNameRequired;
     return message;
 };
@@ -417,7 +420,7 @@ const RenameDialog = ({ current, title, label, requiredMessage, onClose, onSave 
                                 setError(requiredMessage ?? t.familyNameRequired);
                                 return;
                             }
-                            if (/[<>`]/.test(next) || /javascript:/i.test(next)) {
+                            if (containsDangerousMarkup(next)) {
                                 setError(t.familyNameInvalid);
                                 return;
                             }
