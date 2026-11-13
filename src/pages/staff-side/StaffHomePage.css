@@ -371,9 +371,13 @@ body:has(.staff-page) .site-back-to-top {
 }
 
 .staff-text-size-toggle__option.is-selected {
-  background: var(--staff-card);
-  color: var(--staff-ink);
-  box-shadow: 0 1px 3px rgba(16, 41, 58, 0.1);
+  background: var(--staff-brand);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root[data-theme='dark'] .staff-text-size-toggle__option.is-selected {
+  color: #082c35;
 }
 
 .staff-theme-toggle--topbar {
