@@ -200,11 +200,15 @@ html:has(.careplus-landing) {
         padding-bottom: calc(10rem + env(safe-area-inset-bottom));
     }
 
-    /* Leave the bottom nav + raised Book clear; thread scrolls inside the card. */
+    /* Chat needs extra clearance: 4rem nav + ~2rem raised Book + a small gap above it. */
     .careplus-has-mobile-nav .careplus-landing:has(.careplus-chat-main) {
-        height: calc(100dvh - 5rem - env(safe-area-inset-bottom));
-        max-height: calc(100dvh - 5rem - env(safe-area-inset-bottom));
+        height: calc(100dvh - 6.5rem - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 6.5rem - env(safe-area-inset-bottom));
         padding-bottom: 0;
+    }
+
+    .careplus-has-mobile-nav .careplus-chat-main {
+        padding-bottom: 0.25rem;
     }
 }
 

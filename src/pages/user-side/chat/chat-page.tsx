@@ -131,13 +131,12 @@ export const ChatPage = () => {
                 <div className="mx-auto mt-4 flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl border border-primary/15 bg-primary shadow-xs ring-1 ring-primary/20 md:mt-6">
                     <div ref={threadScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 [overflow-anchor:none]">
                         {messages.length === 0 ? (
-                            <div className="flex w-full flex-col items-center pb-2">
+                            <div className="flex w-full flex-col items-center pb-4">
                                 <FeaturedIcon icon={Stars02} size="xl" color="brand" theme="modern" />
                                 <h1 className="mt-4 text-center text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">
                                     {hello}
                                 </h1>
                                 <p className="mt-2 text-center text-md text-tertiary">{t.chatSubhead}</p>
-                                {/* One primary prompt stays above the fold; more live in quick prompts under the composer. */}
                                 <div className="mt-6 w-full max-w-md rounded-2xl bg-secondary p-5 ring-1 ring-secondary">
                                     <PrimaryPromptIcon className="size-5 text-fg-brand-primary" />
                                     <h2 className="mt-3 text-md font-semibold text-primary">{primaryPrompt.title}</h2>
@@ -152,6 +151,9 @@ export const ChatPage = () => {
                                         {primaryPrompt.cta}
                                     </Button>
                                 </div>
+                                <div className="mt-5 w-full max-w-md">
+                                    <ChatQuickPrompts disabled={isSending} onSelect={(prompt) => void send(prompt)} />
+                                </div>
                             </div>
                         ) : (
                             <ChatThreadView messages={messages} isThinking={isSending} />
@@ -159,7 +161,9 @@ export const ChatPage = () => {
                     </div>
 
                     <div className="shrink-0 border-t border-primary/15 px-3 py-3 md:px-4 md:py-4">
-                        <ChatQuickPrompts disabled={isSending} onSelect={(prompt) => void send(prompt)} />
+                        {messages.length > 0 ? (
+                            <ChatQuickPrompts disabled={isSending} onSelect={(prompt) => void send(prompt)} />
+                        ) : null}
                         <ChatComposer
                             value={draft}
                             error={composerError}
