@@ -7,7 +7,7 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { useI18n } from "@/providers/locale-provider";
 
 const CLINIC = {
-    email: "hello@careplus.my",
+    email: "careplus.noreply@gmail.com",
     phone: "+60 3-4141 8888",
     address: "Jalan Genting Kelang, Setapak, 53300 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur",
     lat: 3.215865,
