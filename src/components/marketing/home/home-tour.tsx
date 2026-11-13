@@ -36,6 +36,21 @@ const visibleTour = (name: string) => {
     return null;
 };
 
+const resolveTourTarget = (step: number, targets: RefObject<(HTMLElement | null)[]>) => {
+    if (step === 0) return visibleTour("tutorial") ?? visibleTour("account");
+
+    const fromRef = targets.current[step - 1];
+    if (fromRef && fromRef.getClientRects().length > 0) return fromRef;
+
+    // All-menu steps: step 2 highlights the first grid item (index 0).
+    if (step >= 2) {
+        const fromDom = document.querySelector<HTMLElement>(`[data-tour-all-index="${step - 2}"]`);
+        if (fromDom && fromDom.getClientRects().length > 0) return fromDom;
+    }
+
+    return fromRef;
+};
+
 type Box = { top: number; left: number; width: number; height: number };
 
 const readBox = (target: HTMLElement): Box => {
@@ -59,99 +74,117 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
     };
 
     useLayoutEffect(() => {
-        const target = step === 0 ? (visibleTour("tutorial") ?? visibleTour("account")) : targets.current[step - 1];
-        const scroller = target?.closest<HTMLElement>("[data-service-row]") ?? null;
-        if (!target) return;
-        target.scrollIntoView({ block: "nearest", inline: "nearest" });
-        if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+        let cancelled = false;
+        let attempts = 0;
 
-        const row = document.querySelector<HTMLElement>("[data-service-row]");
-        if (!scroller && row) row.scrollTo({ left: 0, behavior: "auto" });
-
-        const max = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
-        const desired = scroller ? Math.max(0, Math.min(target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2, max)) : 0;
-        const mobile = window.matchMedia("(max-width: 1023px)").matches;
-        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const header = 88;
-        const bottomPad = mobile ? 108 : 24;
-        const fromBox = boxRef.current;
-        const fromScroll = scroller?.scrollLeft ?? 0;
-        const fromWindowY = window.scrollY;
-
-        const verticalDelta = () => {
-            // Step 0 points at Me / Tutorial in a fixed bar; scrolling the page only bounces.
-            if (step === 0) return 0;
-            const rect = target.getBoundingClientRect();
-            if (rect.top >= header && rect.bottom <= window.innerHeight - bottomPad) return 0;
-            return rect.top - header - 24;
-        };
-
-        const needsHScroll = Boolean(scroller) && Math.abs(desired - fromScroll) > 1;
-        const vDelta = verticalDelta();
-        const needsVScroll = Math.abs(vDelta) > 1;
-
-        if (reduce || (!needsHScroll && !needsVScroll)) {
-            animating.current = false;
-            if (scroller) scroller.scrollLeft = desired;
-            if (needsVScroll) window.scrollBy({ top: vDelta, behavior: "auto" });
-            remember(readBox(target));
-            return () => {
-                if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-                animating.current = false;
-            };
-        }
-
-        // ponytail: drive scroll + hole together each frame so the highlight never freezes mid-slide
-        const duration = 420;
-        const start = performance.now();
-        const targetWindowY = fromWindowY + vDelta;
-        animating.current = true;
-
-        const tick = (now: number) => {
-            const t = Math.min(1, (now - start) / duration);
-            const eased = 1 - (1 - t) ** 3;
-
-            if (scroller) {
-                scroller.scrollLeft = needsHScroll ? fromScroll + (desired - fromScroll) * eased : desired;
-            }
-            if (needsVScroll) {
-                window.scrollTo({ top: fromWindowY + (targetWindowY - fromWindowY) * eased, behavior: "auto" });
-            }
-
-            const live = readBox(target);
-            if (fromBox && step > 0) {
-                remember({
-                    top: mix(fromBox.top, live.top, eased),
-                    left: mix(fromBox.left, live.left, eased),
-                    width: mix(fromBox.width, live.width, eased),
-                    height: mix(fromBox.height, live.height, eased),
-                });
-            } else {
-                remember(live);
-            }
-
-            if (t < 1) {
-                frameRef.current = requestAnimationFrame(tick);
+        const run = () => {
+            if (cancelled) return;
+            const target = resolveTourTarget(step, targets);
+            if (!target) {
+                if (attempts++ < 30) frameRef.current = requestAnimationFrame(run);
                 return;
             }
 
-            animating.current = false;
-            frameRef.current = null;
-            remember(readBox(target));
+            const scroller = target.closest<HTMLElement>("[data-service-row]") ?? null;
+            const menuScroller = target.closest<HTMLElement>("[data-tour-all-menu]") ?? null;
+            target.scrollIntoView({ block: "nearest", inline: "nearest" });
+            if (menuScroller) {
+                const top = target.offsetTop - menuScroller.clientHeight / 2 + target.offsetHeight / 2;
+                menuScroller.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+            }
+            if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+
+            const row = document.querySelector<HTMLElement>("[data-service-row]");
+            if (!scroller && row) row.scrollTo({ left: 0, behavior: "auto" });
+
+            const max = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
+            const desired = scroller ? Math.max(0, Math.min(target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2, max)) : 0;
+            const mobile = window.matchMedia("(max-width: 1023px)").matches;
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            const header = 88;
+            const bottomPad = mobile ? 108 : 24;
+            const fromBox = boxRef.current;
+            const fromScroll = scroller?.scrollLeft ?? 0;
+            const fromWindowY = window.scrollY;
+
+            const verticalDelta = () => {
+                // Step 0 points at Me / Tutorial in a fixed bar; scrolling the page only bounces.
+                if (step === 0) return 0;
+                // All-menu items live in a fixed modal; window scroll does not help.
+                if (step >= 2) return 0;
+                const rect = target.getBoundingClientRect();
+                if (rect.top >= header && rect.bottom <= window.innerHeight - bottomPad) return 0;
+                return rect.top - header - 24;
+            };
+
+            const needsHScroll = Boolean(scroller) && Math.abs(desired - fromScroll) > 1;
+            const vDelta = verticalDelta();
+            const needsVScroll = Math.abs(vDelta) > 1;
+
+            if (reduce || (!needsHScroll && !needsVScroll)) {
+                animating.current = false;
+                if (scroller) scroller.scrollLeft = desired;
+                if (needsVScroll) window.scrollBy({ top: vDelta, behavior: "auto" });
+                remember(readBox(target));
+                return;
+            }
+
+            // ponytail: drive scroll + hole together each frame so the highlight never freezes mid-slide
+            const duration = 420;
+            const start = performance.now();
+            const targetWindowY = fromWindowY + vDelta;
+            animating.current = true;
+
+            const tick = (now: number) => {
+                if (cancelled) return;
+                const t = Math.min(1, (now - start) / duration);
+                const eased = 1 - (1 - t) ** 3;
+
+                if (scroller) {
+                    scroller.scrollLeft = needsHScroll ? fromScroll + (desired - fromScroll) * eased : desired;
+                }
+                if (needsVScroll) {
+                    window.scrollTo({ top: fromWindowY + (targetWindowY - fromWindowY) * eased, behavior: "auto" });
+                }
+
+                const live = readBox(target);
+                if (fromBox && step > 0) {
+                    remember({
+                        top: mix(fromBox.top, live.top, eased),
+                        left: mix(fromBox.left, live.left, eased),
+                        width: mix(fromBox.width, live.width, eased),
+                        height: mix(fromBox.height, live.height, eased),
+                    });
+                } else {
+                    remember(live);
+                }
+
+                if (t < 1) {
+                    frameRef.current = requestAnimationFrame(tick);
+                    return;
+                }
+
+                animating.current = false;
+                frameRef.current = null;
+                remember(readBox(target));
+            };
+
+            frameRef.current = requestAnimationFrame(tick);
         };
 
-        frameRef.current = requestAnimationFrame(tick);
+        run();
         return () => {
+            cancelled = true;
             if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
             animating.current = false;
         };
-    }, [targets, step]);
+    }, [targets, step, label]);
 
     useEffect(() => {
-        const target = step === 0 ? (visibleTour("tutorial") ?? visibleTour("account")) : targets.current[step - 1];
-        if (!target) return;
         const measure = () => {
             if (animating.current) return;
+            const target = resolveTourTarget(step, targets);
+            if (!target) return;
             remember(readBox(target));
         };
         window.addEventListener("resize", measure);
@@ -160,7 +193,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
             window.removeEventListener("resize", measure);
             window.removeEventListener("scroll", measure, true);
         };
-    }, [targets, step]);
+    }, [targets, step, label]);
 
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {

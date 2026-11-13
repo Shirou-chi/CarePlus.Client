@@ -169,23 +169,38 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                   ? { label: allItems[tourStep - 2].label, hint: allItems[tourStep - 2].hint }
                   : null;
 
-    // Remount tour once when the All menu first opens so highlight targets exist.
+    // Wait until All-menu links exist before the first grid highlight; later steps reuse the menu.
     const [tourReady, setTourReady] = useState(true);
     useEffect(() => {
-        if (tourStep !== 2) {
+        const syncTargets = () => {
+            tourTargets.current = [itemRefs.current[0] ?? null, ...allItems.map((_, index) => allMenuRefs.current[index] ?? null)];
+        };
+
+        if (tourStep === null || tourStep < 2) {
             setTourReady(true);
             return;
         }
+
+        if (tourStep > 2) {
+            syncTargets();
+            setTourReady(true);
+            return;
+        }
+
         setTourReady(false);
-        let inner = 0;
-        const outer = window.requestAnimationFrame(() => {
-            inner = window.requestAnimationFrame(() => setTourReady(true));
-        });
-        return () => {
-            window.cancelAnimationFrame(outer);
-            window.cancelAnimationFrame(inner);
-        };
-    }, [tourStep]);
+        let tries = 0;
+        const id = window.setInterval(() => {
+            tries += 1;
+            const ready = allItems.every((_, index) => Boolean(allMenuRefs.current[index]));
+            if (ready || tries > 40) {
+                window.clearInterval(id);
+                syncTargets();
+                setTourReady(true);
+            }
+        }, 16);
+
+        return () => window.clearInterval(id);
+    }, [tourStep, allItems.length]);
 
     return (
         <nav ref={frame} aria-label={t.exploreCareplus} className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
@@ -215,7 +230,7 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
             >
                 {items.map((item, index) => {
                     const className =
-                        "flex w-[calc((100%-5.25rem)/3.5)] min-w-[calc((100%-5.25rem)/3.5)] shrink-0 flex-col items-center gap-2.5 outline-focus-ring focus-visible:outline-2 sm:w-20 sm:min-w-20 md:w-[5.5rem] md:min-w-[5.5rem]";
+                        "flex w-[calc((100%-5.25rem)/3.5)] min-w-[calc((100%-5.25rem)/3.5)] shrink-0 cursor-pointer flex-col items-center gap-2.5 outline-focus-ring focus-visible:outline-2 sm:w-20 sm:min-w-20 md:w-[5.5rem] md:min-w-[5.5rem]";
                     const body = (
                         <>
                             <span className={cx("pointer-events-none flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
@@ -274,7 +289,7 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                         setAllMenuOpen(false);
                     }}
                 >
-                    <Modal className="w-full max-w-lg">
+                    <Modal className="w-full max-w-md sm:max-w-xl md:max-w-2xl">
                         <Dialog className="relative flex w-full flex-col overflow-hidden rounded-2xl bg-primary p-5 shadow-xl ring-1 ring-secondary outline-hidden sm:p-6">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
@@ -284,22 +299,26 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                                     <p className="mt-1 text-sm text-tertiary">{t.homeMoreServicesHint}</p>
                                 </div>
                                 {tourStep === null ? (
-                                    <CloseButton size="md" label="Close" onPress={() => setAllMenuOpen(false)} />
+                                    <CloseButton size="md" label="Close" className="cursor-pointer" onPress={() => setAllMenuOpen(false)} />
                                 ) : null}
                             </div>
-                            <ul className="mt-5 grid max-h-[min(28rem,70dvh)] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                            <ul
+                                data-tour-all-menu=""
+                                className="mt-5 grid max-h-[min(32rem,70dvh)] grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto overscroll-contain sm:grid-cols-4 sm:gap-x-4 sm:gap-y-6"
+                            >
                                 {allItems.map((item, index) => (
                                     <li
                                         key={item.label}
                                         className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300"
-                                        style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
+                                        style={{ animationDelay: `${Math.min(index, 12) * 35}ms` }}
                                     >
                                         <a
                                             href={item.href}
+                                            data-tour-all-index={index}
                                             ref={(node) => {
                                                 allMenuRefs.current[index] = node;
                                             }}
-                                            className="flex items-center gap-3 rounded-2xl bg-primary px-3 py-3 ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2"
+                                            className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl p-1 outline-focus-ring transition hover:opacity-90 focus-visible:outline-2"
                                             onClick={(event) => {
                                                 if (tourStep !== null) {
                                                     event.preventDefault();
@@ -308,10 +327,10 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                                                 setAllMenuOpen(false);
                                             }}
                                         >
-                                            <span className={cx("flex size-10 shrink-0 items-center justify-center rounded-xl", item.tone)}>
-                                                <item.Icon className="size-5" />
+                                            <span className={cx("flex aspect-square w-full max-w-[4.5rem] items-center justify-center rounded-[1.25rem] sm:max-w-[5rem]", item.tone)}>
+                                                <item.Icon className="size-7 sm:size-8" />
                                             </span>
-                                            <span className="min-w-0 text-sm font-semibold text-primary">{item.label}</span>
+                                            <span className="w-full text-center text-xs font-medium leading-snug text-tertiary sm:text-sm">{item.label}</span>
                                         </a>
                                     </li>
                                 ))}
@@ -323,6 +342,7 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
 
             {tourItem && tourStep !== null && tourReady ? (
                 <HomeTour
+                    key={`home-tour-${tourStep}`}
                     label={tourItem.label}
                     hint={tourItem.hint}
                     step={tourStep}
