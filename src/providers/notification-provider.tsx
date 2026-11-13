@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { notificationApi, staffNotificationApi, type ApiNotification } from "@/services/notificationApi";
+import { orderApi } from "@/services/orderApi";
+import { isReadyPickupOrder } from "@/utils/order-history";
 import type { ClinicNotice, NoticeKind } from "@/utils/notifications";
 
 type NoticeContextValue = {
@@ -17,6 +19,22 @@ type NoticeContextValue = {
 };
 
 const NoticeContext = createContext<NoticeContextValue | null>(null);
+
+const READY_READ_KEY = "careplus-ready-pickup-read";
+const isReadyNotice = (id: string) => id.startsWith("order-ready-");
+
+const readReadyIds = () => {
+    try {
+        const raw = JSON.parse(sessionStorage.getItem(READY_READ_KEY) || "[]") as string[];
+        return new Set(raw);
+    } catch {
+        return new Set<string>();
+    }
+};
+
+const writeReadyIds = (ids: Set<string>) => {
+    sessionStorage.setItem(READY_READ_KEY, JSON.stringify([...ids]));
+};
 
 const kindForType = (type: string): NoticeKind => {
     if (type === "appointment_reminder" || type === "appointment_cancelled" || type === "check_in_reminder" || type === "queue_update") return "visit";
@@ -44,7 +62,7 @@ const mapNotice = (item: ApiNotification, locale: "en" | "zh"): ClinicNotice => 
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const { profile, user } = useAuth();
-    const { locale } = useI18n();
+    const { locale, t } = useI18n();
     const accountId = profile?.id ?? user?.userId;
     const isStaff = Boolean(user?.userId && !profile);
     const api = isStaff ? staffNotificationApi : notificationApi;
@@ -52,9 +70,64 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState(Boolean(accountId));
     const [error, setError] = useState<string | null>(null);
 
+    const mergeReadyPickup = useCallback(
+        async (raw: ApiNotification[]) => {
+            const notices = raw.map((item) => mapNotice(item, locale));
+            if (isStaff || !profile?.id || profile.id.startsWith("fam-")) {
+                return notices;
+            }
+
+            try {
+                const orders = await orderApi.list({
+                    confirmed: t.checkoutStepConfirmed,
+                    ready: t.notifMedReadyTitle,
+                    pickedUp: t.ordersTrack,
+                    delivered: t.ordersTrack,
+                });
+                const read = readReadyIds();
+                const ready = orders.filter((order) => isReadyPickupOrder(order.status));
+                const synthetic = ready
+                    .filter(
+                        (order) =>
+                            !notices.some(
+                                (notice) =>
+                                    notice.kind === "medicine" &&
+                                    (notice.href.includes(order.id) || notice.message.includes(order.id) || notice.messageZh.includes(order.id)),
+                            ),
+                    )
+                    .map((order) => {
+                        const id = `order-ready-${order.id}`;
+                        const title = t.notifMedReadyTitle;
+                        const titleZh = t.notifMedReadyTitleZh;
+                        const message = t.notifMedReadyBody.replace("{id}", order.id);
+                        const messageZh = t.notifMedReadyBodyZh.replace("{id}", order.id);
+                        return {
+                            id,
+                            title: locale === "zh" ? titleZh : title,
+                            message: locale === "zh" ? messageZh : message,
+                            titleZh,
+                            messageZh,
+                            actor: "CarePlus Clinic",
+                            initials: "CC",
+                            kind: "medicine" as const,
+                            href: "/orders",
+                            createdAt: order.placedAt,
+                            unread: !read.has(id),
+                        } satisfies ClinicNotice;
+                    });
+                return [...synthetic, ...notices].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+            } catch {
+                return notices;
+            }
+        },
+        [isStaff, locale, profile?.id, t],
+    );
+
     const apply = useCallback(
-        (raw: ApiNotification[]) => setItems(raw.map((item) => mapNotice(item, locale))),
-        [locale],
+        async (raw: ApiNotification[]) => {
+            setItems(await mergeReadyPickup(raw));
+        },
+        [mergeReadyPickup],
     );
 
     useEffect(() => {
@@ -81,7 +154,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
             try {
                 const raw = await api.list();
                 if (!cancelled) {
-                    apply(raw);
+                    await apply(raw);
                 }
             } catch (cause) {
                 if (!cancelled && !silent) {
@@ -126,7 +199,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         async (operation: () => Promise<ApiNotification[]>) => {
             try {
                 setError(null);
-                apply(await operation());
+                await apply(await operation());
             } catch (cause) {
                 setError(cause instanceof Error ? cause.message : "Unable to update notifications.");
             }
@@ -134,28 +207,64 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         [apply],
     );
 
-    const markRead = useCallback((id: string) => void update(() => api.markRead(id)), [api, update]);
-    const markReadMany = useCallback((ids: string[]) => void update(() => api.markManyRead(ids)), [api, update]);
-    const markAllRead = useCallback(() => void update(() => api.markAllRead()), [api, update]);
+    const markReadyLocal = useCallback((ids: string[]) => {
+        if (ids.length === 0) return;
+        const read = readReadyIds();
+        for (const id of ids) read.add(id);
+        writeReadyIds(read);
+        setItems((current) => current.map((item) => (ids.includes(item.id) ? { ...item, unread: false } : item)));
+    }, []);
+
+    const markRead = useCallback(
+        (id: string) => {
+            if (isReadyNotice(id)) {
+                markReadyLocal([id]);
+                return;
+            }
+            void update(() => api.markRead(id));
+        },
+        [api, markReadyLocal, update],
+    );
+
+    const markReadMany = useCallback(
+        (ids: string[]) => {
+            const ready = ids.filter(isReadyNotice);
+            const remote = ids.filter((id) => !isReadyNotice(id));
+            markReadyLocal(ready);
+            if (remote.length > 0) void update(() => api.markManyRead(remote));
+        },
+        [api, markReadyLocal, update],
+    );
+
+    const markAllRead = useCallback(() => {
+        markReadyLocal(items.filter((item) => isReadyNotice(item.id)).map((item) => item.id));
+        void update(() => api.markAllRead());
+    }, [api, items, markReadyLocal, update]);
+
     const remove = useCallback(
         (ids: string[]) => {
             const removedIds = new Set(ids);
             if (removedIds.size === 0) return;
 
-            // Update the list immediately so deletion does not wait for the API round trip.
+            const ready = ids.filter(isReadyNotice);
+            const remote = ids.filter((id) => !isReadyNotice(id));
+            markReadyLocal(ready);
+
             setItems((current) => current.filter((item) => !removedIds.has(item.id)));
+            if (remote.length === 0) return;
+
             void api
-                .remove(ids)
+                .remove(remote)
                 .then((raw) => apply(raw))
                 .catch(async (cause) => {
                     try {
-                        apply(await api.list());
+                        await apply(await api.list());
                     } catch {
                         setError(cause instanceof Error ? cause.message : "Unable to update notifications.");
                     }
                 });
         },
-        [api, apply],
+        [api, apply, markReadyLocal],
     );
     const unread = useMemo(() => items.filter((item) => item.unread), [items]);
 

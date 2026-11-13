@@ -1,4 +1,4 @@
-import { ActivityHeart, CalendarCheck01, CalendarPlus01, Clock, File06, Mail01, MedicalCross, Receipt, Truck01, UserSquare, Users01 } from "@untitledui/icons";
+import { ActivityHeart, CalendarCheck01, CalendarPlus01, Clock, File06, Mail01, MedicalCross, Package, Receipt, Truck01, UserSquare, Users01 } from "@untitledui/icons";
 import { ClinicCoverflow } from "@/components/marketing/home/clinic-coverflow";
 import { PromoCarousel } from "@/components/marketing/home/promo-carousel";
 import { ServiceNav } from "@/components/marketing/home/service-nav";
@@ -18,6 +18,7 @@ export const HomePage = () => {
     const clinicRecordsHref = profile ? "/clinic-records" : "/login";
     const medicineHref = profile ? "/medicine" : "/login";
     const ordersHref = profile ? "/orders" : "/login";
+    const dispensingHref = profile ? "/dispensing-history" : "/login";
     const invoicesHref = profile ? "/invoices" : "/login";
     const familyHref = profile ? "/family" : "/login";
 
@@ -42,6 +43,7 @@ export const HomePage = () => {
                         { label: t.homeNavQueue, hint: t.tourQueue, href: queueHref, Icon: Clock, tone: "bg-[#e0f2fe] text-[#0369a1]" },
                         { label: t.homeNavMedicine, hint: t.tourMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
                         { label: t.ordersTrack, hint: t.tourOrders, href: ordersHref, Icon: Truck01, tone: "bg-[#e0e7ff] text-[#4338ca]" },
+                        { label: t.dispensingTitle, hint: t.tourDispensing, href: dispensingHref, Icon: Package, tone: "bg-[#dcfce7] text-[#15803d]" },
                         { label: t.homeNavFamily, hint: t.tourFamily, href: familyHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },
                         { label: t.homeNavClinicRecords, hint: t.tourClinicRecords, href: clinicRecordsHref, Icon: File06, tone: "bg-[#e2e8f0] text-[#334155]" },
                         { label: t.homeNavPhr, hint: t.tourPhr, href: recordsHref, Icon: ActivityHeart, tone: "bg-[#fce7f3] text-[#be185d]" },

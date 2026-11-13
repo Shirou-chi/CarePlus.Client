@@ -19,6 +19,7 @@ const TRAIL_ROOTS = new Set([
     "/family",
     "/medicine",
     "/orders",
+    "/dispensing-history",
     "/clinic-records",
     "/chat",
     "/notifications",
