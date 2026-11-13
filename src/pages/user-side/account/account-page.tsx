@@ -94,7 +94,7 @@ type EditField = "fullName" | "address" | "phone" | "email";
 type DialogState =
     | { type: "edit"; field: EditField }
     | { type: "notif-disable" }
-    | { type: "two-factor"; action: TwoFactorAction; maskedEmail: string; loading?: boolean }
+    | { type: "two-factor"; action: TwoFactorAction; phase: "prompt" | "code"; maskedEmail: string; loading?: boolean }
     | { type: "view-photo" }
     | { type: "save-photo"; url: string; file: File }
     | { type: "delete-account" }
@@ -277,20 +277,25 @@ export const AccountPage = () => {
         writeProfileSettings(profile.id, next);
     };
 
+    const openTwoFactorPrompt = (action: TwoFactorAction) => {
+        setSecurityNotice(null);
+        setDialog({ type: "two-factor", action, phase: "prompt", maskedEmail: "" });
+    };
+
     const requestTwoFactorCode = async (action: TwoFactorAction) => {
         setSecurityNotice(null);
         setTwoFactorBusy(true);
-        setDialog({ type: "two-factor", action, maskedEmail: t.settingsTwoFactorSending, loading: true });
+        setDialog({ type: "two-factor", action, phase: "code", maskedEmail: t.settingsTwoFactorSending, loading: true });
         try {
             const result = await profileApi.sendTwoFactorCode(action);
             setDialog((current) =>
                 current?.type === "two-factor" && current.action === action
-                    ? { ...current, maskedEmail: result.maskedEmail, loading: false }
+                    ? { ...current, phase: "code", maskedEmail: result.maskedEmail, loading: false }
                     : current,
             );
         } catch (error) {
             const message = error instanceof Error ? error.message : "";
-            setDialog((current) => (current?.type === "two-factor" && current.action === action ? null : current));
+            setDialog({ type: "two-factor", action, phase: "prompt", maskedEmail: "" });
             setSecurityNotice({
                 error: message.includes("email") || message.includes("Email") ? t.settingsTwoFactorEmailFailed : message || t.settingsTwoFactorCodeWrong,
             });
@@ -960,7 +965,7 @@ export const AccountPage = () => {
                                     <Toggle
                                         isSelected={settings.twoFactorEnabled}
                                         isDisabled={twoFactorBusy}
-                                        onChange={(enabled) => void requestTwoFactorCode(enabled ? "enable" : "disable")}
+                                        onChange={(enabled) => openTwoFactorPrompt(enabled ? "enable" : "disable")}
                                         aria-label={t.settingsTwoFactor}
                                         hint={t.settingsTwoFactorHint}
                                         size="md"
@@ -1161,8 +1166,11 @@ export const AccountPage = () => {
                 <TwoFactorDialog
                     t={t}
                     action={dialog.action}
+                    phase={dialog.phase}
                     maskedEmail={dialog.maskedEmail}
+                    loading={dialog.loading}
                     onClose={() => setDialog(null)}
+                    onSendCode={() => void requestTwoFactorCode(dialog.action)}
                     onVerify={(code) => verifyTwoFactorCode(dialog.action, code)}
                 />
             ) : null}
@@ -1269,16 +1277,20 @@ const DeleteAccountDialog = ({
 const TwoFactorDialog = ({
     t,
     action,
+    phase,
     maskedEmail,
     loading = false,
     onClose,
+    onSendCode,
     onVerify,
 }: {
     t: Copy;
     action: TwoFactorAction;
+    phase: "prompt" | "code";
     maskedEmail: string;
     loading?: boolean;
     onClose: () => void;
+    onSendCode: () => void;
     onVerify: (code: string) => Promise<string | null>;
 }) => {
     const [code, setCode] = useState("");
@@ -1311,40 +1323,58 @@ const TwoFactorDialog = ({
                     <Heading slot="title" className="text-lg font-semibold text-primary">
                         {title}
                     </Heading>
-                    <p className="mt-2 text-sm text-tertiary">
-                        {loading
-                            ? t.settingsTwoFactorSending
-                            : t.settingsTwoFactorCodeBody.replace("{email}", maskedEmail).replace("{action}", actionLabel)}
-                    </p>
-                    <form className="mt-6 flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-                        <Input
-                            label={t.settingsTwoFactorCodeLabel}
-                            value={code}
-                            onChange={(value) => {
-                                setCode(value.replace(/\D/g, "").slice(0, 6));
-                                setError(null);
-                            }}
-                            inputMode="numeric"
-                            maxLength={6}
-                            isRequired
-                            isDisabled={loading || saving}
-                            isInvalid={Boolean(error)}
-                            hint={loading ? t.settingsTwoFactorSending : error ?? t.settingsTwoFactorEmailHint}
-                        />
-                        <div className="flex justify-end gap-3">
-                            <Button color="secondary" type="button" onClick={onClose} isDisabled={saving}>
-                                {t.notifCancel}
-                            </Button>
-                            <Button
-                                color={action === "disable" ? "primary-destructive" : "primary"}
-                                type="submit"
-                                isLoading={loading || saving}
-                                isDisabled={loading || saving}
-                            >
-                                {loading ? t.settingsTwoFactorSending : t.settingsSaveConfirm}
-                            </Button>
-                        </div>
-                    </form>
+                    {phase === "prompt" ? (
+                        <>
+                            <p className="mt-2 text-sm text-tertiary">
+                                {t.settingsTwoFactorPromptBody.replace("{action}", actionLabel)}
+                            </p>
+                            <div className="mt-6 flex justify-end gap-3">
+                                <Button color="secondary" type="button" onClick={onClose}>
+                                    {t.notifCancel}
+                                </Button>
+                                <Button color="primary" type="button" onClick={onSendCode}>
+                                    {t.settingsTwoFactorSendCode}
+                                </Button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <p className="mt-2 text-sm text-tertiary">
+                                {loading
+                                    ? t.settingsTwoFactorSending
+                                    : t.settingsTwoFactorCodeBody.replace("{email}", maskedEmail).replace("{action}", actionLabel)}
+                            </p>
+                            <form className="mt-6 flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+                                <Input
+                                    label={t.settingsTwoFactorCodeLabel}
+                                    value={code}
+                                    onChange={(value) => {
+                                        setCode(value.replace(/\D/g, "").slice(0, 6));
+                                        setError(null);
+                                    }}
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    isRequired
+                                    isDisabled={loading || saving}
+                                    isInvalid={Boolean(error)}
+                                    hint={loading ? t.settingsTwoFactorSending : error ?? t.settingsTwoFactorEmailHint}
+                                />
+                                <div className="flex justify-end gap-3">
+                                    <Button color="secondary" type="button" onClick={onClose} isDisabled={saving}>
+                                        {t.notifCancel}
+                                    </Button>
+                                    <Button
+                                        color={action === "disable" ? "primary-destructive" : "primary"}
+                                        type="submit"
+                                        isLoading={loading || saving}
+                                        isDisabled={loading || saving}
+                                    >
+                                        {loading ? t.settingsTwoFactorSending : t.settingsSaveConfirm}
+                                    </Button>
+                                </div>
+                            </form>
+                        </>
+                    )}
                 </Dialog>
             </Modal>
         </ModalOverlay>
