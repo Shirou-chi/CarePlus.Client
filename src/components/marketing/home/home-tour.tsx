@@ -22,7 +22,7 @@ type HomeTourProps = {
     hint: string;
     step: number;
     total: number;
-    targets: RefObject<(HTMLAnchorElement | null)[]>;
+    targets: RefObject<(HTMLElement | null)[]>;
     onSkip: () => void;
     onBack: () => void;
     onNext: () => void;
@@ -62,6 +62,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         const target = step === 0 ? (visibleTour("tutorial") ?? visibleTour("account")) : targets.current[step - 1];
         const scroller = target?.closest<HTMLElement>("[data-service-row]") ?? null;
         if (!target) return;
+        target.scrollIntoView({ block: "nearest", inline: "nearest" });
         if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
 
         const row = document.querySelector<HTMLElement>("[data-service-row]");

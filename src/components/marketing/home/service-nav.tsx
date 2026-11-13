@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type PointerEvent as ReactPointerEvent, type SVGProps } from "react";
+import { Heading } from "react-aria-components";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { HOME_TOUR_EVENT, HomeTour, takeHomeTourRequest } from "@/components/marketing/home/home-tour";
 import { peekItemWidth } from "@/components/marketing/home/service-nav-layout";
+import { CloseButton } from "@/components/base/buttons/close-button";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
@@ -13,16 +16,19 @@ export type ServiceNavItem = {
     tone: string;
 };
 
-export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
+export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allItems: ServiceNavItem[] }) => {
     const { t } = useI18n();
     const { profile, hasCompletedTutorial, completeTutorial } = useAuth();
     const frame = useRef<HTMLElement>(null);
     const scroller = useRef<HTMLDivElement>(null);
-    const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+    const itemRefs = useRef<(HTMLElement | null)[]>([]);
+    const allMenuRefs = useRef<(HTMLElement | null)[]>([]);
+    const tourTargets = useRef<(HTMLElement | null)[]>([]);
     const drag = useRef<{ x: number; left: number; pointerId: number; captured: boolean } | null>(null);
     const blockClick = useRef(false);
     const [canScroll, setCanScroll] = useState(false);
     const [tourStep, setTourStep] = useState<number | null>(null);
+    const [allMenuOpen, setAllMenuOpen] = useState(false);
 
     useEffect(() => {
         if (!profile?.id || hasCompletedTutorial === null) {
@@ -46,6 +52,7 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
             void completeTutorial().catch(() => undefined);
         }
         setTourStep(null);
+        setAllMenuOpen(false);
     }, [completeTutorial, hasCompletedTutorial, profile?.id]);
 
     useEffect(() => {
@@ -53,7 +60,7 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
         const el = scroller.current;
         if (!frameEl || !el) return;
         const apply = () => {
-            const links = [...el.querySelectorAll("a")];
+            const links = [...el.querySelectorAll<HTMLElement>("[data-service-item]")];
             links.forEach((link) => {
                 link.style.width = "";
                 link.style.minWidth = "";
@@ -143,11 +150,42 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
         const tutorialVisible = [...document.querySelectorAll<HTMLElement>("[data-tour='tutorial']")].some((node) => node.getClientRects().length > 0);
         return tutorialVisible ? t.tourNav : t.tourNavMobile;
     };
-    // ponytail: keep the tour to intro + first 2 shortcuts (3 steps max); rest live in Me / Services
-    const tourItemCount = Math.min(items.length, 2);
-    const tourTotal = tourItemCount + 1;
+
+    // Step 0 = Tutorial, step 1 = All, then each All-menu item one by one.
+    const tourTotal = 2 + allItems.length;
+    const tourOpensAll = tourStep !== null && tourStep >= 2;
+    const showAllMenu = allMenuOpen || tourOpensAll;
+
+    tourTargets.current = [itemRefs.current[0] ?? null, ...allMenuRefs.current.slice(0, allItems.length)];
+
     const tourItem =
-        tourStep === null ? null : tourStep === 0 ? { label: t.tourNavTitle, hint: tourNavHint() } : items[tourStep - 1] ?? null;
+        tourStep === null
+            ? null
+            : tourStep === 0
+              ? { label: t.tourNavTitle, hint: tourNavHint() }
+              : tourStep === 1
+                ? { label: items[0]?.label ?? t.homeAll, hint: items[0]?.hint ?? t.homeAllHint }
+                : allItems[tourStep - 2]
+                  ? { label: allItems[tourStep - 2].label, hint: allItems[tourStep - 2].hint }
+                  : null;
+
+    // Remount tour once when the All menu first opens so highlight targets exist.
+    const [tourReady, setTourReady] = useState(true);
+    useEffect(() => {
+        if (tourStep !== 2) {
+            setTourReady(true);
+            return;
+        }
+        setTourReady(false);
+        let inner = 0;
+        const outer = window.requestAnimationFrame(() => {
+            inner = window.requestAnimationFrame(() => setTourReady(true));
+        });
+        return () => {
+            window.cancelAnimationFrame(outer);
+            window.cancelAnimationFrame(inner);
+        };
+    }, [tourStep]);
 
     return (
         <nav ref={frame} aria-label={t.exploreCareplus} className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
@@ -175,30 +213,121 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
                     blockClick.current = false;
                 }}
             >
-                {items.map((item, index) => (
-                    <a
-                        key={item.label}
-                        href={item.href}
-                        draggable={false}
-                        ref={(node) => {
-                            itemRefs.current[index] = node;
-                        }}
-                        className="flex w-[calc((100%-5.25rem)/3.5)] min-w-[calc((100%-5.25rem)/3.5)] shrink-0 flex-col items-center gap-2.5 outline-focus-ring focus-visible:outline-2 sm:w-20 sm:min-w-20 md:w-[5.5rem] md:min-w-[5.5rem]"
-                    >
-                        <span className={cx("pointer-events-none flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
-                            <item.Icon className="pointer-events-none size-7" />
-                        </span>
-                        <span className="pointer-events-none text-center text-xs font-medium text-tertiary md:text-sm">{item.label}</span>
-                    </a>
-                ))}
+                {items.map((item, index) => {
+                    const className =
+                        "flex w-[calc((100%-5.25rem)/3.5)] min-w-[calc((100%-5.25rem)/3.5)] shrink-0 flex-col items-center gap-2.5 outline-focus-ring focus-visible:outline-2 sm:w-20 sm:min-w-20 md:w-[5.5rem] md:min-w-[5.5rem]";
+                    const body = (
+                        <>
+                            <span className={cx("pointer-events-none flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
+                                <item.Icon className="pointer-events-none size-7" />
+                            </span>
+                            <span className="pointer-events-none text-center text-xs font-medium text-tertiary md:text-sm">{item.label}</span>
+                        </>
+                    );
+
+                    if (item.href === "#all") {
+                        return (
+                            <button
+                                key={item.label}
+                                type="button"
+                                data-service-item=""
+                                draggable={false}
+                                ref={(node) => {
+                                    itemRefs.current[index] = node;
+                                }}
+                                className={className}
+                                onClick={() => setAllMenuOpen(true)}
+                            >
+                                {body}
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <a
+                            key={item.label}
+                            href={item.href}
+                            data-service-item=""
+                            draggable={false}
+                            ref={(node) => {
+                                itemRefs.current[index] = node;
+                            }}
+                            className={className}
+                        >
+                            {body}
+                        </a>
+                    );
+                })}
             </div>
-            {tourItem && tourStep !== null ? (
+
+            {showAllMenu ? (
+                <ModalOverlay
+                    isDismissable={tourStep === null}
+                    isOpen
+                    className="z-[60]"
+                    onOpenChange={(open) => {
+                        if (open) return;
+                        if (tourStep !== null) {
+                            closeTour();
+                            return;
+                        }
+                        setAllMenuOpen(false);
+                    }}
+                >
+                    <Modal className="w-full max-w-lg">
+                        <Dialog className="relative flex w-full flex-col overflow-hidden rounded-2xl bg-primary p-5 shadow-xl ring-1 ring-secondary outline-hidden sm:p-6">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <Heading slot="title" className="text-lg font-semibold text-primary">
+                                        {t.homeMoreServices}
+                                    </Heading>
+                                    <p className="mt-1 text-sm text-tertiary">{t.homeMoreServicesHint}</p>
+                                </div>
+                                {tourStep === null ? (
+                                    <CloseButton size="md" label="Close" onPress={() => setAllMenuOpen(false)} />
+                                ) : null}
+                            </div>
+                            <ul className="mt-5 grid max-h-[min(28rem,70dvh)] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                                {allItems.map((item, index) => (
+                                    <li
+                                        key={item.label}
+                                        className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300"
+                                        style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
+                                    >
+                                        <a
+                                            href={item.href}
+                                            ref={(node) => {
+                                                allMenuRefs.current[index] = node;
+                                            }}
+                                            className="flex items-center gap-3 rounded-2xl bg-primary px-3 py-3 ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2"
+                                            onClick={(event) => {
+                                                if (tourStep !== null) {
+                                                    event.preventDefault();
+                                                    return;
+                                                }
+                                                setAllMenuOpen(false);
+                                            }}
+                                        >
+                                            <span className={cx("flex size-10 shrink-0 items-center justify-center rounded-xl", item.tone)}>
+                                                <item.Icon className="size-5" />
+                                            </span>
+                                            <span className="min-w-0 text-sm font-semibold text-primary">{item.label}</span>
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            ) : null}
+
+            {tourItem && tourStep !== null && tourReady ? (
                 <HomeTour
                     label={tourItem.label}
                     hint={tourItem.hint}
                     step={tourStep}
                     total={tourTotal}
-                    targets={itemRefs}
+                    targets={tourTargets}
                     onSkip={closeTour}
                     onBack={() => {
                         if (tourStep > 0) setTourStep(tourStep - 1);

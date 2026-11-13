@@ -145,9 +145,29 @@ html:has(.careplus-landing) {
     }
 }
 
+/* Chat is a fixed shell; height is owned here so utilities cannot push the composer under the nav. */
+.careplus-landing:has(.careplus-chat-main) {
+    height: 100dvh;
+    max-height: 100dvh;
+}
+
+.careplus-landing:has(.careplus-chat-main) .careplus-chat-main {
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
 @media (max-width: 1023px) {
+    /* Nav is 4rem + safe-area; raised Book pokes ~1rem above. Keep copyright flush to that. */
     .careplus-has-mobile-nav .careplus-landing {
-        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    }
+
+    .careplus-has-mobile-nav .careplus-landing > footer.careplus-panel {
+        margin-bottom: 0;
+    }
+
+    .careplus-has-mobile-nav .careplus-landing > footer.careplus-panel > div:last-child {
+        padding-bottom: 0.75rem;
     }
 
     /* Booking's action bar sits on top of the 4rem bottom nav; the extra bottom padding
@@ -159,23 +179,14 @@ html:has(.careplus-landing) {
     }
 
     .careplus-has-mobile-nav .careplus-landing.careplus-booking {
-        padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(10rem + env(safe-area-inset-bottom));
     }
 
-    /* Chat is a fixed-height screen, so it shrinks by the header, the 4rem nav, and the
-       ~1rem the raised Book button pokes past the main padding. */
+    /* Leave the bottom nav + raised Book clear; thread scrolls inside the card. */
     .careplus-has-mobile-nav .careplus-landing:has(.careplus-chat-main) {
+        height: calc(100dvh - 5rem - env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 5rem - env(safe-area-inset-bottom));
         padding-bottom: 0;
-    }
-
-    .careplus-has-mobile-nav .careplus-chat-main {
-        height: calc(100dvh - 9.5rem - env(safe-area-inset-bottom));
-    }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-    .careplus-has-mobile-nav .careplus-chat-main {
-        height: calc(100dvh - 10.5rem - env(safe-area-inset-bottom));
     }
 }
 

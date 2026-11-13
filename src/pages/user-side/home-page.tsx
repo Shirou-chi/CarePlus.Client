@@ -77,9 +77,8 @@ export const HomePage = () => {
         };
     }, [profile?.id]);
 
-    // Marketplace-style row: All + primary categories (keeps the old density without 13 peers).
     const exploreItems = [
-        { label: t.homeAll, hint: t.homeAllHint, href: "#home-more-services", Icon: Grid01, tone: "bg-[#e5e7eb] text-[#374151]" },
+        { label: t.homeAll, hint: t.homeAllHint, href: "#all", Icon: Grid01, tone: "bg-[#e5e7eb] text-[#374151]" },
         { label: t.homeNavBooking, hint: t.tourBook, href: bookHref, Icon: CalendarPlus01, tone: "bg-[#dbeafe] text-[#1d4ed8]" },
         { label: t.homeNavAppointment, hint: t.tourVisit, href: visitsHref, Icon: CalendarCheck01, tone: "bg-[#d8f4ef] text-[#0f766e]" },
         { label: t.homeNavQueue, hint: t.tourQueue, href: queueHref, Icon: Clock, tone: "bg-[#e0f2fe] text-[#0369a1]" },
@@ -90,12 +89,13 @@ export const HomePage = () => {
         { label: t.homeNavContact, hint: t.tourContact, href: "/contact", Icon: Mail01, tone: "bg-[#fef3c7] text-[#b45309]" },
     ];
 
-    const moreServices = [
-        { label: t.visitHistory, href: profile ? "/history" : "/login", Icon: Clock },
-        { label: t.ordersTrack, href: ordersHref, Icon: Truck01 },
-        { label: t.dispensingTitle, href: dispensingHref, Icon: Package },
-        { label: t.homeNavClinicRecords, href: clinicRecordsHref, Icon: File06 },
-        { label: t.homeNavPhr, href: recordsHref, Icon: ActivityHeart },
+    // All menu = the shortcuts that used to sit in the "More services" row.
+    const allMenuItems = [
+        { label: t.visitHistory, hint: t.tourVisit, href: profile ? "/history" : "/login", Icon: Clock, tone: "bg-[#e5e7eb] text-[#374151]" },
+        { label: t.ordersTrack, hint: t.tourOrders, href: ordersHref, Icon: Truck01, tone: "bg-[#ffedd5] text-[#c2410c]" },
+        { label: t.dispensingTitle, hint: t.tourDispensing, href: dispensingHref, Icon: Package, tone: "bg-[#fce7f3] text-[#be185d]" },
+        { label: t.homeNavClinicRecords, hint: t.tourClinicRecords, href: clinicRecordsHref, Icon: File06, tone: "bg-[#e0e7ff] text-[#4338ca]" },
+        { label: t.homeNavPhr, hint: t.tourPhr, href: recordsHref, Icon: ActivityHeart, tone: "bg-[#dcfce7] text-[#15803d]" },
     ];
 
     const formatVisit = (iso: string) =>
@@ -122,33 +122,8 @@ export const HomePage = () => {
                     ]}
                 />
 
-                <ServiceNav items={exploreItems} />
+                <ServiceNav items={exploreItems} allItems={allMenuItems} />
 
-                <section id="home-more-services" className="mx-auto w-full max-w-container scroll-mt-28 px-4 pb-2 md:px-8">
-                    <div className="flex items-end justify-between gap-3">
-                        <div>
-                            <h2 className="text-lg font-bold text-primary md:text-xl">{t.homeMoreServices}</h2>
-                            <p className="mt-1 text-sm text-tertiary">{t.homeMoreServicesHint}</p>
-                        </div>
-                    </div>
-                    <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                        {moreServices.map((item) => (
-                            <li key={item.label}>
-                                <Link
-                                    to={item.href}
-                                    className="flex items-center gap-3 rounded-2xl bg-primary px-3 py-3 ring-1 ring-secondary outline-focus-ring transition hover:ring-brand-secondary focus-visible:outline-2"
-                                >
-                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-fg-brand-primary">
-                                        <item.Icon className="size-5" />
-                                    </span>
-                                    <span className="min-w-0 text-sm font-semibold text-primary">{item.label}</span>
-                                </Link>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-
-                {/* Clinic stand-in for marketplace "Live auctions": next visit / book CTA. */}
                 <section className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
                     <div className="flex items-end justify-between gap-3">
                         <div>
