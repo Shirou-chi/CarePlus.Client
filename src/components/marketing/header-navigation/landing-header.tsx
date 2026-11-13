@@ -148,9 +148,7 @@ export const LandingHeader = () => {
     const { theme, setTheme, textSize, setTextSize } = useTheme();
     const { profile, logout } = useAuth();
     const navigate = useNavigate();
-    const { pathname } = useLocation();
     const overdue = useOverdueLock();
-    const isLanding = pathname === "/";
     const signedInName = profile?.fullName.split(" ")[0] ?? t.signIn;
     const signOut = async () => {
         await logout();
@@ -225,20 +223,21 @@ export const LandingHeader = () => {
                     )}
                 </div>
 
-                <div className="flex items-center gap-1 lg:hidden">
-                    <SiteSearch />
-                    {overdue ? null : <HeaderNotifications />}
-                    {overdue ? null : <HeaderCart />}
-                    {profile ? null : isLanding ? (
+                <div className="flex min-w-0 shrink items-center gap-0.5 lg:hidden">
+                    {profile ? (
+                        <>
+                            <SiteSearch />
+                            {overdue ? null : <HeaderNotifications />}
+                            {overdue ? null : <HeaderCart />}
+                            <MobileAccount />
+                        </>
+                    ) : (
                         <>
                             <ThemeToggle />
                             <TextSizeToggle />
                             <LanguageSwitch />
                         </>
-                    ) : (
-                        <MobileNav />
                     )}
-                    {profile ? <MobileAccount /> : null}
                 </div>
             </div>
         </header>
@@ -473,76 +472,3 @@ const MobileAccount = () => {
     );
 };
 
-const MobileNav = () => {
-    const { t } = useI18n();
-    const { profile } = useAuth();
-    const serviceGroups = useServiceGroups();
-
-    return (
-        <AriaDialogTrigger>
-            <AriaButton
-                aria-label="Toggle navigation menu"
-                className={({ isFocusVisible, isHovered }) =>
-                    cx(
-                        "group cursor-pointer rounded-lg p-2 lg:hidden",
-                        isHovered && "bg-primary_hover",
-                        isFocusVisible && "outline-2 outline-offset-2 outline-focus-ring",
-                    )
-                }
-            >
-                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path
-                        className="hidden text-secondary group-aria-expanded:block dark:text-brand-300"
-                        d="M18 6L6 18M6 6L18 18"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
-                    <path
-                        className="text-secondary group-aria-expanded:hidden dark:text-brand-300"
-                        d="M3 12H21M3 6H21M3 18H21"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
-                </svg>
-            </AriaButton>
-            <AriaPopover className="w-[min(100vw-1.5rem,24rem)] shadow-lg lg:hidden" offset={8} placement="bottom end">
-                <AriaDialog className="outline-hidden">
-                    <nav className="careplus-panel max-h-[80dvh] overflow-y-auto rounded-2xl bg-primary p-3 shadow-lg ring-1 ring-secondary_alt">
-                        <p className="px-2 pb-2 text-sm font-semibold text-tertiary">{t.services}</p>
-                        {serviceGroups.map((group) => (
-                            <details key={group.id} className="border-b border-secondary">
-                                <summary className="cursor-pointer list-none px-2 py-3 text-md font-semibold text-primary">{group.title}</summary>
-                                <ul className="pb-2">
-                                    {group.links.map((link) => (
-                                        <li key={link.title}>
-                                            <NavMenuItemLink href={link.href} title={link.title} subtitle={link.subtitle} />
-                                        </li>
-                                    ))}
-                                </ul>
-                            </details>
-                        ))}
-                        {profile ? null : (
-                            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 px-2 py-2">
-                                <ThemeToggle />
-                                <TextSizeToggle />
-                                <LanguageSwitch />
-                            </div>
-                        )}
-                        {profile ? null : (
-                            <div className="mt-1 flex flex-col gap-2 px-2 pb-2">
-                                <a href="/login" className="rounded-lg px-3 py-2.5 text-md font-semibold text-secondary hover:bg-primary_hover">
-                                    {t.logIn}
-                                </a>
-                                <a href="/register" className="careplus-ink rounded-lg px-3 py-2.5 text-center text-md font-semibold text-white">
-                                    {t.signUp}
-                                </a>
-                            </div>
-                        )}
-                    </nav>
-                </AriaDialog>
-            </AriaPopover>
-        </AriaDialogTrigger>
-    );
-};

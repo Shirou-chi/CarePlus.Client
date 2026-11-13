@@ -118,6 +118,33 @@ html:has(.careplus-landing) {
     animation: careplus-page-in 220ms ease-out;
 }
 
+.careplus-route--exit {
+    animation: careplus-route-out 200ms ease-in both;
+}
+
+.careplus-route--enter {
+    animation: careplus-route-in 280ms ease-out both;
+}
+
+/* Opacity-only: translateY creates a containing block that breaks position:fixed headers on mobile. */
+@keyframes careplus-route-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes careplus-route-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 @media (max-width: 1023px) {
     .careplus-has-mobile-nav .careplus-landing {
         padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
@@ -127,12 +154,12 @@ html:has(.careplus-landing) {
        leaves room for the raised Book button, which pokes ~2rem above the nav. */
     .careplus-has-mobile-nav .careplus-booking-bar {
         bottom: calc(4rem + env(safe-area-inset-bottom));
-        padding-bottom: 2.25rem;
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
         border-bottom: 0;
     }
 
     .careplus-has-mobile-nav .careplus-landing.careplus-booking {
-        padding-bottom: calc(15rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
     }
 
     /* Chat is a fixed-height screen, so it shrinks by the header, the 4rem nav, and the
@@ -158,7 +185,9 @@ html:has(.careplus-landing) {
         animation: none;
     }
 
-    .careplus-page {
+    .careplus-page,
+    .careplus-route--exit,
+    .careplus-route--enter {
         animation: none;
     }
 }
@@ -315,34 +344,40 @@ html:has(.careplus-landing) .group:hover > .careplus-ink {
     filter: brightness(1.18);
 }
 
-.careplus-landing .careplus-lang button {
+.careplus-landing .careplus-lang button,
+.careplus-landing .careplus-text-size button {
     background-color: rgb(255 255 255 / 0.72);
     color: #0b1f38;
 }
 
-.careplus-landing .careplus-lang button:hover {
+.careplus-landing .careplus-lang button:hover,
+.careplus-landing .careplus-text-size button:hover {
     background-color: #456f75;
     color: #fff;
 }
 
-.careplus-landing .careplus-lang button[data-selected] {
+.careplus-landing .careplus-lang button[data-selected],
+.careplus-landing .careplus-text-size button[data-selected] {
     background-color: #122b4b;
     color: #fff;
 }
 
-html.dark-mode .careplus-landing .careplus-lang button {
+html.dark-mode .careplus-landing .careplus-lang button,
+html.dark-mode .careplus-landing .careplus-text-size button {
     background-color: rgb(255 255 255 / 0.1);
     color: rgb(255 255 255 / 0.88);
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28);
 }
 
-html.dark-mode .careplus-landing .careplus-lang button:hover {
+html.dark-mode .careplus-landing .careplus-lang button:hover,
+html.dark-mode .careplus-landing .careplus-text-size button:hover {
     background-color: #456f75;
     color: #fff;
     box-shadow: none;
 }
 
-html.dark-mode .careplus-landing .careplus-lang button[data-selected] {
+html.dark-mode .careplus-landing .careplus-lang button[data-selected],
+html.dark-mode .careplus-landing .careplus-text-size button[data-selected] {
     background-color: #5a8b92;
     color: #fff;
     box-shadow: none;

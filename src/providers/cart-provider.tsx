@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/providers/auth-provider";
-import { TOKEN_KEY } from "@/services/api";
+import { getAuthToken } from "@/services/api";
 import { cartApi } from "@/services/cartApi";
 import {
     addCartLine,
@@ -59,7 +59,7 @@ const visibleCartIcon = () =>
 
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const remoteCart = () => typeof window !== "undefined" && Boolean(localStorage.getItem(TOKEN_KEY));
+const remoteCart = () => typeof window !== "undefined" && Boolean(getAuthToken());
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
     const { profile } = useAuth();

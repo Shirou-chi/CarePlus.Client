@@ -88,6 +88,7 @@ const MedicalRecordsPage = page(() => import("@/pages/staff-side/medical-records
 const AccountPage = page(() => import("@/pages/user-side/account/account-page"), "AccountPage");
 const AboutPage = page(() => import("@/pages/user-side/about-page"), "AboutPage");
 const InvoicePaymentPage = page(() => import("@/pages/user-side/bills/invoice-payment-page"), "InvoicePaymentPage");
+const StripeReturnPage = page(() => import("@/pages/user-side/bills/stripe-return-page"), "StripeReturnPage");
 const OutstandingInvoicesPage = page(() => import("@/pages/user-side/bills/outstanding-invoices-page"), "OutstandingInvoicesPage");
 const PaymentHistoryPage = page(() => import("@/pages/user-side/bills/payment-history-page"), "PaymentHistoryPage");
 const BookingPage = page(() => import("@/pages/user-side/visits/booking-page"), "BookingPage");
@@ -122,6 +123,7 @@ import { RouteProvider } from "@/providers/router-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { ChatWidget } from "@/components/marketing/chat/chat-widget";
 import { BackToTop } from "@/components/marketing/back-to-top";
+import { PatientPageTransition } from "@/components/marketing/page-transition";
 import "@/assets/styles/globals.css";
 
 type StaffRole = "Admin" | "Doctor" | "Pharmacist";
@@ -185,14 +187,16 @@ const AppRoutes = () => {
     const showMobileBottomNav = Boolean(profile) && !isStaffRoute && !shouldHideMobileBottomNav(location.pathname);
 
     useLayoutEffect(() => {
-        const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        // Instant jump for patient page fades; hash links can still ease into place.
+        const behavior = location.hash && !reduceMotion ? "smooth" : "auto";
         const hashId = decodeURIComponent(location.hash.slice(1));
         const target = hashId ? document.getElementById(hashId) : null;
         if (target) {
             target.scrollIntoView({ behavior, block: "start" });
             return;
         }
-        window.scrollTo({ top: 0, behavior });
+        window.scrollTo({ top: 0, behavior: "auto" });
     }, [location.pathname, location.hash, location.key]);
 
     useEffect(() => {
@@ -209,7 +213,9 @@ const AppRoutes = () => {
             {/* ponytail: stable shell key keeps Suspense from blanking to black between lazy pages */}
             <div key={isStaffRoute ? "staff" : "patient"} className={showMobileBottomNav ? "careplus-page careplus-has-mobile-nav" : "careplus-page"}>
                 <Suspense fallback={isStaffRoute ? <div className="staff-route-fallback" aria-hidden /> : <div className="min-h-dvh bg-primary" aria-hidden />}>
-                <Routes location={location}>
+                <PatientPageTransition enabled={!isStaffRoute}>
+                {(routeLocation) => (
+                <Routes location={routeLocation}>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/home" element={<HomePage />} />
                     <Route path="/about" element={<AboutPage />} />
@@ -223,6 +229,8 @@ const AppRoutes = () => {
                     <Route path="/queue" element={<QueuePage />} />
                     <Route path="/invoices" element={<OutstandingInvoicesPage />} />
                     <Route path="/invoices/:id/pay" element={<InvoicePaymentPage />} />
+                    <Route path="/pay/stripe/return" element={<StripeReturnPage />} />
+                    <Route path="/pay/sandbox" element={<Navigate to="/invoices" replace />} />
                     <Route path="/payments" element={<PaymentHistoryPage />} />
                     <Route path="/records" element={<HealthRecordsPage />} />
                     <Route path="/family" element={<FamilyPage />} />
@@ -270,6 +278,8 @@ const AppRoutes = () => {
                     </Route>
                     <Route path="*" element={<NotFound />} />
                 </Routes>
+                )}
+                </PatientPageTransition>
                 </Suspense>
             </div>
             {!isStaffRoute && location.pathname !== "/chat" && !overdue ? (

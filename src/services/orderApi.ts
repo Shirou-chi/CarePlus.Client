@@ -1,5 +1,5 @@
 import { normalizeOrderStatus, trackingStepsFor, type MedicineOrder } from "@/utils/order-history";
-import { request, TOKEN_KEY, type ApiResponse } from "./api";
+import { getAuthToken, request, type ApiResponse } from "./api";
 
 type MedicineOrderResponse = {
     id: string;
@@ -51,7 +51,7 @@ const toOrder = (row: MedicineOrderResponse, labels: TrackingLabels): MedicineOr
 
 export const orderApi = {
     async list(labels: TrackingLabels): Promise<MedicineOrder[]> {
-        if (!localStorage.getItem(TOKEN_KEY)) return [];
+        if (!getAuthToken()) return [];
         const result = await request<ApiResponse<MedicineOrderResponse[]>>("/api/MedicineOrder", { method: "GET" }, true);
         if (!result.isSuccess || !result.data) return [];
         return result.data.map((row) => toOrder(row, labels));

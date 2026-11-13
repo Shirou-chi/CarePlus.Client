@@ -12,6 +12,8 @@ export type CheckoutDraft = {
     profileId: string;
     fulfilment: "pickup" | "delivery";
     paymentLabel: string;
+    /** cod places immediately; card/fpx go through Stripe Checkout first. */
+    paymentKind: "cod" | "card" | "fpx";
     addressId?: string;
     address?: string;
     deliveryFee: number;
@@ -29,6 +31,9 @@ export const readCheckoutDraft = (): CheckoutDraft | null => {
         const draft = JSON.parse(sessionStorage.getItem(KEY) ?? "null") as CheckoutDraft | null;
         if (!draft?.profileId || !Array.isArray(draft.lines) || draft.lines.length === 0) {
             return null;
+        }
+        if (!draft.paymentKind) {
+            draft.paymentKind = draft.paymentLabel.toLowerCase().includes("cash") ? "cod" : "fpx";
         }
         return draft;
     } catch {

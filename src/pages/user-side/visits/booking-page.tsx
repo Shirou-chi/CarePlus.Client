@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getLocalTimeZone, parseDate, today, type DateValue } from "@internationalized/date";
 import { CheckCircle } from "@untitledui/icons";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
@@ -84,6 +84,17 @@ export const BookingPage = () => {
     const [rescheduleConfirmOpen, setRescheduleConfirmOpen] = useState(false);
     const [scheduledDates, setScheduledDates] = useState<string[]>([]);
     const [scheduledDatesLoading, setScheduledDatesLoading] = useState(false);
+    const stepPanelRef = useRef<HTMLElement>(null);
+    const stepScrollReady = useRef(false);
+
+    // Keep the active step in view after Continue / Back; long slot lists leave you stuck at the footer.
+    useEffect(() => {
+        if (!stepScrollReady.current) {
+            stepScrollReady.current = true;
+            return;
+        }
+        stepPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [step]);
 
     useEffect(() => {
         if (!profile) {
@@ -145,18 +156,26 @@ export const BookingPage = () => {
                 const members = overview.family?.members.filter((member) => member.status === "active") ?? [];
                 if (members.length > 0) {
                     setFamilyMembers(members);
-                    const currentMember = members.find((member) => member.id === overview.currentPatientId);
-                    if (currentMember?.relation === "child") {
-                        const age = calculateAge(profile.dateOfBirth);
-                        setFamilyBookingRestriction(age === null ? "age-unavailable" : age < 12 ? "underage" : "child-self-only");
-                    } else {
-                        setFamilyBookingRestriction(null);
-                    }
+                }
+
+                const age = calculateAge(profile.dateOfBirth);
+                if (age !== null && age < 12) {
+                    setFamilyBookingRestriction("underage");
+                    return;
+                }
+
+                const currentMember = members.find((member) => member.id === overview.currentPatientId);
+                if (currentMember?.relation === "child") {
+                    setFamilyBookingRestriction(age === null ? "age-unavailable" : "child-self-only");
                 } else {
                     setFamilyBookingRestriction(null);
                 }
             })
-            .catch(() => active && setFamilyBookingRestriction(null))
+            .catch(() => {
+                if (!active) return;
+                const age = calculateAge(profile.dateOfBirth);
+                setFamilyBookingRestriction(age !== null && age < 12 ? "underage" : null);
+            })
             .finally(() => active && setFamilyLoading(false));
 
         return () => {
@@ -472,11 +491,11 @@ export const BookingPage = () => {
     }
 
     if (!profile) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/login?next=/book" replace />;
     }
 
     return (
-        <div className="careplus-landing careplus-booking min-h-dvh overflow-x-hidden pt-[4.5rem] pb-24 md:pt-22 lg:pb-0">
+        <div className="careplus-landing careplus-booking min-h-dvh overflow-x-hidden pt-[4.5rem] pb-28 md:pt-22 lg:pb-0">
             <LandingHeader />
             <PageBreadcrumb />
             <main className="mx-auto w-full max-w-container px-4 py-6 md:px-8 md:py-10">
@@ -500,7 +519,7 @@ export const BookingPage = () => {
                 </div>
 
                 <div className="mt-4 grid items-start gap-4 md:mt-6 md:gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                    <section className="min-w-0 rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary sm:p-5 md:p-8">
+                    <section ref={stepPanelRef} className="min-w-0 scroll-mt-28 rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary sm:p-5 md:p-8">
                         {step === 0 ? (
                             <div className="flex flex-col gap-4">
                                 <h2 className="text-lg font-semibold text-primary">{t.bookWhoTitle}</h2>
@@ -718,7 +737,10 @@ export const BookingPage = () => {
                     </div>
                 </div>
             </main>
-            <LandingFooter />
+            {/* Mobile already has the sticky Continue bar + bottom nav; footer only adds a big empty gap. */}
+            <div className="max-lg:hidden">
+                <LandingFooter />
+            </div>
 
             <ModalOverlay isDismissable isOpen={rescheduleConfirmOpen} onOpenChange={setRescheduleConfirmOpen}>
                 <Modal className="w-full max-w-md">

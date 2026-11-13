@@ -197,6 +197,7 @@ export const CartPage = () => {
             profileId: profile.id,
             fulfilment,
             paymentLabel: paymentMethod === "card" && card ? `${card.brand} ···· ${card.last4}` : paymentMethod === "fpx" ? t.medCartPayFpx : t.medCartPayCod,
+            paymentKind: paymentMethod,
             addressId: fulfilment === "delivery" ? activeAddress?.id : undefined,
             address: fulfilment === "delivery" && activeAddress ? `${deliveryOptionLabel(activeAddress, t)} · ${formatDeliveryLine(activeAddress)}` : undefined,
             deliveryFee,

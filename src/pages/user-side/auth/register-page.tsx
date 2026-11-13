@@ -4,6 +4,7 @@ import { SignupCardCombined } from "@/components/signup/signup-card-combined";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { authApi } from "@/services/authApi";
+import { safeAppPath } from "@/utils/chat";
 import { normalizeIdentityCard } from "@/utils/identity-card";
 
 type EmailVerificationState = {
@@ -29,6 +30,8 @@ export const RegisterPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const initialEmail = (searchParams.get("email") ?? "").trim().slice(0, 254);
+    const nextPath = safeAppPath(searchParams.get("next"));
+    const loginHref = nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login";
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [usernameDraft, setUsernameDraft] = useState("");
@@ -89,12 +92,13 @@ export const RegisterPage = () => {
     }
 
     if (profile) {
-        return <Navigate to="/home" replace />;
+        return <Navigate to={nextPath ?? "/home"} replace />;
     }
 
     return (
         <SignupCardCombined
             initialEmail={initialEmail}
+            loginHref={loginHref}
             error={error}
             isLoading={isLoading}
             usernameAvailability={usernameAvailability}
@@ -181,7 +185,7 @@ export const RegisterPage = () => {
                         emailVerificationChallengeId: challengeId,
                         emailVerificationToken: verificationToken,
                     });
-                    navigate("/login", { replace: true, state: { notice: t.accountCreated } });
+                    navigate(loginHref, { replace: true, state: { notice: t.accountCreated } });
                 } catch (caught) {
                     const raw = caught instanceof Error ? caught.message : t.authFailed;
                     const known: Record<string, { field: RegistrationField; message: string }> = {

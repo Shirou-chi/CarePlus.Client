@@ -1,10 +1,18 @@
 import {
     MAX_CHAT_MESSAGE_CHARS,
     MAX_CHAT_MESSAGES_PER_HOUR,
+    chatLinkHref,
     newThread,
+    safeAppPath,
     userMessagesInLastHour,
     validateChatSend,
 } from "./chat.ts";
+
+console.assert(safeAppPath("/book") === "/book");
+console.assert(safeAppPath("//evil.com") === null);
+console.assert(chatLinkHref("/book", true) === "/login?next=%2Fbook");
+console.assert(chatLinkHref("/contact", true) === "/contact");
+console.assert(chatLinkHref("/book", false) === "/book");
 
 const hourAgo = Date.now() - 30 * 60 * 1000;
 const rateLimited = [

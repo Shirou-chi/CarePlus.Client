@@ -3,9 +3,10 @@ import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
 import remarkGfm from "remark-gfm";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { cx } from "@/utils/cx";
-import type { ChatMessage } from "@/utils/chat";
+import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { chatLinkHref, type ChatMessage } from "@/utils/chat";
+import { cx } from "@/utils/cx";
 
 type ChatThreadViewProps = {
     messages: ChatMessage[];
@@ -17,6 +18,8 @@ const withoutSourceMarkers = (text: string) => text.replace(/\s*(?:\[\d+\]|【\d
 
 export const ChatThreadView = ({ messages, compact, isThinking }: ChatThreadViewProps) => {
     const { t } = useI18n();
+    const { profile } = useAuth();
+    const isGuest = !profile;
     return (
     <ul className={cx("flex flex-col gap-3", compact ? "px-1" : "px-1 md:px-2")}>
         {messages.map((item) => {
@@ -45,7 +48,7 @@ export const ChatThreadView = ({ messages, compact, isThinking }: ChatThreadView
                                         li: ({ children }) => <li className="pl-0.5">{children}</li>,
                                         a: ({ children, href }) =>
                                             href?.startsWith("/") ? (
-                                                <Link to={href} className="font-semibold text-brand-secondary underline underline-offset-2 hover:text-brand-secondary_hover">
+                                                <Link to={chatLinkHref(href, isGuest)} className="font-semibold text-brand-secondary underline underline-offset-2 hover:text-brand-secondary_hover">
                                                     {children}
                                                 </Link>
                                             ) : (

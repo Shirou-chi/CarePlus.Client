@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useAuth } from "@/providers/auth-provider";
 import {
     GUEST_CHAT_KEY,
+    clearGuestChats,
+    guestThreadsForImport,
     newThread,
     readThreads,
     appendAssistantMessage,
@@ -57,11 +59,25 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         let cancelled = false;
         setThreads([]);
         setIsHistoryLoading(true);
-        api.getChatThreads()
-            .then((savedThreads) => {
-                if (cancelled) return;
-                setThreads(savedThreads as ChatThread[]);
-            })
+
+        const hydrateAccountChats = async () => {
+            const guestThreads = guestThreadsForImport(readThreads(GUEST_CHAT_KEY));
+            if (guestThreads.length > 0) {
+                try {
+                    await api.importChatThreads(guestThreads);
+                    clearGuestChats();
+                } catch {
+                    // Keep guest draft in sessionStorage so a later login can retry.
+                }
+            }
+
+            const savedThreads = await api.getChatThreads();
+            if (cancelled) return;
+            setThreads(savedThreads as ChatThread[]);
+            setHistoryError(false);
+        };
+
+        hydrateAccountChats()
             .catch(() => {
                 if (cancelled) return;
                 setThreads([]);

@@ -11,6 +11,7 @@ const TRAIL_ROOTS = new Set([
     "/account",
     "/book",
     "/visits",
+    "/history",
     "/queue",
     "/invoices",
     "/payments",
@@ -31,6 +32,12 @@ const keepsParent = (from: string, to: string) => {
     if ((to === "/cart" || to === "/checkout") && (from === "/medicine" || from === "/cart" || from.startsWith("/medicine/"))) return true;
     if (to === "/checkout" && from === "/cart") return true;
     if (/^\/invoices\/[^/]+\/pay$/.test(to) && from === "/invoices") return true;
+    if (
+        (to === "/pay/stripe/return" || to === "/pay/sandbox") &&
+        (/^\/invoices\/[^/]+\/pay$/.test(from) || from === "/checkout")
+    ) {
+        return true;
+    }
     if (to === "/clinic-records" && (from === "/invoices" || from === "/payments")) return true;
     if (to === "/notifications" && from === "/account") return true;
     if (to === "/cart" && (from === "/account" || from === "/notifications")) return true;

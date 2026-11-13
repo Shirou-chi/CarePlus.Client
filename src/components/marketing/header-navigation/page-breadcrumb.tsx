@@ -56,6 +56,7 @@ const crumbLabel = (pathname: string, t: Copy, locale: Locale) => {
         "/account": t.account,
         "/book": t.bookTitle,
         "/visits": t.upcomingVisits,
+        "/history": t.visitHistory,
         "/queue": locale === "zh" ? "诊所排队" : "Clinic queue",
         "/invoices": t.invoices,
         "/payments": t.payments,
@@ -71,6 +72,8 @@ const crumbLabel = (pathname: string, t: Copy, locale: Locale) => {
         "/chat": t.chatTitle,
         "/announcements": t.announcements,
         "/notifications": t.notifications,
+        "/pay/stripe/return": t.stripeReturnTitle,
+        "/pay/sandbox": t.paymentSandboxTitle,
     };
     if (page[pathname]) return page[pathname];
 
@@ -108,6 +111,7 @@ export const buildCrumbs = (pathname: string, id: string | undefined, t: Copy, l
         "/account": t.account,
         "/book": t.bookTitle,
         "/visits": t.upcomingVisits,
+        "/history": t.visitHistory,
         "/queue": locale === "zh" ? "诊所排队" : "Clinic queue",
         "/invoices": t.invoices,
         "/payments": t.payments,
@@ -123,10 +127,16 @@ export const buildCrumbs = (pathname: string, id: string | undefined, t: Copy, l
         "/chat": t.chatTitle,
         "/announcements": t.announcements,
         "/notifications": t.notifications,
+        "/pay/stripe/return": t.stripeReturnTitle,
+        "/pay/sandbox": t.paymentSandboxTitle,
     };
 
     if (/^\/invoices\/[^/]+\/pay$/.test(pathname)) {
         return [home, { label: t.invoices, href: "/invoices" }, { label: t.invoicesPayTitle }];
+    }
+
+    if (pathname === "/pay/stripe/return" || pathname === "/pay/sandbox") {
+        return [home, { label: t.stripeReturnTitle }];
     }
 
     if (pathname === "/clinic-records" && from === "invoices") {

@@ -1,5 +1,5 @@
 import type { MedicineOrder, OrderStatus } from "@/utils/order-history";
-import { request, TOKEN_KEY, type ApiResponse } from "./api";
+import { getAuthToken, request, type ApiResponse } from "./api";
 
 type PaymentRow = {
     id: string;
@@ -35,7 +35,7 @@ const toOrder = (row: PaymentRow): MedicineOrder => ({
 
 export const paymentApi = {
     async list(): Promise<MedicineOrder[]> {
-        if (!localStorage.getItem(TOKEN_KEY)) return [];
+        if (!getAuthToken()) return [];
         const result = await request<ApiResponse<PaymentRow[]>>("/api/Payment", { method: "GET" }, true);
         if (!result.isSuccess) {
             throw new Error(result.respMessage || "Medicine payment history could not be loaded.");

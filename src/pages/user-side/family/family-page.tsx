@@ -38,6 +38,23 @@ const initials = (name: string) =>
 
 const emailOk = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
+const calculateAge = (dateOfBirth: string | null) => {
+    if (!dateOfBirth) return null;
+    const born = new Date(`${dateOfBirth}T00:00:00`);
+    if (Number.isNaN(born.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - born.getFullYear();
+    const monthDelta = today.getMonth() - born.getMonth();
+    if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < born.getDate())) age -= 1;
+    return age < 0 ? null : age;
+};
+
+const familyRuleMessage = (t: Copy, message: string) => {
+    if (message === "parent-underage") return t.familyParentUnderage;
+    if (message === "parent-age-verification-required") return t.familyParentAgeUnavailable;
+    return message;
+};
+
 const dialogClass = "flex w-full flex-col items-stretch justify-start rounded-2xl bg-primary p-5 ring-1 ring-secondary outline-hidden sm:p-6";
 
 export const FamilyPage = () => {
@@ -148,7 +165,7 @@ export const FamilyPage = () => {
                                     <Button
                                         color="primary"
                                         size="sm"
-                                        onClick={() => void familyApi.acceptInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed))}
+                                        onClick={() => void familyApi.acceptInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)))}
                                     >
                                         {t.familyAccept}
                                     </Button>
@@ -249,7 +266,18 @@ export const FamilyPage = () => {
                     title={t.familyCreate}
                     onClose={() => setCreating(false)}
                     onSave={(name) => {
-                        void familyApi.create(name).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                        const age = calculateAge(profile.dateOfBirth);
+                        if (age === null) {
+                            setLoadError(t.familyParentAgeUnavailable);
+                            setCreating(false);
+                            return;
+                        }
+                        if (age < 18) {
+                            setLoadError(t.familyParentUnderage);
+                            setCreating(false);
+                            return;
+                        }
+                        void familyApi.create(name).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
                         setCreating(false);
                     }}
                 />
@@ -258,7 +286,7 @@ export const FamilyPage = () => {
                 <AddDialog
                     onClose={() => setAdding(false)}
                     onSave={(person) => {
-                        void familyApi.invite(person.email, person.relation).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                        void familyApi.invite(person.email, person.relation).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
                         setAdding(false);
                         return null;
                     }}
@@ -288,13 +316,13 @@ export const FamilyPage = () => {
                         setRenamingSelf(true);
                     }}
                     onPermission={(permission) => {
-                        void familyApi.updateAccess(openPerson.familyMemberId, permission).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                        void familyApi.updateAccess(openPerson.familyMemberId, permission).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
                     }}
                     onRemove={
                         mine?.isOwner && openPerson.id !== currentPatientId
                             ? () => {
                                   const operation = openPerson.status === "pending" ? familyApi.cancelInvite(openPerson.familyMemberId) : familyApi.removeMember(openPerson.familyMemberId);
-                                  void operation.then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                                  void operation.then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
                                   setOpenId(null);
                               }
                             : undefined
@@ -308,7 +336,7 @@ export const FamilyPage = () => {
                     onClose={() => setLeaving(false)}
                     onLeave={(transferToId) => {
                         const transferMember = active.find((member) => member.id === transferToId);
-                        void familyApi.leave(transferMember?.familyMemberId).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                        void familyApi.leave(transferMember?.familyMemberId).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
                         setLeaving(false);
                         return null;
                     }}

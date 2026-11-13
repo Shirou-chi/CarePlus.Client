@@ -16,7 +16,8 @@ export const shouldHideMobileBottomNav = (pathname: string) =>
     || pathname.startsWith("/staff")
     || pathname.startsWith("/about")
     || pathname.startsWith("/contact")
-    || pathname.startsWith("/announcements");
+    || pathname.startsWith("/announcements")
+    || pathname.startsWith("/pay/");
 
 const meInitials = (name: string) =>
     name
@@ -47,26 +48,26 @@ export const MobileBottomNav = () => {
             className="careplus-mobile-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-secondary bg-primary/90 backdrop-blur-md lg:hidden dark:border-white/10 dark:bg-[#0a0a0a]/92"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-            <div className="mx-auto grid h-16 max-w-lg grid-cols-5 items-end px-1">
+            <div className="mx-auto grid h-16 max-w-lg grid-cols-5 items-center px-1 pb-1 pt-0.5">
                 <Tab to="/home" label={t.navHome} Icon={HomeLine} />
                 <Tab to={visitsHref} label={t.navVisits} Icon={CalendarCheck01} match="/visits" also="/history" />
                 <NavLink
                     to={bookHref}
                     aria-label={t.navBook}
                     aria-current={bookActive ? "page" : undefined}
-                    className="relative -top-5 flex flex-col items-center justify-center outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                    className="relative -top-4 flex flex-col items-center justify-center outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
                     <span className="careplus-ink flex size-14 items-center justify-center rounded-full text-white shadow-lg ring-4 ring-white dark:ring-[#0a0a0a]">
                         <Plus className="size-7" />
                     </span>
-                    <span className={cx("mt-1 text-[11px] font-semibold", bookActive ? "text-brand-secondary" : "text-tertiary")}>{t.navBook}</span>
+                    <span className={cx("mt-0.5 text-[11px] font-semibold leading-none", bookActive ? "text-brand-secondary" : "text-tertiary")}>{t.navBook}</span>
                 </NavLink>
                 <Tab to={chatHref} label={t.navChat} Icon={MessageChatCircle} match="/chat" />
                 <AccountSheet>
                     <AriaButton
                         data-tour="account"
                         aria-label={t.navMe}
-                        className="flex cursor-pointer flex-col items-center justify-center gap-1 pb-2 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                        className="flex cursor-pointer flex-col items-center justify-center gap-1 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                     >
                         <Avatar
                             size="sm"
@@ -75,7 +76,7 @@ export const MobileBottomNav = () => {
                             initials={meInitials(profile.fullName)}
                             className={cx(meActive && "ring-2 ring-brand-secondary ring-offset-2 ring-offset-primary")}
                         />
-                        <span className={cx("text-[11px] font-semibold", meActive ? "text-brand-secondary" : "text-tertiary")}>{t.navMe}</span>
+                        <span className={cx("text-[11px] font-semibold leading-none", meActive ? "text-brand-secondary" : "text-tertiary")}>{t.navMe}</span>
                     </AriaButton>
                 </AccountSheet>
             </div>
@@ -106,12 +107,12 @@ const Tab = ({
             to={to}
             aria-current={active ? "page" : undefined}
             className={cx(
-                "flex flex-col items-center justify-center gap-1 pb-2 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2",
+                "flex flex-col items-center justify-center gap-1 outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2",
                 active ? "text-brand-secondary" : "text-fg-quaternary",
             )}
         >
             <Icon className="size-5" />
-            <span className={cx("text-[11px] font-semibold", active ? "text-brand-secondary" : "text-tertiary")}>{label}</span>
+            <span className={cx("text-[11px] font-semibold leading-none", active ? "text-brand-secondary" : "text-tertiary")}>{label}</span>
         </NavLink>
     );
 };

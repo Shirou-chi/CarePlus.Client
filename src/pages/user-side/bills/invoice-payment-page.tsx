@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router";
+import { Navigate, useLocation, useParams } from "react-router";
 import { FormStatus } from "@/components/application/form-status";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -12,25 +12,28 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { profileApi } from "@/services/profileApi";
-import { invoiceApi } from "@/services/invoiceApi";
 import { useI18n } from "@/providers/locale-provider";
 import { useClinicRecords } from "@/hooks/use-clinic-records";
 import { clinicChargeCategoryLabel, getClinicRecordTotals } from "@/utils/clinic-records";
 import { formatRm } from "@/utils/prescribed-medicine";
+import { stripeApi } from "@/services/stripeApi";
+import { writePaymentCheckout } from "@/utils/payment-checkout";
 import { applyPaymentCards, readProfileSettings, writeProfileSettings } from "@/utils/profile-settings";
 
 type PaymentMethod = "card" | "fpx";
 
 export const InvoicePaymentPage = () => {
     const { id } = useParams();
-    const navigate = useNavigate();
+    const location = useLocation();
     const { profile, isReady } = useAuth();
-    const { invoices, ready, reload } = useOutstandingInvoices();
+    const { invoices, ready } = useOutstandingInvoices();
     const { t, locale } = useI18n();
     const { records, loading: recordsLoading } = useClinicRecords();
     const [method, setMethod] = useState<PaymentMethod>("fpx");
     const [cardId, setCardId] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const notice = (location.state as { notice?: string } | null)?.notice ?? null;
+    const [error, setError] = useState<string | null>(notice);
+    const [busy, setBusy] = useState(false);
     const [cardTick, setCardTick] = useState(0);
 
     useEffect(() => {
@@ -74,17 +77,34 @@ export const InvoicePaymentPage = () => {
     const totals = record ? getClinicRecordTotals(record) : null;
     const sstLabel = record ? t.clinicRecordsSst.replace("{rate}", String(record.sstRate * 100)) : null;
 
-    const confirm = () => {
-        if (method === "card" && !selectedCard) {
-            setError(t.invoicesNoCard);
-            return;
+    const confirm = async () => {
+        if (busy) return;
+        // Stripe Checkout collects the card / FPX bank; saved cards are optional labels only.
+        const paidWith =
+            method === "card" && selectedCard ? `${selectedCard.brand} ···· ${selectedCard.last4}` : method === "card" ? t.medCartPayCard : t.medCartPayFpx;
+        setBusy(true);
+        setError(null);
+        try {
+            writePaymentCheckout({
+                kind: "invoice",
+                invoiceId: invoice.id,
+                amount: invoice.amountDue,
+                methodLabel: paidWith,
+                method,
+                returnTo: "/payments",
+                cancelTo: `/invoices/${invoice.id}/pay`,
+            });
+            const session = await stripeApi.createInvoiceCheckout({
+                invoiceId: invoice.id,
+                method,
+                methodLabel: paidWith,
+                cancelPath: `/invoices/${invoice.id}/pay`,
+            });
+            window.location.assign(session.url);
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : t.invoicesPayFailed);
+            setBusy(false);
         }
-        const paidWith = method === "card" && selectedCard ? `${selectedCard.brand} ···· ${selectedCard.last4}` : t.medCartPayFpx;
-        invoiceApi
-            .pay(invoice.id, paidWith)
-            .then(() => reload())
-            .then((rows) => navigate(rows.some((item) => item.status === "overdue") ? "/invoices" : "/payments"))
-            .catch(() => setError(t.invoicesPayFailed));
     };
 
     return (
@@ -196,10 +216,10 @@ export const InvoicePaymentPage = () => {
 
                         <FormStatus error={error} className="mt-4" />
                         <div className="mt-6 flex flex-col gap-2">
-                            <Button color="primary" size="md" onClick={confirm} isDisabled={method === "card" && cards.length === 0}>
-                                {t.invoicesPayConfirm}
+                            <Button color="primary" size="md" onClick={() => void confirm()} isLoading={busy} showTextWhileLoading>
+                                {t.paymentSandboxApprove}
                             </Button>
-                            <Button color="secondary" size="md" href="/invoices">
+                            <Button color="secondary" size="md" href="/invoices" isDisabled={busy}>
                                 {t.notifCancel}
                             </Button>
                         </div>

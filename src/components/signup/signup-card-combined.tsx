@@ -33,6 +33,7 @@ type SignupCardCombinedProps = {
     emailVerificationSuccess?: string | null;
     emailVerificationLoading?: boolean;
     fieldErrors?: SignupFieldErrors;
+    loginHref?: string;
     onUsernameChange?: (username: string) => void;
     onEmailChange?: (email: string) => void;
     onFieldChange?: (field: SignupField) => void;
@@ -52,6 +53,7 @@ export const SignupCardCombined = ({
     emailVerificationSuccess,
     emailVerificationLoading = false,
     fieldErrors = {},
+    loginHref = "/login",
     onUsernameChange,
     onEmailChange,
     onFieldChange,
@@ -295,7 +297,7 @@ export const SignupCardCombined = ({
 
             <div className="flex justify-center gap-1 text-center">
                 <span className="text-sm text-tertiary">{t.alreadyHaveAccount}</span>
-                <Button href="/login" color="link-color" size="md">
+                <Button href={loginHref} color="link-color" size="md">
                     {t.logIn}
                 </Button>
             </div>
