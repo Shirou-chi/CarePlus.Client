@@ -88,7 +88,7 @@ export const LandingFooter = () => {
                     </div>
                 ))}
             </div>
-            <div className="border-t border-secondary px-4 py-6 text-center text-sm text-tertiary max-lg:pt-5 max-lg:pb-3">
+            <div className="border-t border-secondary px-4 py-6 text-center text-sm text-tertiary">
                 <p>© 2026 CarePlus</p>
             </div>
         </footer>

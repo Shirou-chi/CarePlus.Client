@@ -175,17 +175,24 @@ html:has(.careplus-landing) {
 }
 
 @media (max-width: 1023px) {
-    /* Nav is 4rem + safe-area; raised Book pokes ~1rem above. Keep copyright flush to that. */
+    /* Default clearance for pages without a footer. */
     .careplus-has-mobile-nav .careplus-landing {
-        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    }
+
+    /* Footer owns the nav clearance so copyright sits on the bar (no empty page gap). */
+    .careplus-has-mobile-nav .careplus-landing:has(> footer.careplus-panel) {
+        padding-bottom: 0;
     }
 
     .careplus-has-mobile-nav .careplus-landing > footer.careplus-panel {
         margin-bottom: 0;
+        padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
     }
 
     .careplus-has-mobile-nav .careplus-landing > footer.careplus-panel > div:last-child {
-        padding-bottom: 0.75rem;
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
     }
 
     /* Booking's action bar sits on top of the 4rem bottom nav; the extra bottom padding
