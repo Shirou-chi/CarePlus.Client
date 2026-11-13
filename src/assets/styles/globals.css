@@ -218,12 +218,13 @@ html:has(.careplus-landing) {
 }
 
 /* Chat is a fixed shell; height is owned here so utilities cannot push the composer under the nav. */
-.careplus-landing:has(.careplus-chat-main) {
+.careplus-chat-page {
     height: 100dvh;
     max-height: 100dvh;
+    min-height: 0;
 }
 
-.careplus-landing:has(.careplus-chat-main) .careplus-chat-main {
+.careplus-chat-page .careplus-chat-main {
     min-height: 0;
     flex: 1 1 auto;
 }
@@ -261,16 +262,17 @@ html:has(.careplus-landing) {
         padding-bottom: calc(10rem + env(safe-area-inset-bottom));
     }
 
-    /* Chat: keep a full viewport shell and reserve space under the composer for the
-       4rem nav + raised Book FAB (~2.5rem above the bar) so the input stays tappable. */
-    .careplus-has-mobile-nav .careplus-landing:has(.careplus-chat-main) {
-        height: 100svh;
-        max-height: 100svh;
-        padding-bottom: calc(8rem + env(safe-area-inset-bottom));
-    }
-
-    .careplus-has-mobile-nav .careplus-chat-main {
+    /* Pin chat above the nav + raised Book FAB. Padding failed here because flex:1 on
+       .careplus-landing kept stretching the shell under the fixed nav. */
+    .careplus-has-mobile-nav .careplus-chat-page {
+        position: fixed;
+        inset-inline: 0;
+        top: 0;
+        bottom: calc(7.75rem + env(safe-area-inset-bottom));
+        height: auto;
+        max-height: none;
         padding-bottom: 0;
+        z-index: 1;
     }
 }
 

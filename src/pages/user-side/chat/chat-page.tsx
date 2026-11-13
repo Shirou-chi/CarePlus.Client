@@ -106,7 +106,7 @@ export const ChatPage = () => {
                 : null;
 
     return (
-        <div className="careplus-landing flex flex-col overflow-hidden pt-[4.5rem] md:pt-22">
+        <div className="careplus-landing careplus-chat-page flex min-h-0 flex-col overflow-hidden pt-[4.5rem] md:pt-22">
             <LandingHeader />
             <main className="careplus-chat-main mx-auto flex min-h-0 w-full max-w-container flex-1 flex-col overflow-hidden px-4 py-3 md:px-8 md:py-6">
                 <PageBreadcrumb contained={false} />
