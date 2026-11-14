@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
+import { medicineImageUrl } from '@/components/marketing/medicine/medicine-shot'
 import { medicineApi, type MedicineRecord } from '@/services/medicineApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
@@ -65,6 +66,8 @@ export function MedicinePage() {
   const [error, setError] = useState('')
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
   const announce = (message: string) => {
     setNotice(message)
@@ -133,17 +136,27 @@ export function MedicinePage() {
     setSortOption('Name A–Z')
   }
 
+  const clearPhoto = () => {
+    setPhotoFile(null)
+    setPhotoPreview((current) => {
+      if (current?.startsWith('blob:')) URL.revokeObjectURL(current)
+      return null
+    })
+  }
+
   const closeDialog = () => {
     setDialogMode(null)
     setSelectedMedicine(null)
     setForm(emptyForm)
     setFormError('')
+    clearPhoto()
   }
 
   const openCreate = () => {
     setSelectedMedicine(null)
     setForm(emptyForm)
     setFormError('')
+    clearPhoto()
     setDialogMode('create')
   }
 
@@ -167,7 +180,33 @@ export function MedicinePage() {
       status: normalizeStatus(medicine.status) === 'Available' ? 'Available' : 'Unavailable',
     })
     setFormError('')
+    clearPhoto()
     setDialogMode('edit')
+  }
+
+  const onPhotoSelected = (file: File | undefined) => {
+    if (!file) return
+    const allowed = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp'
+    if (!allowed || file.size > 5 * 1024 * 1024) {
+      setFormError('Use a JPG, PNG, or WebP photo under 5 MB.')
+      return
+    }
+
+    setFormError('')
+    setPhotoPreview((current) => {
+      if (current?.startsWith('blob:')) URL.revokeObjectURL(current)
+      return URL.createObjectURL(file)
+    })
+    setPhotoFile(file)
+  }
+
+  const savePhoto = async (medicineId: string, currentPath?: string | null) => {
+    if (!photoFile) return currentPath ?? null
+    try {
+      return await medicineApi.uploadPhoto(medicineId, photoFile)
+    } catch {
+      return currentPath ?? null
+    }
   }
 
   const updateForm = (field: keyof typeof form, value: string | boolean) => {
@@ -197,9 +236,12 @@ export function MedicinePage() {
     try {
       if (dialogMode === 'create') {
         const created = await medicineApi.create({ medicineName, nameZh, description, descriptionZh, method, methodZh, price, requiresPrescription: form.requiresPrescription })
-        setMedicines((current) => [created, ...current])
+        const previousPath = created.imagePath ?? null
+        const imagePath = await savePhoto(created.medicineId, previousPath)
+        const photoFailed = photoFile != null && imagePath === previousPath
+        setMedicines((current) => [{ ...created, imagePath }, ...current])
         closeDialog()
-        announce('Medicine added successfully.')
+        announce(photoFailed ? 'Medicine added, but the photo could not be saved.' : 'Medicine added successfully.')
       } else if (dialogMode === 'edit' && selectedMedicine) {
         await medicineApi.update({
           medicineId: selectedMedicine.medicineId,
@@ -213,11 +255,14 @@ export function MedicinePage() {
           requiresPrescription: form.requiresPrescription,
           status: form.status,
         })
+        const previousPath = selectedMedicine.imagePath ?? null
+        const imagePath = await savePhoto(selectedMedicine.medicineId, previousPath)
+        const photoFailed = photoFile != null && imagePath === previousPath
         setMedicines((current) => current.map((medicine) => medicine.medicineId === selectedMedicine.medicineId
-          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status }
+          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status, imagePath }
           : medicine))
         closeDialog()
-        announce('Medicine updated successfully.')
+        announce(photoFailed ? 'Medicine updated, but the photo could not be saved.' : 'Medicine updated successfully.')
       }
     } catch (requestError) {
       setFormError(requestError instanceof Error ? requestError.message : 'Unable to save medicine.')
@@ -225,6 +270,9 @@ export function MedicinePage() {
       setSaving(false)
     }
   }
+
+  const existingPhoto = selectedMedicine ? medicineImageUrl(selectedMedicine.medicineId, selectedMedicine.imagePath) : null
+  const shownPhoto = photoPreview || existingPhoto
 
   return (
     <div className="staff-page medicine-page">
@@ -308,12 +356,17 @@ export function MedicinePage() {
           <label>Method / usage instructions (中文)<textarea maxLength={160} rows={2} value={form.methodZh} onChange={(event) => updateForm('methodZh', event.target.value)} /></label>
           <div className="medicine-form-grid"><label>Price (MYR)<input required min="0.01" step="0.01" type="number" value={form.price} onChange={(event) => updateForm('price', event.target.value)} /></label>{dialogMode === 'edit' ? <label>Status<select value={form.status} onChange={(event) => updateForm('status', event.target.value)}><option>Available</option><option>Unavailable</option></select></label> : null}</div>
           <label className="medicine-purchase-toggle"><input checked={form.requiresPrescription} type="checkbox" onChange={(event) => updateForm('requiresPrescription', event.target.checked)} /><span><strong>Prescription required</strong><small>Patients must consult a doctor before purchasing this medicine.</small></span></label>
+          <label className="medicine-photo-field">Photo
+            <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => { onPhotoSelected(event.target.files?.[0]); event.currentTarget.value = '' }} />
+            <small>JPG, PNG, or WebP under 5 MB. This replaces the catalog picture.</small>
+            {shownPhoto ? <img alt="" className="medicine-photo-preview" src={shownPhoto} /> : null}
+          </label>
           {formError ? <p className="medicine-form-error" role="alert">{formError}</p> : null}
           <div className="medicine-dialog-actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={closeDialog}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving} type="submit">{saving ? 'Saving…' : dialogMode === 'create' ? 'Add medicine' : 'Save changes'}</button></div>
         </form>
       </StaffDialog> : null}
       {dialogMode === 'view' && selectedMedicine ? <StaffDialog className="medicine-dialog medicine-view-dialog" closeLabel="Close medicine details" closeOnBackdropClick={false} eyebrow="Medicine details" onClose={closeDialog} title={selectedMedicine.medicineName} titleId="medicine-view-title">
-        <div className="medicine-view-heading"><span className="medicine-avatar"><Icon name="box" size={19} /></span><span><strong>{selectedMedicine.medicineId}</strong><small>{normalizeStatus(selectedMedicine.status)} catalogue item</small></span></div>
+        <div className="medicine-view-heading">{existingPhoto ? <img alt="" className="medicine-photo-preview" src={existingPhoto} /> : <span className="medicine-avatar"><Icon name="box" size={19} /></span>}<span><strong>{selectedMedicine.medicineId}</strong><small>{normalizeStatus(selectedMedicine.status)} catalogue item</small></span></div>
         <dl className="staff-detail-grid">
           <div><dt>Medicine name</dt><dd>{selectedMedicine.medicineName || '—'}</dd></div>
           <div><dt>Medicine name (中文)</dt><dd>{selectedMedicine.nameZh || '—'}</dd></div>

@@ -59,6 +59,17 @@ export const medicineApi = {
     return unwrap(result, 'Unable to create medicine.')
   },
 
+  async uploadPhoto(medicineId: string, file: File): Promise<string | null> {
+    const body = new FormData()
+    body.append('file', file)
+    const result = await request<ApiResponse<{ imagePath?: string | null }>>(`/api/Medicine/${encodeURIComponent(medicineId)}/Photo`, {
+      method: 'POST',
+      body,
+    }, true)
+
+    return unwrap(result, 'Unable to save the medicine photo.').imagePath ?? null
+  },
+
   async update(body: MedicineUpdateRequest): Promise<void> {
     const result = await request<ApiResponse<unknown>>('/api/Medicine/Update', {
       method: 'PUT',
