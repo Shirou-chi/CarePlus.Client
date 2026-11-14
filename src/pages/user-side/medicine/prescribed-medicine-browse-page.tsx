@@ -21,6 +21,8 @@ import {
     type MedicineKind,
 } from "@/utils/prescribed-medicine";
 
+type StockFilter = "all" | "in" | "out";
+
 const kindLabel = (kind: MedicineKind, t: Copy) =>
     ({
         antibiotic: t.medKindAntibiotic,
@@ -35,7 +37,13 @@ export const PrescribedMedicineBrowsePage = () => {
     const { medicines, ready, error, reload } = useMedicineCatalog();
     const clinic = getClinicPharmacy(locale);
     const [view, setView] = useState<CatalogView>("grid");
-    const results = medicines;
+    const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+    const results = medicines.filter((medicine) => {
+        if (stockFilter === "in") return medicine.stock !== 0;
+        if (stockFilter === "out") return medicine.stock === 0;
+        return true;
+    });
+    const stockLabel = stockFilter === "in" ? t.medInStock : stockFilter === "out" ? t.medOutOfStock : t.medStockAll;
 
     if (!isReady) {
         return <div className="careplus-landing min-h-dvh" />;
@@ -70,27 +78,41 @@ export const PrescribedMedicineBrowsePage = () => {
                 <h1 className="sr-only">{t.medTitle}</h1>
                 <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-primary">{t.medResults.replace("{count}", String(results.length))}</p>
-                    <Dropdown.Root>
-                        <Button
-                            size="sm"
-                            color="secondary"
-                            iconLeading={view === "grid" ? Grid01 : Rows01}
-                            iconTrailing={ChevronDown}
-                            className="*:data-icon:size-4"
-                        >
-                            {view === "grid" ? t.medGridView : t.medListView}
-                        </Button>
-                        <Dropdown.Popover className="w-44">
-                            <Dropdown.Menu>
-                                <Dropdown.Item icon={Grid01} onAction={() => setView("grid")}>
-                                    {t.medGridView}
-                                </Dropdown.Item>
-                                <Dropdown.Item icon={Rows01} onAction={() => setView("list")}>
-                                    {t.medListView}
-                                </Dropdown.Item>
-                            </Dropdown.Menu>
-                        </Dropdown.Popover>
-                    </Dropdown.Root>
+                    <div className="flex items-center gap-2">
+                        <Dropdown.Root>
+                            <Button size="sm" color="secondary" iconTrailing={ChevronDown} className="*:data-icon:size-4">
+                                {stockLabel}
+                            </Button>
+                            <Dropdown.Popover className="w-44">
+                                <Dropdown.Menu>
+                                    <Dropdown.Item onAction={() => setStockFilter("all")}>{t.medStockAll}</Dropdown.Item>
+                                    <Dropdown.Item onAction={() => setStockFilter("in")}>{t.medInStock}</Dropdown.Item>
+                                    <Dropdown.Item onAction={() => setStockFilter("out")}>{t.medOutOfStock}</Dropdown.Item>
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown.Root>
+                        <Dropdown.Root>
+                            <Button
+                                size="sm"
+                                color="secondary"
+                                iconLeading={view === "grid" ? Grid01 : Rows01}
+                                iconTrailing={ChevronDown}
+                                className="*:data-icon:size-4"
+                            >
+                                {view === "grid" ? t.medGridView : t.medListView}
+                            </Button>
+                            <Dropdown.Popover className="w-44">
+                                <Dropdown.Menu>
+                                    <Dropdown.Item icon={Grid01} onAction={() => setView("grid")}>
+                                        {t.medGridView}
+                                    </Dropdown.Item>
+                                    <Dropdown.Item icon={Rows01} onAction={() => setView("list")}>
+                                        {t.medListView}
+                                    </Dropdown.Item>
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown.Root>
+                    </div>
                 </div>
 
                 {!ready ? null : error ? (
