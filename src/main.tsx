@@ -27,6 +27,7 @@ const staffPageLoaders = [
     () => import("@/pages/staff-side/rooms/ClinicRoomsPage"),
     () => import("@/pages/staff-side/medicine/MedicinePage"),
     () => import("@/pages/staff-side/medicine-batches/MedicineBatchPage"),
+    () => import("@/pages/staff-side/medicine/MedicineOrdersPage"),
     () => import("@/pages/staff-side/prescriptions/PrescriptionsPage"),
     () => import("@/pages/staff-side/schedule/SchedulePage"),
     () => import("@/pages/staff-side/staff/StaffManagementPage"),
@@ -84,6 +85,7 @@ const ConsultationPage = page(() => import("@/pages/staff-side/consultation/Cons
 const ClinicRoomsPage = page(() => import("@/pages/staff-side/rooms/ClinicRoomsPage"), "ClinicRoomsPage");
 const MedicinePage = page(() => import("@/pages/staff-side/medicine/MedicinePage"), "MedicinePage");
 const MedicineBatchPage = page(() => import("@/pages/staff-side/medicine-batches/MedicineBatchPage"), "MedicineBatchPage");
+const MedicineOrdersPage = page(() => import("@/pages/staff-side/medicine/MedicineOrdersPage"), "MedicineOrdersPage");
 const PrescriptionsPage = page(() => import("@/pages/staff-side/prescriptions/PrescriptionsPage"), "PrescriptionsPage");
 const SchedulePage = page(() => import("@/pages/staff-side/schedule/SchedulePage"), "SchedulePage");
 const StaffManagementPage = page(() => import("@/pages/staff-side/staff/StaffManagementPage"), "StaffManagementPage");
@@ -287,6 +289,7 @@ const AppRoutes = () => {
                         </Route>
                         <Route element={<StaffRouteGuard roles={["Admin", "Pharmacist"]} />}>
                             <Route path="/staff/medicine-batches" element={<MedicineBatchPage />} />
+                            <Route path="/staff/medicine-orders" element={<MedicineOrdersPage />} />
                         </Route>
                         <Route element={<StaffRouteGuard roles={["Admin", "Doctor", "Pharmacist"]} />}>
                             <Route path="/staff/prescriptions" element={<PrescriptionsPage />} />

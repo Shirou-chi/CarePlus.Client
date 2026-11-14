@@ -25,6 +25,7 @@ const emptyForm = {
   method: '',
   methodZh: '',
   price: '',
+  requiresPrescription: false,
   status: 'Available',
 }
 
@@ -162,13 +163,14 @@ export function MedicinePage() {
       method: medicine.method || '',
       methodZh: medicine.methodZh || '',
       price: String(medicine.price),
+      requiresPrescription: medicine.requiresPrescription,
       status: normalizeStatus(medicine.status) === 'Available' ? 'Available' : 'Unavailable',
     })
     setFormError('')
     setDialogMode('edit')
   }
 
-  const updateForm = (field: keyof typeof form, value: string) => {
+  const updateForm = (field: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }))
     setFormError('')
   }
@@ -194,7 +196,7 @@ export function MedicinePage() {
 
     try {
       if (dialogMode === 'create') {
-        const created = await medicineApi.create({ medicineName, nameZh, description, descriptionZh, method, methodZh, price })
+        const created = await medicineApi.create({ medicineName, nameZh, description, descriptionZh, method, methodZh, price, requiresPrescription: form.requiresPrescription })
         setMedicines((current) => [created, ...current])
         closeDialog()
         announce('Medicine added successfully.')
@@ -208,10 +210,11 @@ export function MedicinePage() {
           method,
           methodZh,
           price,
+          requiresPrescription: form.requiresPrescription,
           status: form.status,
         })
         setMedicines((current) => current.map((medicine) => medicine.medicineId === selectedMedicine.medicineId
-          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, status: form.status }
+          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status }
           : medicine))
         closeDialog()
         announce('Medicine updated successfully.')
@@ -273,14 +276,15 @@ export function MedicinePage() {
             <div className="medicine-table-wrap">
               {loading ? <div className="medicine-empty"><Icon name="activity" size={25} /><strong>Loading medicine catalogue</strong><span>Getting the latest medicine records from the clinic API.</span></div> : null}
               {!loading && !error && filteredMedicines.length ? (
-                <table className="medicine-table">
-                  <thead><tr><th scope="col">Medicine</th><th scope="col">Details</th><th scope="col">Price</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+                    <table className="medicine-table">
+                  <thead><tr><th scope="col">Medicine</th><th scope="col">Details</th><th scope="col">Price</th><th scope="col">Purchase access</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody>{filteredMedicines.map((medicine) => {
                     const status = normalizeStatus(medicine.status)
                     return <tr key={medicine.medicineId}>
                       <td><span className="medicine-avatar"><Icon name="box" size={17} /></span><span><strong>{medicine.medicineName}</strong><small>{medicine.medicineId}</small></span></td>
                       <td><span className="medicine-details"><strong>{medicine.form || '—'} · {medicine.kind || '—'}</strong><small>{medicine.pack || medicine.method || medicine.description}</small></span></td>
                       <td><strong className="medicine-price">{formatPrice(medicine.price)}</strong></td>
+                      <td><span className={`medicine-purchase-access${medicine.requiresPrescription ? ' medicine-purchase-access--prescription' : ''}`}>{medicine.requiresPrescription ? 'Prescription required' : 'Direct purchase'}</span></td>
                       <td><span className={`medicine-status medicine-status--${statusClass(status)}`}><i />{status}</span></td>
                       <td><div className="medicine-actions"><button aria-label={`View ${medicine.medicineName}`} className="medicine-view" type="button" onClick={() => openView(medicine)}><Icon name="eye" size={15} /> View</button>{canManage ? <button aria-label={`Edit ${medicine.medicineName}`} className="medicine-edit" type="button" onClick={() => openEdit(medicine)}><Icon name="edit" size={15} /> Edit</button> : null}<button aria-label={`View batches for ${medicine.medicineName}`} className="medicine-batches-link" type="button" onClick={() => navigate(`/staff/medicine-batches?medicineId=${encodeURIComponent(medicine.medicineId)}`)}><Icon name="box" size={15} /> Batches</button></div></td>
                     </tr>
@@ -303,6 +307,7 @@ export function MedicinePage() {
           <label>Method / usage instructions<textarea maxLength={160} rows={2} value={form.method} onChange={(event) => updateForm('method', event.target.value)} /></label>
           <label>Method / usage instructions (中文)<textarea maxLength={160} rows={2} value={form.methodZh} onChange={(event) => updateForm('methodZh', event.target.value)} /></label>
           <div className="medicine-form-grid"><label>Price (MYR)<input required min="0.01" step="0.01" type="number" value={form.price} onChange={(event) => updateForm('price', event.target.value)} /></label>{dialogMode === 'edit' ? <label>Status<select value={form.status} onChange={(event) => updateForm('status', event.target.value)}><option>Available</option><option>Unavailable</option></select></label> : null}</div>
+          <label className="medicine-purchase-toggle"><input checked={form.requiresPrescription} type="checkbox" onChange={(event) => updateForm('requiresPrescription', event.target.checked)} /><span><strong>Prescription required</strong><small>Patients must consult a doctor before purchasing this medicine.</small></span></label>
           {formError ? <p className="medicine-form-error" role="alert">{formError}</p> : null}
           <div className="medicine-dialog-actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={closeDialog}>Cancel</button><button className="staff-button staff-button--primary" disabled={saving} type="submit">{saving ? 'Saving…' : dialogMode === 'create' ? 'Add medicine' : 'Save changes'}</button></div>
         </form>
@@ -320,6 +325,7 @@ export function MedicinePage() {
           <div><dt>Method</dt><dd>{selectedMedicine.method || '—'}</dd></div>
           <div><dt>Method (中文)</dt><dd>{selectedMedicine.methodZh || '—'}</dd></div>
           <div><dt>Price</dt><dd>{formatPrice(selectedMedicine.price)}</dd></div>
+          <div><dt>Purchase access</dt><dd>{selectedMedicine.requiresPrescription ? 'Prescription required' : 'Direct purchase'}</dd></div>
           <div><dt>Status</dt><dd>{normalizeStatus(selectedMedicine.status)}</dd></div>
         </dl>
         <div className="medicine-dialog-actions"><button className="staff-button staff-button--secondary" type="button" onClick={closeDialog}>Close</button>{canManage ? <button className="staff-button staff-button--primary" type="button" onClick={() => openEdit(selectedMedicine)}><Icon name="edit" size={15} /> Edit medicine</button> : null}</div>

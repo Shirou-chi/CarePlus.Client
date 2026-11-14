@@ -269,6 +269,9 @@
   white-space: nowrap;
 }
 
+.medicine-purchase-access { display: inline-flex; width: fit-content; padding: 5px 8px; border-radius: 5px; background: rgba(49, 184, 173, 0.12); color: var(--staff-brand); font-size: 0.61rem; font-weight: 700; white-space: nowrap; }
+.medicine-purchase-access--prescription { background: rgba(229, 165, 75, 0.14); color: #b9791b; }
+
 .medicine-status {
   display: inline-flex;
   gap: 6px;
@@ -482,6 +485,12 @@
   gap: 9px;
   margin-top: 2px;
 }
+
+.medicine-purchase-toggle { display: flex !important; grid-template-columns: auto minmax(0, 1fr); gap: 10px !important; align-items: flex-start; padding: 11px 12px; border: 1px solid var(--staff-line); border-radius: 8px; background: var(--staff-subtle); cursor: pointer; }
+.medicine-purchase-toggle input { width: 17px !important; height: 17px; margin: 1px 0 0; accent-color: var(--staff-brand); }
+.medicine-purchase-toggle span { display: grid; gap: 4px; }
+.medicine-purchase-toggle strong { color: var(--staff-ink); font-size: 0.7rem; }
+.medicine-purchase-toggle small { color: var(--staff-muted); font-size: 0.62rem; font-weight: 400; line-height: 1.4; }
 
 .medicine-dialog-actions .staff-button:disabled { cursor: not-allowed; opacity: 0.55; }
 

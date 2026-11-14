@@ -453,6 +453,13 @@ body:has(.staff-page) .site-back-to-top {
   font-weight: 800;
 }
 
+.staff-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 .staff-user-card__menu-trigger {
   display: grid;
   padding: 3px;

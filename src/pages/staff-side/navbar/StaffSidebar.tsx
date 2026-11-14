@@ -2,6 +2,7 @@ import { startTransition } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { StaffAccountMenu } from '../components/StaffAccountMenu'
+import { StaffProfileAvatar } from '../components/StaffProfileAvatar'
 import { Icon, type IconName } from './StaffIcon'
 
 export type StaffRole = 'Admin' | 'Doctor' | 'Pharmacist'
@@ -27,6 +28,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { label: 'Clinic rooms', icon: 'activity', roles: ['Admin'] },
       { label: 'Medicine', icon: 'box', roles: ['Admin', 'Pharmacist'] },
       { label: 'Medicine batches', icon: 'box', roles: ['Admin', 'Pharmacist'] },
+      { label: 'Medicine orders', icon: 'box', roles: ['Admin', 'Pharmacist'] },
       { label: 'Prescriptions', icon: 'check', roles: ['Admin', 'Doctor', 'Pharmacist'] },
       { label: 'Medical records', icon: 'shield', roles: ['Admin', 'Doctor'] },
     ],
@@ -67,6 +69,7 @@ const staffRoutes: Record<string, string> = {
   'Clinic rooms': '/staff/rooms',
   Medicine: '/staff/medicine',
   'Medicine batches': '/staff/medicine-batches',
+  'Medicine orders': '/staff/medicine-orders',
   Prescriptions: '/staff/prescriptions',
   'Medical records': '/staff/medical-records',
   Notifications: '/staff/notifications',
@@ -78,7 +81,6 @@ export function StaffSidebar({ activeNav, announce, onClose, sidebarOpen }: Staf
   const navigate = useNavigate()
   const { user } = useAuth()
   const currentRole = getStaffRole(user?.role)
-  const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
   const openAccountSettings = () => {
     startTransition(() => navigate('/staff/settings'))
@@ -140,7 +142,7 @@ export function StaffSidebar({ activeNav, announce, onClose, sidebarOpen }: Staf
 
         <div className="staff-sidebar__bottom">
           <div className="staff-user-card">
-            <span className="staff-avatar">{initials}</span>
+            <StaffProfileAvatar />
             <span><strong>{user?.name || 'Staff user'}</strong><small>{user?.role || currentRole}</small></span>
             <StaffAccountMenu onClose={onClose} onSettings={openAccountSettings} triggerClassName="staff-user-card__menu-trigger" triggerLabel="Open account menu"><Icon name="more" size={19} /></StaffAccountMenu>
           </div>

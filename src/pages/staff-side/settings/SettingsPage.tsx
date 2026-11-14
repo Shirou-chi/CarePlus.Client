@@ -6,6 +6,7 @@ import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
+import { StaffDialog } from '../components/StaffDialog'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './SettingsPage.css'
@@ -18,6 +19,15 @@ type StaffSettings = {
   notificationPreference: NotificationPreference
 }
 
+type CropImageSource = {
+  file: File
+  url: string
+  width: number
+  height: number
+}
+
+const PROFILE_IMAGE_SIZE = 512
+
 const SETTINGS_KEY = 'careplus-staff-settings'
 
 const defaultSettings: StaffSettings = {
@@ -28,6 +38,50 @@ const appearanceOptions: { value: ThemeChoice; label: string; description: strin
   { value: 'light', label: 'Light', description: 'A bright workspace for daytime use.', icon: 'sun' },
   { value: 'dark', label: 'Dark', description: 'A softer interface for low-light work.', icon: 'moon' },
 ]
+
+function createSquareCroppedFile(source: CropImageSource, zoom: number) {
+  return new Promise<File>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = PROFILE_IMAGE_SIZE
+      canvas.height = PROFILE_IMAGE_SIZE
+
+      const context = canvas.getContext('2d')
+      if (!context) {
+        reject(new Error('Your browser could not prepare the cropped image.'))
+        return
+      }
+
+      const sourceWidth = image.naturalWidth || source.width
+      const sourceHeight = image.naturalHeight || source.height
+      const cropSize = Math.min(sourceWidth, sourceHeight) / Math.max(1, zoom)
+      const sourceX = (sourceWidth - cropSize) / 2
+      const sourceY = (sourceHeight - cropSize) / 2
+
+      context.imageSmoothingEnabled = true
+      context.imageSmoothingQuality = 'high'
+      context.drawImage(image, sourceX, sourceY, cropSize, cropSize, 0, 0, PROFILE_IMAGE_SIZE, PROFILE_IMAGE_SIZE)
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Your browser could not prepare the cropped image.'))
+          return
+        }
+
+        const baseName = source.file.name
+          .replace(/\.[^/.]+$/, '')
+          .replace(/[^a-z0-9_-]+/gi, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 40) || 'profile'
+
+        resolve(new File([blob], `${baseName}-profile.jpg`, { type: 'image/jpeg' }))
+      }, 'image/jpeg', 0.9)
+    }
+    image.onerror = () => reject(new Error('Unable to read the selected image.'))
+    image.src = source.url
+  })
+}
 
 function readSettings(): StaffSettings {
   if (typeof window === 'undefined') return defaultSettings
@@ -60,6 +114,9 @@ export function SettingsPage() {
   const [doctorPhotoUrl, setDoctorPhotoUrl] = useState<string | null>(null)
   const [doctorPhotoSaving, setDoctorPhotoSaving] = useState(false)
   const [doctorPhotoError, setDoctorPhotoError] = useState('')
+  const [cropImage, setCropImage] = useState<CropImageSource | null>(null)
+  const [cropZoom, setCropZoom] = useState(1)
+  const [cropError, setCropError] = useState('')
 
   const announce = (message: string) => {
     setNotice(message)
@@ -128,6 +185,12 @@ export function SettingsPage() {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
   }, [currentRole, roleDetails?.profilePicture])
+
+  useEffect(() => {
+    return () => {
+      if (cropImage?.url) URL.revokeObjectURL(cropImage.url)
+    }
+  }, [cropImage?.url])
 
   const updateSetting = <K extends keyof StaffSettings>(key: K, value: StaffSettings[K]) => {
     setSettings((current) => ({ ...current, [key]: value }))
@@ -204,7 +267,7 @@ export function SettingsPage() {
     return displayValue(value)
   }
 
-  const handleDoctorPhotoSelected = async (file: File | undefined) => {
+  const handleDoctorPhotoSelected = (file: File | undefined) => {
     if (!file || currentRole !== 'Doctor' || !user?.staffId) return
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
@@ -212,15 +275,51 @@ export function SettingsPage() {
       return
     }
 
-    setDoctorPhotoSaving(true)
     setDoctorPhotoError('')
+    setCropError('')
+
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      if (!image.naturalWidth || !image.naturalHeight) {
+        URL.revokeObjectURL(url)
+        setDoctorPhotoError('Unable to read the selected image.')
+        return
+      }
+
+      setCropImage({ file, url, width: image.naturalWidth, height: image.naturalHeight })
+      setCropZoom(1)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      setDoctorPhotoError('Unable to read the selected image.')
+    }
+    image.src = url
+  }
+
+  const closeCrop = () => {
+    if (doctorPhotoSaving) return
+    setCropImage(null)
+    setCropError('')
+    setCropZoom(1)
+  }
+
+  const saveCroppedDoctorPhoto = async () => {
+    if (!cropImage || currentRole !== 'Doctor' || !user?.staffId) return
+
+    setDoctorPhotoSaving(true)
+    setCropError('')
 
     try {
-      const updated = await staffApi.uploadDoctorPhoto(user.staffId, file)
+      const croppedFile = await createSquareCroppedFile(cropImage, cropZoom)
+      const updated = await staffApi.uploadDoctorPhoto(user.staffId, croppedFile)
       setRoleDetails(updated)
+      window.dispatchEvent(new Event('staff-profile-photo-updated'))
       announce('Doctor profile photo saved successfully.')
+      setCropImage(null)
+      setCropZoom(1)
     } catch (error) {
-      setDoctorPhotoError(error instanceof Error ? error.message : 'Unable to save the doctor profile photo.')
+      setCropError(error instanceof Error ? error.message : 'Unable to save the doctor profile photo.')
     } finally {
       setDoctorPhotoSaving(false)
     }
@@ -328,6 +427,31 @@ export function SettingsPage() {
           </section>
         </div>
       </main>
+      {cropImage ? <StaffDialog
+        className="staff-profile-crop-dialog"
+        closeDisabled={doctorPhotoSaving}
+        closeLabel="Cancel photo crop"
+        closeOnBackdropClick={false}
+        eyebrow="Profile photo"
+        onClose={closeCrop}
+        title="Crop profile photo"
+        titleId="staff-profile-crop-title"
+      >
+        <p className="staff-profile-crop-description">Adjust the framing before saving. Your photo will be stored as a square 512 × 512 image.</p>
+        <div className="staff-profile-crop-preview">
+          <img alt="Profile photo crop preview" src={cropImage.url} style={{ transform: `scale(${cropZoom})` }} />
+          <span aria-hidden="true" className="staff-profile-crop-frame" />
+        </div>
+        <label className="staff-profile-crop-zoom">
+          <span>Zoom</span>
+          <input aria-label="Zoom crop" max="3" min="1" step="0.05" type="range" value={cropZoom} onChange={(event) => setCropZoom(Number(event.target.value))} />
+        </label>
+        {cropError ? <p className="staff-profile-crop-error" role="alert">{cropError}</p> : null}
+        <div className="staff-profile-crop-actions">
+          <button className="staff-button staff-button--secondary" disabled={doctorPhotoSaving} type="button" onClick={closeCrop}>Cancel</button>
+          <button className="staff-button staff-button--primary" disabled={doctorPhotoSaving} type="button" onClick={() => void saveCroppedDoctorPhoto()}>{doctorPhotoSaving ? 'Saving…' : 'Use this photo'}</button>
+        </div>
+      </StaffDialog> : null}
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}
     </div>
   )

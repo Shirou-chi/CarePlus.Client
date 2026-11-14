@@ -11,6 +11,7 @@ export type MedicineCreateRequest = {
   method?: string
   methodZh?: string
   price: number
+  requiresPrescription: boolean
 }
 
 export type MedicineUpdateRequest = {
@@ -22,6 +23,7 @@ export type MedicineUpdateRequest = {
   method?: string
   methodZh?: string
   price?: number
+  requiresPrescription?: boolean
   status?: string
 }
 

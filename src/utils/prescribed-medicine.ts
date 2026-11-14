@@ -26,6 +26,7 @@ export type MedicineRow = {
     methodZh: string | null;
     imageKey: string;
     price: number;
+    requiresPrescription: boolean;
     status: string;
     stock?: number | null;
 };
@@ -44,6 +45,7 @@ export type Medicine = {
     price: number;
     tone: "amber" | "navy" | "teal";
     imageKey: MedicineImageKey;
+    requiresPrescription: boolean;
     /** Units left in unexpired batches. Null when the list has not sent a stock figure. */
     stock: number | null;
 };
@@ -103,6 +105,7 @@ const toMedicine = (row: MedicineRow, locale: Locale): Medicine => {
         price: Number(row.price),
         tone: imageKey === "amox" || imageKey === "ibu" ? "amber" : imageKey === "lora" || imageKey === "clox" ? "teal" : "navy",
         imageKey,
+        requiresPrescription: row.requiresPrescription === true,
         stock: row.stock == null ? null : Math.max(0, Math.floor(Number(row.stock) || 0)),
     };
 };

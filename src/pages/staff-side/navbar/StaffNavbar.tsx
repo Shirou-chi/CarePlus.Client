@@ -1,10 +1,10 @@
 import { startTransition, useId } from 'react'
 import type { Theme } from '../../../components/theme/useTheme'
-import { useAuth } from '@/providers/auth-provider'
 import { useNotices } from '@/providers/notification-provider'
 import { useTheme as useAppTheme } from '@/providers/theme-provider'
 import { useNavigate } from 'react-router'
 import { StaffAccountMenu } from '../components/StaffAccountMenu'
+import { StaffProfileAvatar } from '../components/StaffProfileAvatar'
 import type { StaffRole } from './StaffSidebar'
 import { Icon } from './StaffIcon'
 
@@ -31,11 +31,9 @@ type StaffNavbarProps = {
 
 export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onToggleNotifications, selectedRole, theme, toggleTheme }: StaffNavbarProps) {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { textSize, setTextSize } = useAppTheme()
   const { unread, loading: notificationsLoading, error: notificationsError, markRead, markAllRead } = useNotices()
   const notificationsId = useId()
-  const initials = (user?.name || 'Staff').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
   return (
     <header className="staff-topbar">
@@ -109,7 +107,7 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
           <span aria-hidden="true" className="staff-theme-toggle__track"><span className="staff-theme-toggle__thumb"><Icon name={theme === 'dark' ? 'moon' : 'sun'} size={13} /></span></span>
           <span className="sr-only">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
         </button>
-        <StaffAccountMenu className="staff-account-menu-wrap--topbar" onSettings={() => startTransition(() => navigate('/staff/settings'))} triggerClassName="staff-topbar__avatar" triggerLabel="Open account menu"><span className="staff-avatar">{initials}</span><Icon name="chevronDown" size={16} /></StaffAccountMenu>
+        <StaffAccountMenu className="staff-account-menu-wrap--topbar" onSettings={() => startTransition(() => navigate('/staff/settings'))} triggerClassName="staff-topbar__avatar" triggerLabel="Open account menu"><StaffProfileAvatar /><Icon name="chevronDown" size={16} /></StaffAccountMenu>
       </div>
     </header>
   )
