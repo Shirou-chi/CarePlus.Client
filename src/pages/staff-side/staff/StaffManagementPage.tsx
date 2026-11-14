@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
+import { resolveProfilePictureUrl } from '@/services/profileApi'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
@@ -66,6 +67,36 @@ function roleTone(role: string) {
   if (role === 'Doctor') return 'blue'
   if (role === 'Pharmacist') return 'amber'
   return 'violet'
+}
+
+function StaffAvatar({ member }: { member: StaffRecord }) {
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+
+    if (member.role !== 'Doctor' || !member.profilePicture) {
+      setPhotoUrl(null)
+      return () => { cancelled = true }
+    }
+
+    void resolveProfilePictureUrl(member.profilePicture).then((url) => {
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url)
+        return
+      }
+      objectUrl = url
+      setPhotoUrl(url)
+    })
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [member.profilePicture, member.role])
+
+  return <span className={`staff-management-avatar staff-management-avatar--${roleTone(member.role)}`}>{photoUrl ? <img src={photoUrl} alt="" /> : getInitials(member.name || member.username)}</span>
 }
 
 export function StaffManagementPage() {
@@ -306,7 +337,7 @@ export function StaffManagementPage() {
                   <tbody>
                     {filteredStaff.map((member) => (
                       <tr key={member.staffId}>
-                        <td><span className={`staff-management-avatar staff-management-avatar--${roleTone(member.role)}`}>{getInitials(member.name || member.username)}</span><span><strong>{member.name || member.username}</strong><small>{member.staffId} · @{member.username}</small></span></td>
+                        <td><StaffAvatar member={member} /><span><strong>{member.name || member.username}</strong><small>{member.staffId} · @{member.username}</small></span></td>
                         <td><span className="staff-management-role">{member.role}</span></td>
                         <td><span className="staff-management-contact"><strong>{member.email}</strong><small>{member.phone || 'No phone number'}</small></span></td>
                         <td><span className={`staff-management-status staff-management-status--${member.status.toLowerCase()}`}><i />{member.status}</span></td>
@@ -332,7 +363,7 @@ export function StaffManagementPage() {
           title={viewingStaff.name || viewingStaff.username}
           titleId="staff-management-view-title"
         >
-            <div className="staff-management-profile-heading"><span className={`staff-management-avatar staff-management-avatar--${roleTone(viewingStaff.role)}`}>{getInitials(viewingStaff.name || viewingStaff.username)}</span><span><strong>{viewingStaff.role}</strong><small>{viewingStaff.status} account</small></span></div>
+            <div className="staff-management-profile-heading"><StaffAvatar member={viewingStaff} /><span><strong>{viewingStaff.role}</strong><small>{viewingStaff.status} account</small></span></div>
             <dl className="staff-detail-grid">
               <div><dt>Staff ID</dt><dd>{viewingStaff.staffId}</dd></div>
               <div><dt>Username</dt><dd>@{viewingStaff.username}</dd></div>

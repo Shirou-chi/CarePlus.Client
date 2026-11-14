@@ -262,6 +262,13 @@
   font-weight: 800;
 }
 
+.staff-management-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 .staff-management-avatar--blue { background: #e9f0fc; color: #4f83d2; }
 .staff-management-avatar--amber { background: #fff2df; color: #c1852f; }
 .staff-management-avatar--violet { background: #efebff; color: #7465d7; }

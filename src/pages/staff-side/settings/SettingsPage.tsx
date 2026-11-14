@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '@/providers/theme-provider'
+import { resolveProfilePictureUrl } from '@/services/profileApi'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
@@ -56,6 +57,9 @@ export function SettingsPage() {
   const [roleDetails, setRoleDetails] = useState<StaffRecord | null>(null)
   const [roleDetailsLoading, setRoleDetailsLoading] = useState(false)
   const [roleDetailsError, setRoleDetailsError] = useState('')
+  const [doctorPhotoUrl, setDoctorPhotoUrl] = useState<string | null>(null)
+  const [doctorPhotoSaving, setDoctorPhotoSaving] = useState(false)
+  const [doctorPhotoError, setDoctorPhotoError] = useState('')
 
   const announce = (message: string) => {
     setNotice(message)
@@ -99,6 +103,31 @@ export function SettingsPage() {
 
     return () => { cancelled = true }
   }, [user?.role, user?.staffId])
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+
+    if (currentRole !== 'Doctor' || !roleDetails?.profilePicture) {
+      setDoctorPhotoUrl(null)
+      return () => { cancelled = true }
+    }
+
+    setDoctorPhotoUrl(null)
+    void resolveProfilePictureUrl(roleDetails.profilePicture).then((url) => {
+      if (cancelled) {
+        if (url) URL.revokeObjectURL(url)
+        return
+      }
+      objectUrl = url
+      setDoctorPhotoUrl(url)
+    })
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [currentRole, roleDetails?.profilePicture])
 
   const updateSetting = <K extends keyof StaffSettings>(key: K, value: StaffSettings[K]) => {
     setSettings((current) => ({ ...current, [key]: value }))
@@ -175,6 +204,28 @@ export function SettingsPage() {
     return displayValue(value)
   }
 
+  const handleDoctorPhotoSelected = async (file: File | undefined) => {
+    if (!file || currentRole !== 'Doctor' || !user?.staffId) return
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setDoctorPhotoError('Use a JPG, PNG, or WebP photo under 5 MB.')
+      return
+    }
+
+    setDoctorPhotoSaving(true)
+    setDoctorPhotoError('')
+
+    try {
+      const updated = await staffApi.uploadDoctorPhoto(user.staffId, file)
+      setRoleDetails(updated)
+      announce('Doctor profile photo saved successfully.')
+    } catch (error) {
+      setDoctorPhotoError(error instanceof Error ? error.message : 'Unable to save the doctor profile photo.')
+    } finally {
+      setDoctorPhotoSaving(false)
+    }
+  }
+
   return (
     <div className="staff-page staff-settings-page">
       <StaffSidebar activeNav="Settings" announce={announce} onClose={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
@@ -186,8 +237,8 @@ export function SettingsPage() {
           <section className="staff-card staff-settings-profile-card">
               <div className="staff-settings-profile-card__header">
                 <div className="staff-settings-profile-identity">
-                  <span className="staff-settings-profile-avatar">{initials}</span>
-                  <div><p className="staff-card__eyebrow">Account profile</p></div>
+                  <span className="staff-settings-profile-avatar">{doctorPhotoUrl ? <img src={doctorPhotoUrl} alt="Doctor profile" /> : initials}</span>
+                  <div><p className="staff-card__eyebrow">Account profile</p>{currentRole === 'Doctor' ? <label className="staff-settings-profile-photo-action">{doctorPhotoSaving ? 'Uploading…' : 'Change profile photo'}<input accept="image/jpeg,image/png,image/webp" disabled={doctorPhotoSaving} type="file" onChange={(event) => { void handleDoctorPhotoSelected(event.target.files?.[0]); event.currentTarget.value = '' }} /></label> : null}{doctorPhotoError ? <small className="staff-settings-profile-photo-error" role="alert">{doctorPhotoError}</small> : null}</div>
                 </div>
               </div>
 
