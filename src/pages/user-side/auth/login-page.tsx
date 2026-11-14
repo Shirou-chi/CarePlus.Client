@@ -20,8 +20,9 @@ export const LoginPage = () => {
     const [searchParams] = useSearchParams();
     const nextPath = safeAppPath(searchParams.get("next")) ?? "/home";
     const notice = (location.state as { notice?: string } | null)?.notice ?? null;
+    const signedOut = searchParams.get("expired") === "1";
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(notice);
+    const [success, setSuccess] = useState<string | null>(signedOut ? t.sessionIdle : notice);
     const [isLoading, setIsLoading] = useState(false);
     const [twoFactor, setTwoFactor] = useState<TwoFactorStep | null>(null);
 

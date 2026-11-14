@@ -134,7 +134,9 @@ function redirectExpiredSession(token: string) {
 
   const path = window.location.pathname.toLowerCase()
   const isStaffPage = path === '/staff' || path.startsWith('/staff/')
-  window.location.replace(isStaffPage ? '/staff/login' : '/login')
+  const target = isStaffPage ? '/staff/login' : '/login'
+  if (path === target && new URLSearchParams(window.location.search).get('expired') === '1') return
+  window.location.replace(`${target}?expired=1`)
 }
 
 export async function request<T>(
