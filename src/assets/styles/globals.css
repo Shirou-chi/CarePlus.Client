@@ -268,10 +268,11 @@ html:has(.careplus-landing) {
         padding-bottom: calc(10rem + env(safe-area-inset-bottom));
     }
 
-    /* Chat page owns its bottom inset via inline style; don't add the default landing pad. */
+    /* Chat page owns height via inline style; kill landing flex/min-size that pinned it to 100dvh. */
     .careplus-has-mobile-nav .careplus-chat-page {
-        padding-bottom: 0;
-        flex: none;
+        padding-bottom: 0 !important;
+        flex: none !important;
+        min-height: 0 !important;
     }
 }
 

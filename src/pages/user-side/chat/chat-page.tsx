@@ -56,7 +56,7 @@ export const ChatPage = () => {
     const { active, isGuest, send, sendError, isSending, clearSendError, startNew } = useChat();
     const [draft, setDraft] = useState("");
     const [historyOpen, setHistoryOpen] = useState(false);
-    // ponytail: inline bottom beats globals flex:1 / height:100dvh that kept the shell under the Book FAB
+    // ponytail: explicit height — top+bottom lost to flex min-height:auto resolving to 100dvh
     const liftForMobileNav = useMobileNavClearance(Boolean(profile));
     const shellStyle: CSSProperties | undefined = liftForMobileNav
         ? {
@@ -64,9 +64,10 @@ export const ChatPage = () => {
               left: 0,
               right: 0,
               top: 0,
-              bottom: "calc(8rem + env(safe-area-inset-bottom, 0px))",
-              height: "auto",
-              maxHeight: "none",
+              bottom: "auto",
+              height: "calc(100svh - 8rem - env(safe-area-inset-bottom, 0px))",
+              maxHeight: "calc(100svh - 8rem - env(safe-area-inset-bottom, 0px))",
+              minHeight: 0,
               paddingBottom: 0,
               zIndex: 1,
           }
