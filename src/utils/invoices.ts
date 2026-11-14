@@ -22,16 +22,16 @@ export const isOverdueLockedPath = (pathname: string) =>
         "/about",
         "/contact",
         "/chat",
+        "/home",
     ].some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
-/** Safe href while overdue: keep account/home/invoice routes, otherwise send to Outstanding invoices. */
+/** Safe href while overdue: keep account and invoice routes, otherwise send to Outstanding invoices. */
 export const overdueSafeHref = (href: string, overdue: boolean) => {
     if (!overdue) return href;
     const path = href.split(/[?#]/)[0] || href;
     if (
         path === "/account"
         || path.startsWith("/account/")
-        || path === "/home"
         || path === "/invoices"
         || path.startsWith("/invoices/")
         || path.startsWith("/pay/")
