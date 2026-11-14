@@ -58,7 +58,7 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
     }
     const account = page("/account", t.viewProfile, t.viewProfile, "account profile settings preferences security card address 账户 个人资料 设置 地址 银行卡");
     const invoices = page("/invoices", t.invoices, t.invoicesHint, "bill due overdue payment unpaid invoice 账单 逾期 未付款");
-    if (overdue) return [...common, account, invoices];
+    if (overdue) return [...common.filter((item) => item.href !== "/chat"), account, invoices];
     return [
         ...common,
         page("/book", t.bookVisit, t.bookVisitHint, "booking appointment schedule timeslot consultation 预约 挂号 时段"),

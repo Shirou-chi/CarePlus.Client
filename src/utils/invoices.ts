@@ -21,6 +21,7 @@ export const isOverdueLockedPath = (pathname: string) =>
         "/announcements",
         "/about",
         "/contact",
+        "/chat",
     ].some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
 /** Safe href while overdue: keep account/home/invoice routes, otherwise send to Outstanding invoices. */

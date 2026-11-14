@@ -65,8 +65,8 @@ export const ChatPage = () => {
               right: 0,
               top: 0,
               bottom: "auto",
-              height: "calc(100svh - 8rem - env(safe-area-inset-bottom, 0px))",
-              maxHeight: "calc(100svh - 8rem - env(safe-area-inset-bottom, 0px))",
+              height: "calc(100svh - 5rem - env(safe-area-inset-bottom, 0px))",
+              maxHeight: "calc(100svh - 5rem - env(safe-area-inset-bottom, 0px))",
               minHeight: 0,
               paddingBottom: 0,
               zIndex: 1,
@@ -191,9 +191,6 @@ export const ChatPage = () => {
                                         {primaryPrompt.cta}
                                     </Button>
                                 </div>
-                                <div className="mt-5 w-full max-w-md">
-                                    <ChatQuickPrompts disabled={isSending} onSelect={(prompt) => void send(prompt)} />
-                                </div>
                             </div>
                         ) : (
                             <ChatThreadView messages={messages} isThinking={isSending} />
@@ -201,9 +198,7 @@ export const ChatPage = () => {
                     </div>
 
                     <div className="shrink-0 border-t border-primary/15 px-3 py-3 md:px-4 md:py-4">
-                        {messages.length > 0 ? (
-                            <ChatQuickPrompts disabled={isSending} onSelect={(prompt) => void send(prompt)} />
-                        ) : null}
+                        <ChatQuickPrompts disabled={isSending} onSelect={(prompt) => void send(prompt)} />
                         <ChatComposer
                             value={draft}
                             error={composerError}
