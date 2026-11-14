@@ -1,10 +1,9 @@
-import { useState, type FC } from "react";
-import { CalendarCheck01, File06, LayoutLeft, MedicalCross, Plus, Stars02 } from "@untitledui/icons";
+import { useEffect, useState, type CSSProperties, type FC } from "react";
+import { CalendarCheck01, LayoutLeft, Plus, Stars02 } from "@untitledui/icons";
 import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
-import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { ChatComposer } from "@/components/marketing/chat/chat-composer";
@@ -15,7 +14,32 @@ import { useAnimatedChatScroll } from "@/components/marketing/chat/use-animated-
 import { useAuth } from "@/providers/auth-provider";
 import { useChat } from "@/providers/chat-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { cx } from "@/utils/cx";
 import { greetingSlot, MAX_CHAT_MESSAGE_CHARS, MAX_CHAT_MESSAGES_PER_HOUR } from "@/utils/chat";
+
+/** True on small screens when the signed-in bottom nav is covering the lower viewport. */
+const useMobileNavClearance = (enabled: boolean) => {
+    const [active, setActive] = useState(false);
+    useEffect(() => {
+        if (!enabled) {
+            setActive(false);
+            return;
+        }
+        const mq = window.matchMedia("(max-width: 1023px)");
+        const sync = () => setActive(mq.matches);
+        sync();
+        mq.addEventListener("change", sync);
+        return () => mq.removeEventListener("change", sync);
+    }, [enabled]);
+    return active;
+};
+
+const resetChatViewport = () => {
+    // ponytail: iOS Safari leaves the page scrolled after the keyboard closes
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+};
 
 type Prompt = {
     id: string;
@@ -32,6 +56,30 @@ export const ChatPage = () => {
     const { active, isGuest, send, sendError, isSending, clearSendError, startNew } = useChat();
     const [draft, setDraft] = useState("");
     const [historyOpen, setHistoryOpen] = useState(false);
+    // ponytail: explicit height — top+bottom lost to flex min-height:auto resolving to 100dvh
+    const liftForMobileNav = useMobileNavClearance(Boolean(profile));
+    const shellStyle: CSSProperties | undefined = liftForMobileNav
+        ? {
+              position: "fixed",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: "auto",
+              height: "calc(100svh - 5rem - env(safe-area-inset-bottom, 0px))",
+              maxHeight: "calc(100svh - 5rem - env(safe-area-inset-bottom, 0px))",
+              minHeight: 0,
+              paddingBottom: 0,
+              zIndex: 1,
+          }
+        : undefined;
+
+    // Logged-in: leaving /chat and coming back mounts this page again with a blank chat; prior threads stay in history.
+    useEffect(() => {
+        if (isGuest) return;
+        startNew();
+        setDraft("");
+        clearSendError();
+    }, []);
     const slot = greetingSlot();
     const hello = profile
         ? (slot === "morning" ? t.chatMorningNamed : slot === "afternoon" ? t.chatAfternoonNamed : t.chatEveningNamed).replace("{name}", profile.fullName)
@@ -43,36 +91,38 @@ export const ChatPage = () => {
     const messages = active?.messages ?? [];
     const latestMessageId = messages.at(-1)?.id;
     const threadScrollRef = useAnimatedChatScroll(`${latestMessageId ?? "empty"}:${isSending}`);
-    const prompts: Prompt[] = [
-        {
-            id: "book",
-            Icon: CalendarCheck01,
-            title: t.chatAskBook,
-            body: t.chatAskBookBody,
-            cta: t.chatAskNow,
-            prompt: t.chatAskBookPrompt,
-        },
-        {
-            id: "records",
-            Icon: File06,
-            title: t.chatAskRecords,
-            body: t.chatAskRecordsBody,
-            cta: t.chatAskNow,
-            prompt: t.chatAskRecordsPrompt,
-        },
-        {
-            id: "medicine",
-            Icon: MedicalCross,
-            title: t.chatAskMeds,
-            body: t.chatAskMedsBody,
-            cta: t.chatAskNow,
-            prompt: t.chatAskMedsPrompt,
-        },
-    ];
+    const primaryPrompt: Prompt = {
+        id: "book",
+        Icon: CalendarCheck01,
+        title: t.chatAskBook,
+        body: t.chatAskBookBody,
+        cta: t.chatAskNow,
+        prompt: t.chatAskBookPrompt,
+    };
+    const PrimaryPromptIcon = primaryPrompt.Icon;
+
+    useEffect(() => {
+        resetChatViewport();
+        let lastHeight = window.visualViewport?.height ?? window.innerHeight;
+        const onViewport = () => {
+            const height = window.visualViewport?.height ?? window.innerHeight;
+            // Only snap back when the keyboard is closing (viewport grows again).
+            if (height > lastHeight + 40) {
+                resetChatViewport();
+            }
+            lastHeight = height;
+        };
+        window.visualViewport?.addEventListener("resize", onViewport);
+        return () => window.visualViewport?.removeEventListener("resize", onViewport);
+    }, []);
 
     const sendDraft = async () => {
         if (await send(draft)) {
             setDraft("");
+            // Dismiss the keyboard so the layout can snap back.
+            (document.activeElement as HTMLElement | null)?.blur?.();
+            window.setTimeout(resetChatViewport, 50);
+            window.setTimeout(resetChatViewport, 300);
         }
     };
 
@@ -90,9 +140,15 @@ export const ChatPage = () => {
                 : null;
 
     return (
-        <div className="careplus-landing flex min-h-dvh flex-col overflow-x-hidden pt-[4.5rem] md:pt-22">
+        <div
+            className={cx(
+                "careplus-landing careplus-chat-page flex min-h-0 flex-col overflow-hidden pt-[4.5rem] md:pt-22",
+                liftForMobileNav ? "fixed inset-x-0 top-0 z-[1]" : "h-dvh max-h-dvh",
+            )}
+            style={shellStyle}
+        >
             <LandingHeader />
-            <main className="careplus-chat-main mx-auto flex h-[calc(100dvh-4.5rem)] w-full max-w-container flex-col overflow-hidden px-4 py-4 md:h-[calc(100dvh-5.5rem)] md:px-8 md:py-6">
+            <main className="careplus-chat-main mx-auto flex min-h-0 w-full max-w-container flex-1 flex-col overflow-hidden px-4 py-3 md:px-8 md:py-6">
                 <PageBreadcrumb contained={false} />
                 <div className="flex shrink-0 items-center gap-2">
                     <Button color="secondary" size="sm" iconLeading={Plus} onClick={startNew}>
@@ -103,29 +159,38 @@ export const ChatPage = () => {
                     </div>
                 </div>
 
-                {isGuest ? <p className="mt-4 shrink-0 rounded-xl bg-primary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.chatGuestHint}</p> : null}
+                {isGuest ? (
+                    <div className="mt-3 flex shrink-0 flex-wrap items-center gap-3 rounded-xl bg-primary px-4 py-3 ring-1 ring-secondary">
+                        <p className="min-w-0 flex-1 text-sm text-tertiary">{t.chatGuestHint}</p>
+                        <Button href="/login" color="primary" size="sm">
+                            {t.signIn}
+                        </Button>
+                    </div>
+                ) : null}
 
-                <div className="mx-auto mt-6 flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl border border-primary/15 bg-primary shadow-xs ring-1 ring-primary/20">
-                    <div ref={threadScrollRef} className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5 [overflow-anchor:none]">
+                <div className="mx-auto mt-4 flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl border border-primary/15 bg-primary shadow-xs ring-1 ring-primary/20 md:mt-6">
+                    <div ref={threadScrollRef} className="careplus-chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-5 [overflow-anchor:none]">
                         {messages.length === 0 ? (
-                            <div className="flex w-full flex-col items-center pb-2">
+                            <div className="flex w-full flex-col items-center pb-4">
                                 <FeaturedIcon icon={Stars02} size="xl" color="brand" theme="modern" />
-                                <h1 className="mt-6 text-center text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">
+                                <h1 className="mt-4 text-center text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">
                                     {hello}
                                 </h1>
                                 <p className="mt-2 text-center text-md text-tertiary">{t.chatSubhead}</p>
-                                <ul className="mt-10 grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    {prompts.map((item) => (
-                                        <li key={item.id} className="flex h-full flex-col rounded-2xl bg-secondary p-5 ring-1 ring-secondary">
-                                            <item.Icon className="size-5 text-fg-brand-primary" />
-                                            <h2 className="mt-4 text-md font-semibold text-primary">{item.title}</h2>
-                                            <p className="mt-2 flex-1 text-sm text-tertiary">{item.body}</p>
-                                            <Button color="secondary" size="sm" className="mt-5 w-full rounded-full" isDisabled={isSending} onClick={() => void send(item.prompt)}>
-                                                {item.cta}
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <div className="mt-6 w-full max-w-md rounded-2xl bg-secondary p-5 ring-1 ring-secondary">
+                                    <PrimaryPromptIcon className="size-5 text-fg-brand-primary" />
+                                    <h2 className="mt-3 text-md font-semibold text-primary">{primaryPrompt.title}</h2>
+                                    <p className="mt-2 text-sm text-tertiary">{primaryPrompt.body}</p>
+                                    <Button
+                                        color="primary"
+                                        size="sm"
+                                        className="mt-4 w-full rounded-full"
+                                        isDisabled={isSending}
+                                        onClick={() => void send(primaryPrompt.prompt)}
+                                    >
+                                        {primaryPrompt.cta}
+                                    </Button>
+                                </div>
                             </div>
                         ) : (
                             <ChatThreadView messages={messages} isThinking={isSending} />
@@ -148,7 +213,6 @@ export const ChatPage = () => {
                     </div>
                 </div>
             </main>
-            <LandingFooter />
 
             <SlideoutMenu isOpen={historyOpen} onOpenChange={setHistoryOpen}>
                 {({ close }) => (

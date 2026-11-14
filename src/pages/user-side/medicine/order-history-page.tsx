@@ -18,7 +18,7 @@ import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy, type Locale } from "@/providers/locale-provider";
 import { copyText } from "@/utils/document-download";
 import { orderApi } from "@/services/orderApi";
-import { isCompletedOrder, orderStatusColor, orderStatusLabel, showsPaymentHistory, type MedicineOrder } from "@/utils/order-history";
+import { isCompletedOrder, orderStatusColor, orderStatusLabel, showsPaymentHistory, trackingLabels, type MedicineOrder } from "@/utils/order-history";
 import { CLINIC_POINT, locateAddress, mapEmbedSrc, type MapPoint } from "@/utils/order-map";
 import { formatRm, isMedicineId, medicineName, type Medicine } from "@/utils/prescribed-medicine";
 import { cx } from "@/utils/cx";
@@ -54,12 +54,7 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
         }
         let cancel = false;
         orderApi
-            .list({
-                confirmed: t.checkoutStepConfirmed,
-                ready: orderStatusLabel(locale, "ready_pickup"),
-                pickedUp: orderStatusLabel(locale, "picked_up"),
-                delivered: orderStatusLabel(locale, "delivered"),
-            })
+            .list(trackingLabels(locale))
             .then((remote) => {
                 if (!cancel) setOrders(remote);
             })
@@ -69,7 +64,7 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
         return () => {
             cancel = true;
         };
-    }, [locale, profile?.id, t.checkoutStepConfirmed]);
+    }, [locale, profile?.id]);
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
@@ -127,7 +122,9 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
                         </div>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-                        <Input placeholder={t.search} icon={SearchLg} value={query} onChange={setQuery} className="w-full sm:w-64" />
+                        {!completed ? (
+                            <Input placeholder={t.search} icon={SearchLg} value={query} onChange={setQuery} className="w-full sm:w-64" />
+                        ) : null}
                         <Select selectedKey={sort} onSelectionChange={(key) => setSort(String(key) as SortKey)} className="w-full sm:w-44" items={[
                             { id: "newest", label: t.ordersSortNewest },
                             { id: "oldest", label: t.ordersSortOldest },

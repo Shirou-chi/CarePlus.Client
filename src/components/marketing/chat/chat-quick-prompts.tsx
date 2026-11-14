@@ -14,7 +14,7 @@ export const ChatQuickPrompts = ({ compact, disabled, onSelect }: ChatQuickPromp
     return (
         <div className="mb-2 min-w-0">
             <p className="mb-1.5 px-0.5 text-xs font-semibold text-tertiary">{t.chatQuickTitle}</p>
-            <div className={cx("flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]", !compact && "sm:flex-wrap")}>
+            <div className={cx("scrollbar-hide flex gap-2 pb-1", compact ? "overflow-x-auto" : "flex-wrap")}>
                 {prompts.map((prompt) => (
                     <button
                         key={prompt}

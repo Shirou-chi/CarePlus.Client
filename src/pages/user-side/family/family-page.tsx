@@ -14,6 +14,7 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { familyApi, type FamilyMember, type FamilyOverview, type FamilyPermission, type FamilyRelation } from "@/services/familyApi";
+import { containsDangerousMarkup } from "@/utils/plain-text";
 
 const relations: FamilyRelation[] = ["parent", "child"];
 const grantPermissions: FamilyPermission[] = ["parent", "child"];
@@ -52,6 +53,17 @@ const calculateAge = (dateOfBirth: string | null) => {
 const familyRuleMessage = (t: Copy, message: string) => {
     if (message === "parent-underage") return t.familyParentUnderage;
     if (message === "parent-age-verification-required") return t.familyParentAgeUnavailable;
+    if (message === "No active patient account was found for this email.") return t.familyInviteNotFound;
+    if (message === "You cannot invite yourself.") return t.familySelf;
+    if (message === "This patient already belongs to a family.") return t.familyDuplicate;
+    if (message === "This patient already has a pending family invitation.") return t.familyDuplicate;
+    if (message === "Only the family owner can invite members.") return t.familyInviteOwnerOnly;
+    if (message === "Enter a valid email address.") return t.familyEmailInvalid;
+    if (message === "We could not send the invitation email. Please try again later.") return t.familyInviteEmailFailed;
+    if (message === "Family name cannot contain HTML or script characters." || message === "Text fields cannot contain HTML or script characters.") {
+        return t.familyNameInvalid;
+    }
+    if (message === "Family name must be between 2 and 100 characters.") return t.familyNameRequired;
     return message;
 };
 
@@ -68,6 +80,7 @@ export const FamilyPage = () => {
     const [renaming, setRenaming] = useState(false);
     const [renamingSelf, setRenamingSelf] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [confirmCreateDecline, setConfirmCreateDecline] = useState(false);
     const [leaving, setLeaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
@@ -133,6 +146,22 @@ export const FamilyPage = () => {
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
 
+    const startCreateFamily = () => {
+        setLoadError(null);
+        if (invites.length > 0) {
+            setConfirmCreateDecline(true);
+            return;
+        }
+        setCreating(true);
+    };
+
+    const createDeclineBody =
+        invites.length > 1
+            ? t.familyCreateDeclineBodyMany
+            : t.familyCreateDeclineBody
+                  .replace("{name}", invites[0]?.family.members.find((member) => member.permission === "parent")?.name ?? invites[0]?.family.name ?? "")
+                  .replace("{family}", invites[0]?.family.name ?? "");
+
     const currentPatientId = overview?.currentPatientId || profile.id;
     const mine = family?.members.find((member) => member.id === currentPatientId) ?? null;
     const isParent = mine?.permission === "parent";
@@ -165,14 +194,26 @@ export const FamilyPage = () => {
                                     <Button
                                         color="primary"
                                         size="sm"
-                                        onClick={() => void familyApi.acceptInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)))}
+                                        onClick={() => {
+                                            setLoadError(null);
+                                            void familyApi
+                                                .acceptInvite(invite.member.familyMemberId)
+                                                .then(setOverview)
+                                                .catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
+                                        }}
                                     >
                                         {t.familyAccept}
                                     </Button>
                                     <Button
                                         color="secondary"
                                         size="sm"
-                                        onClick={() => void familyApi.declineInvite(invite.member.familyMemberId).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed))}
+                                        onClick={() => {
+                                            setLoadError(null);
+                                            void familyApi
+                                                .declineInvite(invite.member.familyMemberId)
+                                                .then(setOverview)
+                                                .catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
+                                        }}
                                     >
                                         {t.familyDecline}
                                     </Button>
@@ -182,15 +223,22 @@ export const FamilyPage = () => {
                     </ul>
                 ) : null}
 
-                {!family ? (
+                {!family && invites.length === 0 ? (
                     <div className="mt-6 rounded-2xl bg-primary px-5 py-8 ring-1 ring-secondary">
                         <h2 className="text-lg font-semibold text-primary">{t.familyNone}</h2>
                         <p className="mt-2 max-w-xl text-sm text-tertiary">{t.familyNoneBody}</p>
-                        <Button color="primary" size="sm" className="mt-4" onClick={() => setCreating(true)}>
+                        <Button color="primary" size="sm" className="mt-4" onClick={startCreateFamily}>
                             {t.familyCreate}
                         </Button>
                     </div>
-                ) : (
+                ) : !family && invites.length > 0 ? (
+                    <div className="mt-6 rounded-2xl bg-primary px-5 py-6 ring-1 ring-secondary">
+                        <p className="text-sm text-tertiary">{t.familyPendingCreateHint}</p>
+                        <Button color="secondary" size="sm" className="mt-3" onClick={startCreateFamily}>
+                            {t.familyCreate}
+                        </Button>
+                    </div>
+                ) : family ? (
                     <>
                         <section className="mt-6 divide-y divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
                             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
@@ -246,7 +294,7 @@ export const FamilyPage = () => {
                             </>
                         ) : null}
                     </>
-                )}
+                ) : null}
             </main>
             <LandingFooter />
 
@@ -257,6 +305,18 @@ export const FamilyPage = () => {
                     onSave={(name) => {
                         void familyApi.rename(name).then(setOverview).catch((cause) => setLoadError(cause instanceof Error ? cause.message : t.authFailed));
                         setRenaming(false);
+                    }}
+                />
+            ) : null}
+            {confirmCreateDecline ? (
+                <ConfirmDialog
+                    title={t.familyCreateDeclineTitle}
+                    body={createDeclineBody}
+                    confirm={t.familyCreateDeclineConfirm}
+                    onClose={() => setConfirmCreateDecline(false)}
+                    onConfirm={() => {
+                        setConfirmCreateDecline(false);
+                        setCreating(true);
                     }}
                 />
             ) : null}
@@ -285,10 +345,14 @@ export const FamilyPage = () => {
             {adding ? (
                 <AddDialog
                     onClose={() => setAdding(false)}
-                    onSave={(person) => {
-                        void familyApi.invite(person.email, person.relation).then(setOverview).catch((cause) => setLoadError(familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed)));
-                        setAdding(false);
-                        return null;
+                    onSave={async (person) => {
+                        try {
+                            setOverview(await familyApi.invite(person.email, person.relation));
+                            setAdding(false);
+                            return null;
+                        } catch (cause) {
+                            return familyRuleMessage(t, cause instanceof Error ? cause.message : t.authFailed);
+                        }
                     }}
                 />
             ) : null}
@@ -400,11 +464,16 @@ const RenameDialog = ({ current, title, label, requiredMessage, onClose, onSave 
                         className="mt-4"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            if (name.trim().length < 2 || name.trim().length > 100) {
+                            const next = name.trim();
+                            if (next.length < 2 || next.length > 100) {
                                 setError(requiredMessage ?? t.familyNameRequired);
                                 return;
                             }
-                            onSave(name);
+                            if (containsDangerousMarkup(next)) {
+                                setError(t.familyNameInvalid);
+                                return;
+                            }
+                            onSave(next);
                         }}
                     >
                         <Input label={label ?? t.familyName} value={name} onChange={setName} maxLength={100} />
@@ -424,15 +493,16 @@ const RenameDialog = ({ current, title, label, requiredMessage, onClose, onSave 
     );
 };
 
-const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: { email: string; relation: FamilyRelation }) => string | null }) => {
+const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: { email: string; relation: FamilyRelation }) => Promise<string | null> }) => {
     const { t } = useI18n();
     const [email, setEmail] = useState("");
     const [relation, setRelation] = useState<FamilyRelation>("child");
     const [fieldError, setFieldError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
     const relationOptions = relations.map((id) => ({ id, label: relationLabel(t, id) }));
 
     return (
-        <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && onClose()}>
+        <ModalOverlay isDismissable={!busy} isOpen onOpenChange={(open) => !open && !busy && onClose()}>
             <Modal className="w-full max-w-md">
                 <Dialog className={dialogClass}>
                     <h2 className="text-lg font-semibold text-primary">{t.familyAdd}</h2>
@@ -440,12 +510,18 @@ const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: 
                         className="mt-4 flex flex-col gap-4"
                         onSubmit={(event) => {
                             event.preventDefault();
+                            if (busy) return;
                             if (!emailOk(email.trim())) {
                                 setFieldError(t.familyEmailInvalid);
                                 return;
                             }
-                            const message = onSave({ email, relation });
-                            if (message) setFieldError(message);
+                            setFieldError(null);
+                            setBusy(true);
+                            void onSave({ email: email.trim(), relation })
+                                .then((message) => {
+                                    if (message) setFieldError(message);
+                                })
+                                .finally(() => setBusy(false));
                         }}
                     >
                         <Input
@@ -457,17 +533,18 @@ const AddDialog = ({ onClose, onSave }: { onClose: () => void; onSave: (person: 
                                 if (fieldError) setFieldError(null);
                             }}
                             isInvalid={Boolean(fieldError)}
-                            hint={fieldError ?? undefined}
+                            isDisabled={busy}
                         />
-                        <Select label={t.familyRelation} selectedKey={relation} onSelectionChange={(key) => key && setRelation(String(key) as FamilyRelation)} items={relationOptions}>
+                        <Select isDisabled={busy} label={t.familyRelation} selectedKey={relation} onSelectionChange={(key) => key && setRelation(String(key) as FamilyRelation)} items={relationOptions}>
                             {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
                         </Select>
+                        <FormStatus error={fieldError} />
                         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                            <Button type="button" color="tertiary" size="md" onClick={onClose}>
+                            <Button type="button" color="tertiary" size="md" isDisabled={busy} onClick={onClose}>
                                 {t.notifCancel}
                             </Button>
-                            <Button type="submit" color="primary" size="md">
-                                {t.familyInvite}
+                            <Button type="submit" color="primary" size="md" isDisabled={busy}>
+                                {busy ? t.familyInviteSending : t.familyInvite}
                             </Button>
                         </div>
                     </form>

@@ -1,4 +1,4 @@
-import { baseUrl, formatApiErrorDetails, request, type ApiResponse } from './api'
+import { baseUrl, formatApiErrorDetails, getAuthToken, request, type ApiResponse } from './api'
 
 export type LeaveStatus = 'Pending' | 'Approved' | 'Declined'
 
@@ -108,4 +108,13 @@ export const leaveApi = {
 
 export function leaveDocumentUrl(documentReference: string) {
   return `${baseUrl}/api/${documentReference.replace(/^\//, '')}`
+}
+
+/** Authenticated leave doc fetch (static mount removed). */
+export async function resolveLeaveDocumentUrl(documentReference: string): Promise<string> {
+  const response = await fetch(leaveDocumentUrl(documentReference), {
+    headers: { Authorization: `Bearer ${getAuthToken() ?? ''}` },
+  })
+  if (!response.ok) throw new Error('Unable to open this document.')
+  return URL.createObjectURL(await response.blob())
 }

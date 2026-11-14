@@ -6,14 +6,14 @@ import { noticeMeta } from "@/components/marketing/notifications/notification-it
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { useNotices } from "@/providers/notification-provider";
-import { TOASTED_NOTICES_KEY, type ClinicNotice } from "@/utils/notifications";
+import { TOASTED_NOTICES_KEY, WELCOME_PENDING_KEY, type ClinicNotice } from "@/utils/notifications";
 import { readProfileSettings } from "@/utils/profile-settings";
 
 const MAX_TOASTS = 3;
 const TOAST_MS = 5000;
 const FADE_MS = 700;
 
-type Toast = { id: string; notice: ClinicNotice } | { id: string; count: number };
+type Toast = { id: string; notice: ClinicNotice } | { id: string; count: number } | { id: string; welcomeName: string };
 
 const readSeen = () => {
     try {
@@ -22,6 +22,8 @@ const readSeen = () => {
         return new Set<string>();
     }
 };
+
+const firstName = (fullName: string) => fullName.trim().split(/\s+/)[0] || fullName.trim();
 
 export const NotificationToasts = () => {
     const { profile, isReady } = useAuth();
@@ -53,15 +55,25 @@ export const NotificationToasts = () => {
 
         const seen = readSeen();
         const fresh = unread.filter((notice) => !seen.has(notice.id) && (notificationLevel === "all" || notice.kind === "visit" || notice.kind === "payment"));
-        if (fresh.length === 0) return;
+        const welcomePending = sessionStorage.getItem(WELCOME_PENDING_KEY) === "1";
 
-        fresh.forEach((notice) => seen.add(notice.id));
-        sessionStorage.setItem(TOASTED_NOTICES_KEY, JSON.stringify([...seen]));
-        if (pathname.startsWith("/notifications")) return;
+        if (fresh.length > 0) {
+            if (welcomePending) sessionStorage.removeItem(WELCOME_PENDING_KEY);
+            fresh.forEach((notice) => seen.add(notice.id));
+            sessionStorage.setItem(TOASTED_NOTICES_KEY, JSON.stringify([...seen]));
+            if (pathname.startsWith("/notifications")) return;
 
-        const next: Toast[] =
-            fresh.length > MAX_TOASTS ? [{ id: `many-${Date.now()}`, count: fresh.length }] : fresh.map((notice) => ({ id: notice.id, notice }));
-        setToasts((current) => [...next, ...current].slice(0, MAX_TOASTS));
+            const next: Toast[] =
+                fresh.length > MAX_TOASTS ? [{ id: `many-${Date.now()}`, count: fresh.length }] : fresh.map((notice) => ({ id: notice.id, notice }));
+            setToasts((current) => [...next, ...current].slice(0, MAX_TOASTS));
+            return;
+        }
+
+        // ponytail: one welcome toast per login when there is nothing else to pop up
+        if (welcomePending && unread.length === 0) {
+            sessionStorage.removeItem(WELCOME_PENDING_KEY);
+            setToasts([{ id: `welcome-${Date.now()}`, welcomeName: firstName(profile.fullName) }]);
+        }
     }, [isReady, loading, notificationLevel, pathname, profile, settingsTick, unread]);
 
     const dismiss = useCallback((id: string) => setToasts((current) => current.filter((toast) => toast.id !== id)), []);
@@ -98,6 +110,9 @@ const ToastCard = ({ toast, onDismiss, onRead }: { toast: Toast; onDismiss: (id:
     const { t, locale } = useI18n();
     const navigate = useNavigate();
     const [leaving, setLeaving] = useState(false);
+    const welcomeName = "welcomeName" in toast ? toast.welcomeName : null;
+    const notice = "notice" in toast ? toast.notice : null;
+    const count = "count" in toast ? toast.count : 0;
 
     useEffect(() => {
         const timer = window.setTimeout(() => setLeaving(true), TOAST_MS);
@@ -110,18 +125,28 @@ const ToastCard = ({ toast, onDismiss, onRead }: { toast: Toast; onDismiss: (id:
         return () => window.clearTimeout(timer);
     }, [leaving, onDismiss, toast.id]);
 
-    const notice = "notice" in toast ? toast.notice : null;
-    const count = "count" in toast ? toast.count : 0;
-
     const beginLeave = () => {
         if (!leaving) setLeaving(true);
     };
 
     const open = () => {
+        if (welcomeName) {
+            beginLeave();
+            return;
+        }
         if (notice) onRead(notice.id);
         beginLeave();
         navigate(notice?.href || "/notifications");
     };
+
+    const title = welcomeName
+        ? t.welcomeBackToast.replace("{name}", welcomeName)
+        : notice
+          ? notice.title
+          : t.notifToastMany.replace("{count}", String(count));
+    const body = welcomeName ? t.welcomeBackToastBody : notice ? notice.message : null;
+    const meta = welcomeName ? (locale === "zh" ? "刚刚" : "Just now") : notice ? noticeMeta(notice, t, locale) : t.notifToastView;
+    const initials = welcomeName ? welcomeName.slice(0, 2).toUpperCase() : notice ? notice.initials : String(Math.min(count, 99));
 
     return (
         <div
@@ -132,11 +157,11 @@ const ToastCard = ({ toast, onDismiss, onRead }: { toast: Toast; onDismiss: (id:
             }
         >
             <button type="button" onClick={open} className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 text-left outline-focus-ring focus-visible:outline-2">
-                <Avatar size="md" initials={notice ? notice.initials : String(Math.min(count, 99))} alt={notice?.actor ?? ""} />
+                <Avatar size="md" initials={initials} alt={notice?.actor ?? welcomeName ?? ""} />
                 <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-primary">{notice ? notice.title : t.notifToastMany.replace("{count}", String(count))}</span>
-                    {notice ? <span className="mt-0.5 line-clamp-2 block text-sm text-secondary">{notice.message}</span> : null}
-                    <span className="mt-1 block text-xs text-tertiary">{notice ? noticeMeta(notice, t, locale) : t.notifToastView}</span>
+                    <span className="block text-sm font-semibold text-primary">{title}</span>
+                    {body ? <span className="mt-0.5 line-clamp-2 block text-sm text-secondary">{body}</span> : null}
+                    <span className="mt-1 block text-xs text-tertiary">{meta}</span>
                 </span>
             </button>
             <button

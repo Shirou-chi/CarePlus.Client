@@ -20,6 +20,25 @@ export const medicineShots: Record<MedicineImageKey, Record<ShotView, string>> =
         blister: "/medicine/lora-blister.jpg",
         label: "/medicine/lora-label.jpg",
     },
+    // ponytail: reuse the 12 local shots in different primary "box" slots so catalog cards are not identical
+    ibu: {
+        bottle: "/medicine/amox-label.jpg",
+        box: "/medicine/amox-blister.jpg",
+        blister: "/medicine/amox-box.jpg",
+        label: "/medicine/amox-bottle.jpg",
+    },
+    ceti: {
+        bottle: "/medicine/para-label.jpg",
+        box: "/medicine/para-blister.jpg",
+        blister: "/medicine/para-box.jpg",
+        label: "/medicine/para-bottle.jpg",
+    },
+    clox: {
+        bottle: "/medicine/lora-label.jpg",
+        box: "/medicine/lora-blister.jpg",
+        blister: "/medicine/lora-box.jpg",
+        label: "/medicine/lora-bottle.jpg",
+    },
 };
 
 export const MedicineShot = ({ medicine, view, className }: { medicine: Medicine; view: ShotView; className?: string }) => (

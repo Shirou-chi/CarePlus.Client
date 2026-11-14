@@ -34,6 +34,7 @@ import { requestHomeTour } from "@/components/marketing/home/home-tour";
 import { HeaderNotifications } from "@/components/marketing/notifications/header-notifications";
 import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
+import { overdueSafeHref } from "@/utils/invoices";
 import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
@@ -61,18 +62,20 @@ const iconGhost =
 const useServiceGroups = (): ServiceGroup[] => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
-    const bookHref = profile ? "/book" : "/login";
-    const visitsHref = profile ? "/visits" : "/login";
-    const queueHref = profile ? "/queue" : "/login";
-    const invoicesHref = profile ? "/invoices" : "/login";
-    const paymentsHref = profile ? "/payments" : "/login";
-    const ordersHref = profile ? "/orders" : "/login";
-    const familyHref = profile ? "/family" : "/login";
-    const recordsHref = profile ? "/clinic-records" : "/login";
-    const healthRecordsHref = profile ? "/records" : "/login";
-    const medicineHref = profile ? "/medicine" : "/login";
-    const cartHref = profile ? "/cart" : "/login";
-    const notificationsHref = profile ? "/notifications" : "/login";
+    const overdue = useOverdueLock();
+    const href = (path: string) => overdueSafeHref(profile ? path : "/login", overdue);
+    const bookHref = href("/book");
+    const visitsHref = href("/visits");
+    const queueHref = href("/queue");
+    const invoicesHref = href("/invoices");
+    const paymentsHref = href("/payments");
+    const ordersHref = href("/orders");
+    const familyHref = href("/family");
+    const recordsHref = href("/clinic-records");
+    const healthRecordsHref = href("/records");
+    const medicineHref = href("/medicine");
+    const cartHref = href("/cart");
+    const notificationsHref = href("/notifications");
     return [
         {
             id: "visits",
@@ -82,7 +85,7 @@ const useServiceGroups = (): ServiceGroup[] => {
             links: [
                 { title: t.bookVisit, subtitle: t.bookVisitHint, href: bookHref },
                 { title: t.upcomingVisits, subtitle: t.upcomingVisitsHint, href: visitsHref },
-                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: profile ? "/history" : "/login" },
+                { title: t.visitHistory, subtitle: t.visitHistoryHint, href: href("/history") },
                 { title: locale === "zh" ? "诊所排队" : "Clinic queue", subtitle: locale === "zh" ? "报到并查看实时排队进度" : "Check in and follow your live queue", href: queueHref },
             ],
         },
@@ -130,7 +133,7 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.announcementsHint,
             Icon: Bell01,
             links: [
-                { title: t.announcements, subtitle: t.announcementsHint, href: "/announcements" },
+                { title: t.announcements, subtitle: t.announcementsHint, href: href("/announcements") },
                 { title: t.notifications, subtitle: profile ? t.notifEmptyHint : t.notifGuestHint, href: notificationsHref },
             ],
         },
@@ -158,7 +161,7 @@ export const LandingHeader = () => {
     return (
         <header className="fixed inset-x-0 top-0 z-50 border-b border-secondary bg-primary/90 backdrop-blur-md dark:border-white/10 dark:bg-[#0a0a0a]/92">
             <div className="mx-auto flex h-[4.5rem] w-full max-w-container items-center justify-between gap-4 px-4 md:h-22 md:px-8">
-                <CarePlusLogo href={profile ? "/home" : "/"} className="max-[479px]:[&>span]:sr-only" />
+                <CarePlusLogo href={profile ? (overdue ? "/invoices" : "/home") : "/"} className="max-[479px]:[&>span]:sr-only" />
 
                 <div className="hidden items-center lg:flex">
                     <ServicesMega />
@@ -170,7 +173,7 @@ export const LandingHeader = () => {
                             <LanguageSwitch />
                         </div>
                     )}
-                    {profile ? <TourButton /> : null}
+                    {profile && !overdue ? <TourButton /> : null}
                     <div className="mx-3 h-8 w-px bg-border-secondary" />
                     {profile ? (
                         <Dropdown.Root>
@@ -234,8 +237,13 @@ export const LandingHeader = () => {
                     ) : (
                         <>
                             <ThemeToggle />
-                            <TextSizeToggle />
                             <LanguageSwitch />
+                            <a
+                                href="/login"
+                                className="ml-1 rounded-full bg-[#456f75] px-3 py-1.5 text-sm font-semibold text-white outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                            >
+                                {t.signIn}
+                            </a>
                         </>
                     )}
                 </div>

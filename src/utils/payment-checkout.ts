@@ -10,8 +10,9 @@ export type PaymentCheckoutPending =
           returnTo: string;
           cancelTo: string;
       }
-    | {
+      | {
           kind: "medicine";
+          orderId?: string;
           amount: number;
           methodLabel: string;
           method: "card" | "fpx";

@@ -29,6 +29,7 @@ import {
 } from "@/utils/delivery-address";
 import { profileApi } from "@/services/profileApi";
 import {
+    buyableUnits,
     formatRm,
     getClinicPharmacy,
     MAX_MEDICINE_UNITS,
@@ -274,7 +275,7 @@ export const CartPage = () => {
                                             key={line.medicineId}
                                             t={t}
                                             line={line}
-                                            maxQty={Math.max(0, MAX_MEDICINE_UNITS - (bought[line.medicineId] ?? 0))}
+                                            maxQty={medicine ? buyableUnits(Math.max(0, MAX_MEDICINE_UNITS - (bought[line.medicineId] ?? 0)), medicine.stock) : Math.max(0, MAX_MEDICINE_UNITS - (bought[line.medicineId] ?? 0))}
                                             medicine={medicine}
                                             pharmacyName={pharmacyName}
                                             checked={selected.has(line.medicineId)}

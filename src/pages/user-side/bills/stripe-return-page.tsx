@@ -15,7 +15,7 @@ import { orderApi } from "@/services/orderApi";
 import { stripeApi } from "@/services/stripeApi";
 import { clearCheckoutDraft, readCheckoutDraft } from "@/utils/checkout-draft";
 import { PROFILE_ADDRESS_ID } from "@/utils/delivery-address";
-import { orderStatusLabel } from "@/utils/order-history";
+import { trackingLabels } from "@/utils/order-history";
 import { clearPaymentCheckout, readPaymentCheckout } from "@/utils/payment-checkout";
 import { getClinicPharmacy, medicineName } from "@/utils/prescribed-medicine";
 
@@ -54,6 +54,17 @@ export const StripeReturnPage = () => {
                 }
 
                 const draft = readCheckoutDraft();
+                const labels = trackingLabels(locale);
+                const savedOrderId = (pending?.kind === "medicine" ? pending.orderId : undefined) || completed.orderId;
+                if (savedOrderId) {
+                    const order = await orderApi.pay(savedOrderId, sessionId, labels);
+                    if (draft) removeMany(draft.lines.map((line) => line.medicineId));
+                    clearCheckoutDraft();
+                    clearPaymentCheckout();
+                    navigate(pending?.returnTo ?? "/orders", { replace: true, state: { placedId: order.id } });
+                    return;
+                }
+
                 if (!draft || draft.profileId !== profile.id) {
                     clearPaymentCheckout();
                     navigate("/cart", { replace: true });
@@ -71,17 +82,12 @@ export const StripeReturnPage = () => {
                         qty: line.qty,
                     };
                 });
-                const labels = {
-                    confirmed: t.checkoutStepConfirmed,
-                    ready: orderStatusLabel(locale, "ready_pickup"),
-                    pickedUp: orderStatusLabel(locale, "picked_up"),
-                    delivered: orderStatusLabel(locale, "delivered"),
-                };
                 const addressId = draft.addressId && draft.addressId !== PROFILE_ADDRESS_ID ? Number(draft.addressId) : null;
                 const order = await orderApi.place(
                     {
                         fulfilment: draft.fulfilment,
                         paymentMethod: completed.methodLabel || draft.paymentLabel,
+                        stripeSessionId: sessionId,
                         deliveryAddressId: Number.isFinite(addressId) ? addressId : null,
                         deliveryFee: draft.deliveryFee,
                         lines,

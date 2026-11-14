@@ -103,9 +103,17 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     );
 
     const active = threads.find((item) => item.id === activeId) ?? (profile ? null : (threads[0] ?? null));
-    const select = useCallback((id: string) => {
-        setActiveId(id);
-    }, []);
+    const select = useCallback(
+        (id: string) => {
+            setActiveId(id);
+            // Drop unused empty drafts so a blank "New chat" never sticks in history.
+            const pruned = threads.filter((thread) => thread.messages.length > 0 || thread.id === id);
+            if (pruned.length !== threads.length) {
+                updateThreads(pruned);
+            }
+        },
+        [threads, updateThreads],
+    );
 
     const deleteThreads = useCallback(
         async (ids: string[]) => {
@@ -143,7 +151,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
         const next = newThread();
-        updateThreads(upsertThread(threads, next));
+        // Keep only threads that already have messages + this draft (draft stays out of history UI).
+        const saved = threads.filter((thread) => thread.messages.length > 0);
+        updateThreads(upsertThread(saved, next));
         setActiveId(next.id);
     }, [threads, updateThreads]);
 

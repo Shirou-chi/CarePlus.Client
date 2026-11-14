@@ -8,6 +8,7 @@ import {
     sanitizeCart,
     setCartQty,
     wholeQty,
+    buyableUnits,
     type CartLine,
     type Medicine,
 } from "./prescribed-medicine.ts";
@@ -28,10 +29,15 @@ const catalog: Medicine[] = [
         price: 12.5,
         tone: "amber",
         imageKey: "amox",
+        stock: 4,
     },
 ];
 
 const checks = [
+    buyableUnits(5, null) === 5,
+    buyableUnits(5, 0) === 0,
+    buyableUnits(5, 2) === 2,
+    buyableUnits(1, 80) === 1,
     roomLeft(0) === 5,
     roomLeft(5) === 0,
     clampAddQty(4, 3) === 1,

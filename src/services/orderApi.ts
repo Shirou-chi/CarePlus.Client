@@ -1,4 +1,4 @@
-import { normalizeOrderStatus, trackingStepsFor, type MedicineOrder } from "@/utils/order-history";
+import { normalizeOrderStatus, trackingStepsFor, type MedicineOrder, type TrackingLabels } from "@/utils/order-history";
 import { getAuthToken, request, type ApiResponse } from "./api";
 
 type MedicineOrderResponse = {
@@ -18,12 +18,12 @@ type MedicineOrderResponse = {
 export type PlaceMedicineOrderRequest = {
     fulfilment: "pickup" | "delivery";
     paymentMethod: string;
+    /** Required for card/FPX; server verifies Stripe paid this session before marking Paid. */
+    stripeSessionId?: string | null;
     deliveryAddressId?: number | null;
     deliveryFee: number;
     lines: { medicineId: string; name: string; detail: string; unitPrice: number; qty: number }[];
 };
-
-export type TrackingLabels = { confirmed: string; ready: string; pickedUp: string; delivered: string };
 
 const toOrder = (row: MedicineOrderResponse, labels: TrackingLabels): MedicineOrder => {
     const fulfilment = row.fulfilment === "delivery" ? "delivery" : "pickup";
@@ -65,6 +65,18 @@ export const orderApi = {
         );
         if (!result.isSuccess || !result.data) {
             throw new Error(result.respMessage || "Unable to place the order.");
+        }
+        return toOrder(result.data, labels);
+    },
+
+    async pay(orderId: string, stripeSessionId: string, labels: TrackingLabels): Promise<MedicineOrder> {
+        const result = await request<ApiResponse<MedicineOrderResponse>>(
+            `/api/MedicineOrder/${encodeURIComponent(orderId)}/pay`,
+            { method: "POST", body: JSON.stringify({ stripeSessionId }) },
+            true,
+        );
+        if (!result.isSuccess || !result.data) {
+            throw new Error(result.respMessage || "Unable to mark the order paid.");
         }
         return toOrder(result.data, labels);
     },

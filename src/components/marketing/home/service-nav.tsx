@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type PointerEvent as ReactPointerEvent, type SVGProps } from "react";
+import { Heading } from "react-aria-components";
+import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { HOME_TOUR_EVENT, HomeTour, takeHomeTourRequest } from "@/components/marketing/home/home-tour";
 import { peekItemWidth } from "@/components/marketing/home/service-nav-layout";
+import { CloseButton } from "@/components/base/buttons/close-button";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { cx } from "@/utils/cx";
@@ -13,16 +16,19 @@ export type ServiceNavItem = {
     tone: string;
 };
 
-export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
+export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allItems: ServiceNavItem[] }) => {
     const { t } = useI18n();
     const { profile, hasCompletedTutorial, completeTutorial } = useAuth();
     const frame = useRef<HTMLElement>(null);
     const scroller = useRef<HTMLDivElement>(null);
-    const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+    const itemRefs = useRef<(HTMLElement | null)[]>([]);
+    const allMenuRefs = useRef<(HTMLElement | null)[]>([]);
+    const tourTargets = useRef<(HTMLElement | null)[]>([]);
     const drag = useRef<{ x: number; left: number; pointerId: number; captured: boolean } | null>(null);
     const blockClick = useRef(false);
     const [canScroll, setCanScroll] = useState(false);
     const [tourStep, setTourStep] = useState<number | null>(null);
+    const [allMenuOpen, setAllMenuOpen] = useState(false);
 
     useEffect(() => {
         if (!profile?.id || hasCompletedTutorial === null) {
@@ -46,6 +52,7 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
             void completeTutorial().catch(() => undefined);
         }
         setTourStep(null);
+        setAllMenuOpen(false);
     }, [completeTutorial, hasCompletedTutorial, profile?.id]);
 
     useEffect(() => {
@@ -53,7 +60,7 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
         const el = scroller.current;
         if (!frameEl || !el) return;
         const apply = () => {
-            const links = [...el.querySelectorAll("a")];
+            const links = [...el.querySelectorAll<HTMLElement>("[data-service-item]")];
             links.forEach((link) => {
                 link.style.width = "";
                 link.style.minWidth = "";
@@ -143,7 +150,57 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
         const tutorialVisible = [...document.querySelectorAll<HTMLElement>("[data-tour='tutorial']")].some((node) => node.getClientRects().length > 0);
         return tutorialVisible ? t.tourNav : t.tourNavMobile;
     };
-    const tourItem = tourStep === null ? null : tourStep === 0 ? { label: t.tourNavTitle, hint: tourNavHint() } : items[tourStep - 1];
+
+    // Step 0 = Tutorial, step 1 = All, then each All-menu item one by one.
+    const tourTotal = 2 + allItems.length;
+    const tourOpensAll = tourStep !== null && tourStep >= 2;
+    const showAllMenu = allMenuOpen || tourOpensAll;
+
+    tourTargets.current = [itemRefs.current[0] ?? null, ...allMenuRefs.current.slice(0, allItems.length)];
+
+    const tourItem =
+        tourStep === null
+            ? null
+            : tourStep === 0
+              ? { label: t.tourNavTitle, hint: tourNavHint() }
+              : tourStep === 1
+                ? { label: items[0]?.label ?? t.homeAll, hint: items[0]?.hint ?? t.homeAllHint }
+                : allItems[tourStep - 2]
+                  ? { label: allItems[tourStep - 2].label, hint: allItems[tourStep - 2].hint }
+                  : null;
+
+    // Wait until All-menu links exist before the first grid highlight; later steps reuse the menu.
+    const [tourReady, setTourReady] = useState(true);
+    useEffect(() => {
+        const syncTargets = () => {
+            tourTargets.current = [itemRefs.current[0] ?? null, ...allItems.map((_, index) => allMenuRefs.current[index] ?? null)];
+        };
+
+        if (tourStep === null || tourStep < 2) {
+            setTourReady(true);
+            return;
+        }
+
+        if (tourStep > 2) {
+            syncTargets();
+            setTourReady(true);
+            return;
+        }
+
+        setTourReady(false);
+        let tries = 0;
+        const id = window.setInterval(() => {
+            tries += 1;
+            const ready = allItems.every((_, index) => Boolean(allMenuRefs.current[index]));
+            if (ready || tries > 40) {
+                window.clearInterval(id);
+                syncTargets();
+                setTourReady(true);
+            }
+        }, 16);
+
+        return () => window.clearInterval(id);
+    }, [tourStep, allItems.length]);
 
     return (
         <nav ref={frame} aria-label={t.exploreCareplus} className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
@@ -171,36 +228,141 @@ export const ServiceNav = ({ items }: { items: ServiceNavItem[] }) => {
                     blockClick.current = false;
                 }}
             >
-                {items.map((item, index) => (
-                    <a
-                        key={item.label}
-                        href={item.href}
-                        draggable={false}
-                        ref={(node) => {
-                            itemRefs.current[index] = node;
-                        }}
-                        className="flex w-[calc((100%-5.25rem)/3.5)] min-w-[calc((100%-5.25rem)/3.5)] shrink-0 flex-col items-center gap-2.5 outline-focus-ring focus-visible:outline-2 sm:w-20 sm:min-w-20 md:w-[5.5rem] md:min-w-[5.5rem]"
-                    >
-                        <span className={cx("pointer-events-none flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
-                            <item.Icon className="pointer-events-none size-7" />
-                        </span>
-                        <span className="pointer-events-none text-center text-xs font-medium text-tertiary md:text-sm">{item.label}</span>
-                    </a>
-                ))}
+                {items.map((item, index) => {
+                    const className =
+                        "flex w-[calc((100%-5.25rem)/3.5)] min-w-[calc((100%-5.25rem)/3.5)] shrink-0 cursor-pointer flex-col items-center gap-2.5 outline-focus-ring focus-visible:outline-2 sm:w-20 sm:min-w-20 md:w-[5.5rem] md:min-w-[5.5rem]";
+                    const body = (
+                        <>
+                            <span className={cx("pointer-events-none flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
+                                <item.Icon className="pointer-events-none size-7" />
+                            </span>
+                            <span className="pointer-events-none text-center text-xs font-medium text-tertiary md:text-sm">{item.label}</span>
+                        </>
+                    );
+
+                    if (item.href === "#all") {
+                        return (
+                            <button
+                                key={item.label}
+                                type="button"
+                                data-service-item=""
+                                draggable={false}
+                                ref={(node) => {
+                                    itemRefs.current[index] = node;
+                                }}
+                                className={className}
+                                onClick={() => setAllMenuOpen(true)}
+                            >
+                                {body}
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <a
+                            key={item.label}
+                            href={item.href}
+                            data-service-item=""
+                            draggable={false}
+                            ref={(node) => {
+                                itemRefs.current[index] = node;
+                            }}
+                            className={className}
+                        >
+                            {body}
+                        </a>
+                    );
+                })}
             </div>
-            {tourItem && tourStep !== null ? (
+
+            {showAllMenu ? (
+                <ModalOverlay
+                    isDismissable={tourStep === null}
+                    isOpen
+                    className="z-[60]"
+                    onOpenChange={(open) => {
+                        if (open) return;
+                        if (tourStep !== null) {
+                            closeTour();
+                            return;
+                        }
+                        setAllMenuOpen(false);
+                    }}
+                >
+                    <Modal className="w-full max-w-md sm:max-w-xl md:max-w-2xl">
+                        <Dialog className="relative flex w-full flex-col items-stretch overflow-hidden rounded-2xl bg-primary p-5 text-left shadow-xl ring-1 ring-secondary outline-hidden sm:p-6">
+                            <div className="flex w-full items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1 pr-2 text-left">
+                                    <Heading slot="title" className="text-left text-lg font-semibold text-primary">
+                                        {t.homeMoreServices}
+                                    </Heading>
+                                    <p className="mt-1 text-left text-sm text-tertiary">{t.homeMoreServicesHint}</p>
+                                </div>
+                                <CloseButton
+                                    size="md"
+                                    label="Close"
+                                    className="-mt-1 -mr-1 shrink-0 cursor-pointer"
+                                    onPress={() => {
+                                        if (tourStep !== null) {
+                                            closeTour();
+                                            return;
+                                        }
+                                        setAllMenuOpen(false);
+                                    }}
+                                />
+                            </div>
+                            <ul
+                                data-tour-all-menu=""
+                                className="careplus-all-menu mt-5 grid max-h-[min(28rem,58dvh)] w-full grid-cols-3 gap-x-3 gap-y-5 overflow-y-auto overscroll-contain sm:grid-cols-4 sm:gap-x-4 sm:gap-y-6"
+                            >
+                                {allItems.map((item, index) => (
+                                    <li
+                                        key={item.label}
+                                        className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300"
+                                        style={{ animationDelay: `${Math.min(index, 12) * 35}ms` }}
+                                    >
+                                        <a
+                                            href={item.href}
+                                            data-tour-all-index={index}
+                                            ref={(node) => {
+                                                allMenuRefs.current[index] = node;
+                                            }}
+                                            className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl p-1 outline-focus-ring transition hover:opacity-90 focus-visible:outline-2"
+                                            onClick={(event) => {
+                                                if (tourStep !== null) {
+                                                    event.preventDefault();
+                                                    return;
+                                                }
+                                                setAllMenuOpen(false);
+                                            }}
+                                        >
+                                            <span className={cx("flex aspect-square w-full max-w-[4.5rem] items-center justify-center rounded-[1.25rem] sm:max-w-[5rem]", item.tone)}>
+                                                <item.Icon className="size-7 sm:size-8" />
+                                            </span>
+                                            <span className="w-full text-center text-xs font-medium leading-snug text-tertiary sm:text-sm">{item.label}</span>
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Dialog>
+                    </Modal>
+                </ModalOverlay>
+            ) : null}
+
+            {tourItem && tourStep !== null && tourReady ? (
                 <HomeTour
+                    key={`home-tour-${tourStep}`}
                     label={tourItem.label}
                     hint={tourItem.hint}
                     step={tourStep}
-                    total={items.length + 1}
-                    targets={itemRefs}
+                    total={tourTotal}
+                    targets={tourTargets}
                     onSkip={closeTour}
                     onBack={() => {
                         if (tourStep > 0) setTourStep(tourStep - 1);
                     }}
                     onNext={() => {
-                        if (tourStep + 1 < items.length + 1) {
+                        if (tourStep + 1 < tourTotal) {
                             setTourStep(tourStep + 1);
                             return;
                         }

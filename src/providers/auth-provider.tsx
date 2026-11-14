@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
+import { ApiRequestError, SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
-import { profileApi, profilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
+import { profileApi, resolveProfilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme, type TextSize } from "@/providers/theme-provider";
 import { SESSION_KEY, type Profile } from "@/utils/auth";
-import { TOASTED_NOTICES_KEY } from "@/utils/notifications";
+import { TOASTED_NOTICES_KEY, WELCOME_PENDING_KEY } from "@/utils/notifications";
 import { readProfileSettings, writeProfileSettings, type NotificationLevel } from "@/utils/profile-settings";
 
 export type AuthUser = {
@@ -102,7 +102,7 @@ function convertApiUser(user: CurrentUserResponse): AuthUser {
     };
 }
 
-export const profileFromUser = (user: CurrentUserResponse): Profile => ({
+export const profileFromUser = async (user: CurrentUserResponse): Promise<Profile> => ({
     id: user.patientId || String(user.userId),
     email: user.email,
     fullName: user.name,
@@ -112,7 +112,8 @@ export const profileFromUser = (user: CurrentUserResponse): Profile => ({
     address: user.address || null,
     gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
     nationality: "Malaysian",
-    avatarUrl: profilePictureUrl(user.profilePicture),
+    avatarUrl: await resolveProfilePictureUrl(user.profilePicture),
+    pictureKey: user.profilePicture || null,
 });
 
 const isNotificationLevel = (value: string | null | undefined): value is NotificationLevel =>
@@ -198,8 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     return;
                 }
 
-                const nextProfile = profileFromUser(apiUser);
-                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
+                const nextProfile = await profileFromUser(apiUser);
                 if (!isCurrentSession()) return;
 
                 const nextSession: StoredSession = {
@@ -208,10 +208,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 };
                 saveSession(nextSession);
                 setSession(nextSession);
+
+                // Prefs are optional on boot; a prefs failure must not wipe a valid login.
+                const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize).catch(() => null);
+                if (!isCurrentSession()) return;
                 setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
             })
-            .catch(() => {
+            .catch((error) => {
                 if (!isCurrentSession()) return;
+                // Only drop the session on a real auth rejection. Network / API-down
+                // must keep the cached profile so refresh does not dump you on landing.
+                const unauthorized =
+                    error instanceof ApiRequestError && error.status === 401
+                    || (error instanceof Error && error.message === SESSION_EXPIRED_MESSAGE);
+                if (!unauthorized) return;
+
                 authApi.clearToken();
                 saveSession(null);
                 setSession(null);
@@ -229,6 +240,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
     }, [applyLocale, applyTheme, applyTextSize]);
 
+    // ponytail: poll so a photo/name change on phone shows up on PC without a full refresh
+    useEffect(() => {
+        if (!isReady || !profile) return;
+
+        let cancelled = false;
+        let inFlight = false;
+
+        const syncProfile = async () => {
+            if (inFlight || document.visibilityState !== "visible") return;
+            inFlight = true;
+            try {
+                const apiUser = await authApi.getCurrentUser();
+                if (cancelled || apiUser.accountType === "Staff" || apiUser.staffId) return;
+
+                const current = readStoredSession();
+                if (!current || current.type !== "patient") return;
+                const prev = current.profile;
+                const nextKey = apiUser.profilePicture || null;
+                const pictureChanged = (prev.pictureKey ?? null) !== nextKey;
+                const fieldsChanged =
+                    prev.fullName !== apiUser.name ||
+                    prev.email !== apiUser.email ||
+                    prev.phone !== (apiUser.phone || null) ||
+                    prev.address !== (apiUser.address || null) ||
+                    pictureChanged;
+                if (!fieldsChanged) return;
+
+                const nextProfile = pictureChanged
+                    ? await profileFromUser(apiUser)
+                    : {
+                          ...prev,
+                          fullName: apiUser.name,
+                          email: apiUser.email,
+                          phone: apiUser.phone || null,
+                          address: apiUser.address || null,
+                          pictureKey: nextKey,
+                      };
+                if (cancelled) return;
+                if (pictureChanged && prev.avatarUrl?.startsWith("blob:")) {
+                    URL.revokeObjectURL(prev.avatarUrl);
+                }
+                const nextSession: StoredSession = { type: "patient", profile: nextProfile };
+                saveSession(nextSession);
+                setSession(nextSession);
+            } catch {
+                // keep the local session; next tick can retry
+            } finally {
+                inFlight = false;
+            }
+        };
+
+        void syncProfile();
+        const timer = window.setInterval(() => void syncProfile(), 12_000);
+        const onVisible = () => {
+            if (document.visibilityState === "visible") void syncProfile();
+        };
+        document.addEventListener("visibilitychange", onVisible);
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
+    }, [isReady, profile?.id]);
+
     const establishPatientSession = async (token: string, rememberMe = true) => {
         authApi.saveToken(token, rememberMe);
         try {
@@ -238,7 +313,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 throw new Error("This account is not a patient account.");
             }
 
-            const nextProfile = profileFromUser(apiUser);
+            const nextProfile = await profileFromUser(apiUser);
             const setting = await loadPatientPreferences(nextProfile.id, applyTheme, applyLocale, applyTextSize);
             if (getAuthToken() !== token) throw new Error(SESSION_EXPIRED_MESSAGE);
 
@@ -249,6 +324,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             saveSession(nextSession);
             setSession(nextSession);
             setHasCompletedTutorial(setting?.hasCompletedTutorial ?? false);
+            sessionStorage.setItem(WELCOME_PENDING_KEY, "1");
         } catch (error) {
             if (getAuthToken() === token) authApi.clearToken();
             throw error;
@@ -316,6 +392,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const logout = async () => {
         authApi.clearToken();
         sessionStorage.removeItem(TOASTED_NOTICES_KEY);
+        sessionStorage.removeItem(WELCOME_PENDING_KEY);
         saveSession(null);
         setSession(null);
         setHasCompletedTutorial(null);

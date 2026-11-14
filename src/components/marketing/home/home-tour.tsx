@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/base/buttons/button";
 import { useI18n } from "@/providers/locale-provider";
 
@@ -22,7 +23,7 @@ type HomeTourProps = {
     hint: string;
     step: number;
     total: number;
-    targets: RefObject<(HTMLAnchorElement | null)[]>;
+    targets: RefObject<(HTMLElement | null)[]>;
     onSkip: () => void;
     onBack: () => void;
     onNext: () => void;
@@ -34,6 +35,21 @@ const visibleTour = (name: string) => {
         if (node.getClientRects().length > 0) return node;
     }
     return null;
+};
+
+const resolveTourTarget = (step: number, targets: RefObject<(HTMLElement | null)[]>) => {
+    if (step === 0) return visibleTour("tutorial") ?? visibleTour("account");
+
+    const fromRef = targets.current[step - 1];
+    if (fromRef && fromRef.getClientRects().length > 0) return fromRef;
+
+    // All-menu steps: step 2 highlights the first grid item (index 0).
+    if (step >= 2) {
+        const fromDom = document.querySelector<HTMLElement>(`[data-tour-all-index="${step - 2}"]`);
+        if (fromDom && fromDom.getClientRects().length > 0) return fromDom;
+    }
+
+    return fromRef;
 };
 
 type Box = { top: number; left: number; width: number; height: number };
@@ -59,108 +75,124 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
     };
 
     useLayoutEffect(() => {
-        const target = step === 0 ? (visibleTour("tutorial") ?? visibleTour("account")) : targets.current[step - 1];
-        const scroller = target?.closest<HTMLElement>("[data-service-row]") ?? null;
-        if (!target) return;
-        if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+        let cancelled = false;
+        let attempts = 0;
 
-        const row = document.querySelector<HTMLElement>("[data-service-row]");
-        if (!scroller && row) row.scrollTo({ left: 0, behavior: "auto" });
-
-        const max = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
-        const desired = scroller ? Math.max(0, Math.min(target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2, max)) : 0;
-        const mobile = window.matchMedia("(max-width: 1023px)").matches;
-        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const header = 88;
-        const bottomPad = mobile ? 108 : 24;
-        let settleTimer: number | null = null;
-
-        const needsWindowScroll = () => {
-            // Step 0 points at Me / Tutorial in a fixed bar; scrolling the page only bounces.
-            if (step === 0 || !scroller) return false;
-            const rect = target.getBoundingClientRect();
-            return rect.top < header || rect.bottom > window.innerHeight - bottomPad;
-        };
-
-        const scrollTargetIntoView = (behavior: ScrollBehavior) => {
-            if (scroller) scroller.scrollLeft = desired;
-            if (!needsWindowScroll()) return false;
-            const rect = target.getBoundingClientRect();
-            window.scrollBy({ top: rect.top - header - 24, behavior });
-            return true;
-        };
-
-        // ponytail: mobile / step-0 hops jump; morphing from Me to icons leaves a mid-screen ghost hole
-        const canMorph =
-            Boolean(scroller) &&
-            step > 1 &&
-            !mobile &&
-            !reduce &&
-            Boolean(boxRef.current) &&
-            scroller!.scrollWidth > scroller!.clientWidth + 4;
-
-        if (!canMorph) {
-            animating.current = false;
-            const shouldSmooth = mobile && step > 0 && !reduce;
-            const didWindowScroll = scrollTargetIntoView(shouldSmooth ? "smooth" : "auto");
-            if (shouldSmooth && didWindowScroll) {
-                // Wait for the page to settle, then lock the highlight.
-                animating.current = true;
-                setBox(null);
-                settleTimer = window.setTimeout(() => {
-                    animating.current = false;
-                    remember(readBox(target));
-                }, 340);
-            } else {
-                remember(readBox(target));
-            }
-            return () => {
-                if (settleTimer !== null) window.clearTimeout(settleTimer);
-                if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-                animating.current = false;
-            };
-        }
-
-        const fromBox = boxRef.current!;
-        const fromScroll = scroller!.scrollLeft;
-        scrollTargetIntoView("auto");
-        const after = target.getBoundingClientRect();
-        const endBox = { top: after.top, left: after.left - (desired - fromScroll), width: after.width, height: after.height };
-
-        const start = performance.now();
-        const duration = 480;
-        animating.current = true;
-        const tick = (now: number) => {
-            const t = Math.min(1, (now - start) / duration);
-            const eased = 1 - (1 - t) ** 3;
-            scroller!.scrollLeft = fromScroll + (desired - fromScroll) * eased;
-            remember({
-                top: mix(fromBox.top, endBox.top, eased),
-                left: mix(fromBox.left, endBox.left, eased),
-                width: mix(fromBox.width, endBox.width, eased),
-                height: mix(fromBox.height, endBox.height, eased),
-            });
-            if (t < 1) {
-                frameRef.current = requestAnimationFrame(tick);
+        const run = () => {
+            if (cancelled) return;
+            const target = resolveTourTarget(step, targets);
+            if (!target) {
+                if (attempts++ < 30) frameRef.current = requestAnimationFrame(run);
                 return;
             }
-            animating.current = false;
-            frameRef.current = null;
-            remember(readBox(target));
+
+            const scroller = target.closest<HTMLElement>("[data-service-row]") ?? null;
+            const menuScroller = target.closest<HTMLElement>("[data-tour-all-menu]") ?? null;
+            if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+
+            const row = document.querySelector<HTMLElement>("[data-service-row]");
+            if (!scroller && row) row.scrollTo({ left: 0, behavior: "auto" });
+
+            const max = scroller ? Math.max(0, scroller.scrollWidth - scroller.clientWidth) : 0;
+            const desired = scroller ? Math.max(0, Math.min(target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2, max)) : 0;
+            const menuFrom = menuScroller?.scrollTop ?? 0;
+            const menuDesired = (() => {
+                if (!menuScroller) return 0;
+                const menuRect = menuScroller.getBoundingClientRect();
+                const targetRect = target.getBoundingClientRect();
+                // Keep the item in the upper-middle of the menu so the tip has room below.
+                const ideal = targetRect.top - menuRect.top - menuRect.height * 0.28;
+                return Math.max(0, Math.min(menuScroller.scrollTop + ideal, menuScroller.scrollHeight - menuScroller.clientHeight));
+            })();
+
+            const mobile = window.matchMedia("(max-width: 1023px)").matches;
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            const header = 88;
+            const bottomPad = mobile ? 108 : 24;
+            const fromBox = boxRef.current;
+            const fromScroll = scroller?.scrollLeft ?? 0;
+            const fromWindowY = window.scrollY;
+
+            const verticalDelta = () => {
+                if (step === 0 || step >= 2) return 0;
+                const rect = target.getBoundingClientRect();
+                if (rect.top >= header && rect.bottom <= window.innerHeight - bottomPad) return 0;
+                return rect.top - header - 24;
+            };
+
+            const needsHScroll = Boolean(scroller) && Math.abs(desired - fromScroll) > 1;
+            const needsMenuScroll = Boolean(menuScroller) && Math.abs(menuDesired - menuFrom) > 1;
+            const vDelta = verticalDelta();
+            const needsVScroll = Math.abs(vDelta) > 1;
+
+            if (reduce || (!needsHScroll && !needsVScroll && !needsMenuScroll)) {
+                animating.current = false;
+                if (scroller) scroller.scrollLeft = desired;
+                if (menuScroller) menuScroller.scrollTop = menuDesired;
+                if (needsVScroll) window.scrollBy({ top: vDelta, behavior: "auto" });
+                remember(readBox(target));
+                return;
+            }
+
+            // ponytail: drive scroll + hole together each frame so the highlight never freezes mid-slide
+            const duration = 420;
+            const start = performance.now();
+            const targetWindowY = fromWindowY + vDelta;
+            animating.current = true;
+
+            const tick = (now: number) => {
+                if (cancelled) return;
+                const t = Math.min(1, (now - start) / duration);
+                const eased = 1 - (1 - t) ** 3;
+
+                if (scroller) {
+                    scroller.scrollLeft = needsHScroll ? fromScroll + (desired - fromScroll) * eased : desired;
+                }
+                if (menuScroller) {
+                    menuScroller.scrollTop = needsMenuScroll ? menuFrom + (menuDesired - menuFrom) * eased : menuDesired;
+                }
+                if (needsVScroll) {
+                    window.scrollTo({ top: fromWindowY + (targetWindowY - fromWindowY) * eased, behavior: "auto" });
+                }
+
+                const live = readBox(target);
+                if (fromBox && step > 0) {
+                    remember({
+                        top: mix(fromBox.top, live.top, eased),
+                        left: mix(fromBox.left, live.left, eased),
+                        width: mix(fromBox.width, live.width, eased),
+                        height: mix(fromBox.height, live.height, eased),
+                    });
+                } else {
+                    remember(live);
+                }
+
+                if (t < 1) {
+                    frameRef.current = requestAnimationFrame(tick);
+                    return;
+                }
+
+                animating.current = false;
+                frameRef.current = null;
+                remember(readBox(target));
+            };
+
+            frameRef.current = requestAnimationFrame(tick);
         };
-        frameRef.current = requestAnimationFrame(tick);
+
+        run();
         return () => {
-            if (settleTimer !== null) window.clearTimeout(settleTimer);
+            cancelled = true;
             if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
             animating.current = false;
         };
-    }, [targets, step]);
+    }, [targets, step, label]);
 
     useEffect(() => {
-        const target = step === 0 ? (visibleTour("tutorial") ?? visibleTour("account")) : targets.current[step - 1];
-        if (!target) return;
         const measure = () => {
             if (animating.current) return;
+            const target = resolveTourTarget(step, targets);
+            if (!target) return;
             remember(readBox(target));
         };
         window.addEventListener("resize", measure);
@@ -169,7 +201,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
             window.removeEventListener("resize", measure);
             window.removeEventListener("scroll", measure, true);
         };
-    }, [targets, step]);
+    }, [targets, step, label]);
 
     useEffect(() => {
         const onKey = (event: KeyboardEvent) => {
@@ -179,10 +211,10 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
         return () => window.removeEventListener("keydown", onKey);
     }, [onSkip]);
 
-    if (!box) return null;
+    if (!box || typeof document === "undefined") return null;
 
     const tipWidth = Math.min(320, window.innerWidth - 32);
-    const tipHeight = 200;
+    const tipHeight = 220;
     const gap = 16;
     const hole = {
         x: Math.max(8, box.left - 8),
@@ -194,23 +226,49 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
     const holeBottom = hole.y + hole.height;
     const hitsHole = (left: number, top: number) =>
         left < holeRight + 8 && left + tipWidth > hole.x - 8 && top < holeBottom + 8 && top + tipHeight > hole.y - 8;
-    let tipLeft = Math.max(8, Math.min(box.left + box.width / 2 - tipWidth / 2, window.innerWidth - tipWidth - 8));
+    const clampTip = (left: number, top: number) => ({
+        left: Math.max(8, Math.min(left, window.innerWidth - tipWidth - 8)),
+        top: Math.max(8, Math.min(top, window.innerHeight - tipHeight - 8)),
+    });
+
+    let tipLeft = box.left + box.width / 2 - tipWidth / 2;
     let tipTop = holeBottom + gap;
-    if (tipTop + tipHeight > window.innerHeight - 8) tipTop = hole.y - gap - tipHeight;
+
+    // Inside the All modal, prefer below the item; if that clips, pin above it.
+    if (step >= 2) {
+        const below = holeBottom + gap;
+        const above = hole.y - gap - tipHeight;
+        if (below + tipHeight <= window.innerHeight - 12) {
+            tipTop = below;
+        } else if (above >= 8) {
+            tipTop = above;
+        } else {
+            tipTop = Math.max(8, Math.min(below, window.innerHeight - tipHeight - 12));
+            tipLeft = Math.max(8, (window.innerWidth - tipWidth) / 2);
+        }
+    } else if (tipTop + tipHeight > window.innerHeight - 8) {
+        tipTop = hole.y - gap - tipHeight;
+    }
+
+    ({ left: tipLeft, top: tipTop } = clampTip(tipLeft, tipTop));
     if (hitsHole(tipLeft, tipTop)) {
         const beside = hole.x - gap - tipWidth;
         tipLeft = beside >= 8 ? beside : Math.min(window.innerWidth - tipWidth - 8, holeRight + gap);
         tipTop = Math.max(8, Math.min(hole.y, window.innerHeight - tipHeight - 8));
+        ({ left: tipLeft, top: tipTop } = clampTip(tipLeft, tipTop));
     }
-    tipLeft = Math.max(8, Math.min(tipLeft, window.innerWidth - tipWidth - 8));
-    tipTop = Math.max(8, Math.min(tipTop, window.innerHeight - tipHeight - 8));
-    if (hitsHole(tipLeft, tipTop)) {
-        tipTop = Math.min(holeBottom + gap, window.innerHeight - tipHeight - 8);
-        tipLeft = Math.max(8, hole.x - gap - tipWidth);
+    if (hitsHole(tipLeft, tipTop) && step >= 2) {
+        ({ left: tipLeft, top: tipTop } = clampTip((window.innerWidth - tipWidth) / 2, window.innerHeight - tipHeight - 12));
     }
 
-    return (
-        <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    return createPortal(
+        <div
+            data-react-aria-top-layer="true"
+            className="fixed inset-0 z-[80]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+        >
             <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
                 <defs>
                     <mask id="careplus-tour-hole">
@@ -221,7 +279,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
                 <rect width="100%" height="100%" fill="rgba(4, 15, 28, 0.72)" mask="url(#careplus-tour-hole)" />
             </svg>
             <div
-                className="absolute z-[71] rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary"
+                className="absolute z-[81] max-h-[min(14rem,calc(100dvh-1rem))] overflow-y-auto rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary"
                 style={{ left: tipLeft, top: tipTop, width: tipWidth }}
             >
                 <p className="text-xs font-medium text-tertiary">
@@ -245,6 +303,7 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 };

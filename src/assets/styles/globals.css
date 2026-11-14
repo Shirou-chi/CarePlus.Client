@@ -22,6 +22,60 @@
     scrollbar-width: none; /* Firefox */
 }
 
+/* Thin dark scrollbar for the All-services modal grid. */
+.careplus-all-menu {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 70%, transparent) transparent;
+}
+
+.careplus-all-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.careplus-all-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.careplus-all-menu::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 55%, transparent);
+}
+
+.careplus-all-menu::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 80%, transparent);
+}
+
+.careplus-all-menu::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
+    width: 0;
+}
+
+/* Same thin dark thumb for the clinic-chat thread. */
+.careplus-chat-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 70%, transparent) transparent;
+}
+
+.careplus-chat-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.careplus-chat-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.careplus-chat-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-fg-quaternary, #9ca3af) 55%, transparent);
+}
+
+.careplus-chat-scroll::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
+    width: 0;
+}
+
 @utility transition-inherit-all {
     transition-property: inherit;
     transition-duration: inherit;
@@ -95,11 +149,11 @@ html:has(.careplus-landing) {
 }
 
 ::view-transition-old(root) {
-    animation: careplus-page-out 180ms ease-out both;
+    animation: careplus-page-out 240ms cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 ::view-transition-new(root) {
-    animation: careplus-page-in 220ms ease-out both;
+    animation: careplus-page-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes careplus-page-out {
@@ -115,15 +169,20 @@ html:has(.careplus-landing) {
 }
 
 .careplus-page {
-    animation: careplus-page-in 220ms ease-out;
+    animation: careplus-page-in 380ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .careplus-route--exit {
-    animation: careplus-route-out 200ms ease-in both;
+    animation: careplus-route-out 260ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .careplus-route--enter {
-    animation: careplus-route-in 280ms ease-out both;
+    animation: careplus-route-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Auth tab swaps keep the shell; no outer route fade. */
+.careplus-route--auth {
+    animation: none;
 }
 
 /* Opacity-only: translateY creates a containing block that breaks position:fixed headers on mobile. */
@@ -145,9 +204,56 @@ html:has(.careplus-landing) {
     }
 }
 
+.careplus-auth-stage {
+    animation: careplus-auth-stage-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes careplus-auth-stage-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Chat shell: desktop fills the viewport; mobile clearance is set inline in chat-page.tsx
+   (globals flex:1 + height:100dvh kept winning over selector-based bottom offsets). */
+.careplus-chat-page {
+    min-height: 0;
+}
+
+@media (min-width: 1024px) {
+    .careplus-chat-page {
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+}
+
+.careplus-chat-page .careplus-chat-main {
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
 @media (max-width: 1023px) {
+    /* Default clearance for pages without a footer. */
     .careplus-has-mobile-nav .careplus-landing {
-        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    }
+
+    /* Footer owns the nav clearance so copyright sits on the bar (no empty page gap). */
+    .careplus-has-mobile-nav .careplus-landing:has(> footer.careplus-panel) {
+        padding-bottom: 0;
+    }
+
+    .careplus-has-mobile-nav .careplus-landing > footer.careplus-panel {
+        margin-bottom: 0;
+        padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+    }
+
+    .careplus-has-mobile-nav .careplus-landing > footer.careplus-panel > div:last-child {
+        padding-top: 1rem;
+        padding-bottom: 0.5rem;
     }
 
     /* Booking's action bar sits on top of the 4rem bottom nav; the extra bottom padding
@@ -159,23 +265,14 @@ html:has(.careplus-landing) {
     }
 
     .careplus-has-mobile-nav .careplus-landing.careplus-booking {
-        padding-bottom: calc(10.5rem + env(safe-area-inset-bottom));
+        padding-bottom: calc(10rem + env(safe-area-inset-bottom));
     }
 
-    /* Chat is a fixed-height screen, so it shrinks by the header, the 4rem nav, and the
-       ~1rem the raised Book button pokes past the main padding. */
-    .careplus-has-mobile-nav .careplus-landing:has(.careplus-chat-main) {
-        padding-bottom: 0;
-    }
-
-    .careplus-has-mobile-nav .careplus-chat-main {
-        height: calc(100dvh - 9.5rem - env(safe-area-inset-bottom));
-    }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-    .careplus-has-mobile-nav .careplus-chat-main {
-        height: calc(100dvh - 10.5rem - env(safe-area-inset-bottom));
+    /* Chat page owns height via inline style; kill landing flex/min-size that pinned it to 100dvh. */
+    .careplus-has-mobile-nav .careplus-chat-page {
+        padding-bottom: 0 !important;
+        flex: none !important;
+        min-height: 0 !important;
     }
 }
 
@@ -187,7 +284,9 @@ html:has(.careplus-landing) {
 
     .careplus-page,
     .careplus-route--exit,
-    .careplus-route--enter {
+    .careplus-route--enter,
+    .careplus-route--auth,
+    .careplus-auth-stage {
         animation: none;
     }
 }

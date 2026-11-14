@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
@@ -13,7 +13,9 @@ export function StaffLoginPage() {
   const { theme, toggleTheme } = useTheme()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [searchParams] = useSearchParams()
   const [error, setError] = useState('')
+  const signedOut = searchParams.get('expired') === '1'
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -98,6 +100,7 @@ export function StaffLoginPage() {
             />
           </label>
 
+          {signedOut && !error ? <p className="staff-login-card__copy" role="status">You were inactive for too long, so you were signed out. Sign in again.</p> : null}
           {error ? <p className="staff-login-card__error" role="alert">{error}</p> : null}
 
           <button className="staff-login-card__submit" disabled={isSubmitting} type="submit">

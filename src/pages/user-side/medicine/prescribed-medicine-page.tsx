@@ -18,6 +18,7 @@ import {
     getClinicPharmacy,
     MAX_MEDICINE_UNITS,
     shotViews,
+    buyableUnits,
     wholeQty,
     type ShotView,
 } from "@/utils/prescribed-medicine";
@@ -45,7 +46,8 @@ export const PrescribedMedicinePage = () => {
     const qtyInputRef = useRef<HTMLInputElement>(null);
 
     const medicine = medicines.find((item) => item.id === id);
-    const remaining = medicine ? remainingFor(medicine.id) : 0;
+    const stock = medicine?.stock ?? null;
+    const remaining = medicine ? buyableUnits(remainingFor(medicine.id), stock) : 0;
     const canAdd = Boolean(medicine) && remaining > 0 && !adding;
 
     useEffect(() => {
@@ -80,7 +82,7 @@ export const PrescribedMedicinePage = () => {
     const addToCart = () => {
         if (!canAdd) {
             setSuccess(null);
-            setError(t.medQtyMax);
+            setError(stock === 0 ? t.medOutOfStock : t.medQtyMax);
             return;
         }
 
@@ -123,10 +125,10 @@ export const PrescribedMedicinePage = () => {
             <main className="mx-auto w-full max-w-container px-4 py-8 md:px-8 md:py-10">
                 <Link
                     to="/medicine"
-                    className="inline-flex size-8 items-center justify-center rounded-full ring-1 ring-secondary hover:bg-primary_hover"
+                    className="inline-flex size-8 items-center justify-center rounded-full bg-secondary text-primary ring-1 ring-secondary hover:bg-primary_hover"
                     aria-label={t.medListBack}
                 >
-                    <ArrowLeft className="size-4" />
+                    <ArrowLeft className="size-4 text-primary" />
                 </Link>
 
                 <div className="mt-8 grid items-start gap-8 lg:grid-cols-12">
@@ -204,7 +206,8 @@ export const PrescribedMedicinePage = () => {
                                 orientation="horizontal"
                                 hint={remaining === 0 ? undefined : t.medQtyHint.replace("{max}", String(MAX_MEDICINE_UNITS))}
                             />
-                            {remaining === 0 ? <p className="mt-1.5 text-sm font-medium text-fg-error-primary">{t.medQtyMax}</p> : null}
+                            {stock === 0 ? <p className="mt-1.5 text-sm font-medium text-fg-error-primary">{t.medOutOfStock}</p> : null}
+                            {stock !== 0 && remaining === 0 ? <p className="mt-1.5 text-sm font-medium text-fg-error-primary">{t.medQtyMax}</p> : null}
                         </div>
 
                         <FormStatus error={error} success={success} />

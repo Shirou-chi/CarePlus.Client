@@ -51,7 +51,7 @@ export const OutstandingInvoicesProvider = ({ children }: { children: ReactNode 
 
     useEffect(() => {
         if (!isReady) return;
-        setReady(false);
+        // ponytail: keep prior ready/invoices while refreshing so overdue redirects do not drop for a frame
         void reload();
     }, [isReady, reload]);
 

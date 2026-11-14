@@ -11,6 +11,7 @@ export type StripeCompletedCheckout = {
     method: string;
     methodLabel: string;
     invoiceId?: string | null;
+    orderId?: string | null;
     amount: number;
     paid: boolean;
 };
@@ -45,13 +46,14 @@ export const stripeApi = {
         return result.data;
     },
 
-    async createMedicineCheckout(input: CheckoutBase & { amount: number }): Promise<StripeCheckoutSession> {
+    async createMedicineCheckout(input: CheckoutBase & { amount: number; orderId?: string }): Promise<StripeCheckoutSession> {
         const result = await request<ApiResponse<StripeCheckoutSession>>(
             "/api/Stripe/Checkout/Medicine",
             {
                 method: "POST",
                 body: JSON.stringify({
                     amount: input.amount,
+                    orderId: input.orderId,
                     method: input.method,
                     methodLabel: input.methodLabel,
                     successPath: input.successPath ?? "/pay/stripe/return",

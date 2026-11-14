@@ -1,11 +1,15 @@
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
 import { Button } from "@/components/base/buttons/button";
 import { useAuth } from "@/providers/auth-provider";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useI18n } from "@/providers/locale-provider";
+import { overdueSafeHref } from "@/utils/invoices";
 
 export const LandingFooter = () => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
+    const { overdue } = useOutstandingInvoices();
+    const hrefFor = (href: string) => overdueSafeHref(href, Boolean(profile && overdue));
     const columns: { heading: string; links: { label: string; href: string }[] }[] = profile
         ? [
               {
@@ -70,7 +74,7 @@ export const LandingFooter = () => {
         <footer className="careplus-panel mt-auto border-t border-secondary bg-primary dark:border-white/10">
             <div className="mx-auto grid w-full max-w-container gap-10 px-4 py-12 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))] md:gap-8 md:px-8 md:py-16">
                 <div className="max-w-sm">
-                    <CarePlusLogo />
+                    <CarePlusLogo href={profile ? hrefFor("/home") : "/"} />
                     <p className="mt-4 text-md text-tertiary">{t.footerBlurb}</p>
                 </div>
                 {columns.map((column) => (
@@ -79,7 +83,7 @@ export const LandingFooter = () => {
                         <ul className="mt-4 flex flex-col gap-3">
                             {column.links.map((link) => (
                                 <li key={link.label}>
-                                    <Button color="link-gray" href={link.href} size="md">
+                                    <Button color="link-gray" href={hrefFor(link.href)} size="md">
                                         {link.label}
                                     </Button>
                                 </li>

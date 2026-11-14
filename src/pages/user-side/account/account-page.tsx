@@ -32,9 +32,10 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { CreditCard } from "@/components/credit-card/credit-card";
 import { useAuth } from "@/providers/auth-provider";
+import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { getAuthToken } from "@/services/api";
 import { authApi } from "@/services/authApi";
-import { profileApi, profilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
+import { profileApi, resolveProfilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { type Profile } from "@/utils/auth";
@@ -85,7 +86,7 @@ import { isValidLocalPhone, parsePhoneLocal } from "@/utils/phone";
 import { PasswordStrengthBar } from "@/components/base/input/password-strength";
 import { cx } from "@/utils/cx";
 
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const SECTIONS = ["profile", "preference", "payment", "security"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
@@ -94,7 +95,7 @@ type EditField = "fullName" | "address" | "phone" | "email";
 type DialogState =
     | { type: "edit"; field: EditField }
     | { type: "notif-disable" }
-    | { type: "two-factor"; action: TwoFactorAction; maskedEmail: string; loading?: boolean }
+    | { type: "two-factor"; action: TwoFactorAction; phase: "prompt" | "code"; maskedEmail: string; loading?: boolean }
     | { type: "view-photo" }
     | { type: "save-photo"; url: string; file: File }
     | { type: "delete-account" }
@@ -110,9 +111,11 @@ const genderLabel = (value: string | null, t: Copy) => {
 
 export const AccountPage = () => {
     const { profile, isReady, updateProfile, logout } = useAuth();
+    const { invoices: outstandingInvoices } = useOutstandingInvoices();
     const { t, locale, setLocale } = useI18n();
     const { theme, setTheme, textSize, setTextSize } = useTheme();
     const navigate = useNavigate();
+    const deleteLockedByPayment = outstandingInvoices.length > 0;
     const [activeSection, setActiveSection] = useState<SectionId>("profile");
     const [settings, setSettings] = useState<ProfileSettings>(() =>
         profile ? readProfileSettings(profile.id) : readProfileSettings("guest"),
@@ -153,7 +156,7 @@ export const AccountPage = () => {
         let cancelled = false;
         authApi
             .getCurrentUser()
-            .then((user) => {
+            .then(async (user) => {
                 if (!cancelled) {
                     updateProfile({
                         email: user.email,
@@ -163,7 +166,7 @@ export const AccountPage = () => {
                         dateOfBirth: user.dateOfBirth ?? null,
                         gender: user.gender === "M" ? "male" : user.gender === "F" ? "female" : null,
                         address: user.address ?? null,
-                        avatarUrl: profilePictureUrl(user.profilePicture),
+                        avatarUrl: await resolveProfilePictureUrl(user.profilePicture),
                     });
                 }
             })
@@ -277,20 +280,25 @@ export const AccountPage = () => {
         writeProfileSettings(profile.id, next);
     };
 
+    const openTwoFactorPrompt = (action: TwoFactorAction) => {
+        setSecurityNotice(null);
+        setDialog({ type: "two-factor", action, phase: "prompt", maskedEmail: "" });
+    };
+
     const requestTwoFactorCode = async (action: TwoFactorAction) => {
         setSecurityNotice(null);
         setTwoFactorBusy(true);
-        setDialog({ type: "two-factor", action, maskedEmail: t.settingsTwoFactorSending, loading: true });
+        setDialog({ type: "two-factor", action, phase: "code", maskedEmail: t.settingsTwoFactorSending, loading: true });
         try {
             const result = await profileApi.sendTwoFactorCode(action);
             setDialog((current) =>
                 current?.type === "two-factor" && current.action === action
-                    ? { ...current, maskedEmail: result.maskedEmail, loading: false }
+                    ? { ...current, phase: "code", maskedEmail: result.maskedEmail, loading: false }
                     : current,
             );
         } catch (error) {
             const message = error instanceof Error ? error.message : "";
-            setDialog((current) => (current?.type === "two-factor" && current.action === action ? null : current));
+            setDialog({ type: "two-factor", action, phase: "prompt", maskedEmail: "" });
             setSecurityNotice({
                 error: message.includes("email") || message.includes("Email") ? t.settingsTwoFactorEmailFailed : message || t.settingsTwoFactorCodeWrong,
             });
@@ -326,6 +334,7 @@ export const AccountPage = () => {
             const lockoutMessage = passwordLockoutMessage(message, t.accountLocked);
             if (lockoutMessage) return lockoutMessage;
             if (message === "Current password is incorrect.") return t.settingsCurrentPasswordWrong;
+            if (message === "Pay all outstanding invoices before deleting your account.") return t.settingsDeleteAccountPaymentBlocked;
             if (message === "Transfer family ownership before deleting your account.") return t.settingsDeleteAccountOwnerBlocked;
             return message || t.settingsDeleteAccountFailed;
         }
@@ -651,24 +660,25 @@ export const AccountPage = () => {
     return (
         <div className="careplus-landing careplus-account min-h-dvh pt-[4.5rem] md:pt-22">
             <LandingHeader />
-            <PageBreadcrumb />
+            {/* Desktop only: on mobile the sticky section tabs sit under the header, so Home > Account above them looked cramped. */}
+            <div className="hidden lg:block">
+                <PageBreadcrumb />
+            </div>
+            <aside className="sticky top-[4.5rem] z-40 border-b border-secondary bg-primary px-4 py-2 md:top-22 lg:hidden dark:bg-[#0a0a0a]">
+                <nav aria-label={t.settingsPageTitle} className="mx-auto flex min-w-0 max-w-container gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 [&::-webkit-scrollbar]:hidden">
+                    <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
+                    <SidebarLink label={t.settingsNavPreference} icon={Settings01} active={activeSection === "preference"} onClick={() => scrollToSection("preference")} />
+                    <SidebarLink label={t.settingsNavPayment} icon={CreditCard01} active={activeSection === "payment"} onClick={() => scrollToSection("payment")} />
+                    <SidebarLink label={t.settingsNavSecurity} icon={Shield01} active={activeSection === "security"} onClick={() => scrollToSection("security")} />
+                </nav>
+            </aside>
             <main className="mx-auto w-full min-w-0 max-w-container px-4 py-8 md:px-8 md:py-10">
                 <div>
                     <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.settingsPageTitle}</h1>
                     <p className="mt-2 max-w-3xl text-md text-tertiary">{t.settingsPageBody}</p>
                 </div>
 
-                {/* Mobile: pin tabs under the site header so title/fields cannot paint over them while scrolling. */}
-                <aside className="fixed inset-x-0 top-[4.5rem] z-40 border-b border-secondary bg-primary px-4 py-2 md:top-22 lg:hidden dark:bg-[#0a0a0a]">
-                    <nav aria-label={t.settingsPageTitle} className="mx-auto flex min-w-0 max-w-container gap-1 overflow-x-auto [scrollbar-width:none] md:gap-2 [&::-webkit-scrollbar]:hidden">
-                        <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
-                        <SidebarLink label={t.settingsNavPreference} icon={Settings01} active={activeSection === "preference"} onClick={() => scrollToSection("preference")} />
-                        <SidebarLink label={t.settingsNavPayment} icon={CreditCard01} active={activeSection === "payment"} onClick={() => scrollToSection("payment")} />
-                        <SidebarLink label={t.settingsNavSecurity} icon={Shield01} active={activeSection === "security"} onClick={() => scrollToSection("security")} />
-                    </nav>
-                </aside>
-
-                <div className="mt-8 grid min-w-0 items-start gap-8 max-lg:pt-14 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
+                <div className="mt-8 grid min-w-0 items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-12">
                     <aside className="sticky top-28 z-20 hidden min-w-0 lg:block lg:max-h-[calc(100dvh-8rem)]">
                         <nav aria-label={t.settingsPageTitle} className="flex flex-col gap-1">
                             <SidebarLink label={t.settingsNavProfile} icon={User01} active={activeSection === "profile"} onClick={() => scrollToSection("profile")} />
@@ -684,16 +694,16 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.profile = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavProfile} />
                             <FormStatus success={profileNotice?.success} error={profileNotice?.error} className="mt-4" />
                             <div className="mt-6 flex flex-col gap-4">
-                                <div className="flex min-w-0 items-center gap-4">
+                                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                                     <button
                                         type="button"
                                         aria-label={profile.avatarUrl ? t.settingsViewPhoto : t.settingsChangePhoto}
-                                        className="cursor-pointer rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
+                                        className="shrink-0 cursor-pointer rounded-full outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
                                         onClick={() => {
                                             if (profile.avatarUrl) {
                                                 setDialog({ type: "view-photo" });
@@ -702,21 +712,21 @@ export const AccountPage = () => {
                                             photoInputRef.current?.click();
                                         }}
                                     >
+                                        {/* md keeps name/email readable on phones; no verified tick (that badge is for social kits, not patient photos). */}
                                         <AvatarProfilePhoto
-                                            size="lg"
+                                            size="md"
                                             src={profile.avatarUrl ?? undefined}
                                             alt={profile.fullName}
                                             initials={profileInitials(profile.fullName)}
-                                            verified
                                         />
                                     </button>
                                     <div className="min-w-0 flex-1">
-                                        <h2 className="line-clamp-2 text-xl font-semibold break-words text-primary">{profile.fullName}</h2>
-                                        <p className="mt-1 text-md break-all text-tertiary">{profile.email}</p>
+                                        <h2 className="line-clamp-2 text-lg font-semibold break-words text-primary sm:text-xl">{profile.fullName}</h2>
+                                        <p className="mt-1 text-sm break-all text-tertiary sm:text-md">{profile.email}</p>
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                                    <Button color="secondary" size="sm" onClick={() => photoInputRef.current?.click()}>
+                                <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
+                                    <Button color="secondary" size="sm" className="w-fit" onClick={() => photoInputRef.current?.click()}>
                                         {t.settingsChangePhoto}
                                     </Button>
                                     <p className="text-xs text-tertiary">{profile.avatarUrl ? t.settingsViewPhotoHint : t.settingsChangePhotoHint}</p>
@@ -822,7 +832,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.preference = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPreference} />
                             <div className="mt-6 flex flex-col gap-8">
@@ -898,7 +908,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.payment = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPayment} description={t.settingsPaymentBody} />
                             <FormStatus success={paymentNotice} className="mt-4" />
@@ -949,7 +959,7 @@ export const AccountPage = () => {
                             ref={(node) => {
                                 sectionRefs.current.security = node;
                             }}
-                            className="scroll-mt-44 lg:scroll-mt-28"
+                            className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavSecurity} />
                             <FormStatus success={securityNotice?.success} error={securityNotice?.error} className="mt-4" />
@@ -960,7 +970,7 @@ export const AccountPage = () => {
                                     <Toggle
                                         isSelected={settings.twoFactorEnabled}
                                         isDisabled={twoFactorBusy}
-                                        onChange={(enabled) => void requestTwoFactorCode(enabled ? "enable" : "disable")}
+                                        onChange={(enabled) => openTwoFactorPrompt(enabled ? "enable" : "disable")}
                                         aria-label={t.settingsTwoFactor}
                                         hint={t.settingsTwoFactorHint}
                                         size="md"
@@ -1018,13 +1028,20 @@ export const AccountPage = () => {
                                     <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                                         <div className="max-w-2xl">
                                             <p id="delete-account-description" className="text-sm text-tertiary">{t.settingsDeleteAccountBody}</p>
+                                            {deleteLockedByPayment ? (
+                                                <p className="mt-2 text-sm text-error-primary">{t.settingsDeleteAccountPaymentLockedHint}</p>
+                                            ) : null}
                                         </div>
                                         <Button
                                             color="secondary-destructive"
                                             size="sm"
                                             iconLeading={Trash01}
                                             aria-describedby="delete-account-description"
-                                            onClick={() => setDialog({ type: "delete-account" })}
+                                            isDisabled={deleteLockedByPayment}
+                                            onClick={() => {
+                                                if (deleteLockedByPayment) return;
+                                                setDialog({ type: "delete-account" });
+                                            }}
                                         >
                                             {t.settingsDeleteAccountButton}
                                         </Button>
@@ -1097,19 +1114,27 @@ export const AccountPage = () => {
                                 {profile.fullName}
                             </Heading>
                             <img src={profile.avatarUrl} alt={profile.fullName} className="mt-4 max-h-[70vh] w-full rounded-xl bg-secondary object-contain" />
-                            <div className="mt-6 flex justify-end gap-3">
+                            <div className="relative mt-6 flex justify-end gap-3">
                                 <Button color="secondary" onClick={() => setDialog(null)}>
                                     {t.notifCancel}
                                 </Button>
-                                <Button
-                                    color="primary"
-                                    onClick={() => {
-                                        setDialog(null);
-                                        photoInputRef.current?.click();
-                                    }}
-                                >
-                                    {t.settingsChangePhoto}
-                                </Button>
+                                {/* Overlay input so mobile OS menus anchor here, not the page Change photo control. */}
+                                <div className="relative inline-flex">
+                                    <Button color="primary" className="pointer-events-none">
+                                        {t.settingsChangePhoto}
+                                    </Button>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        aria-label={t.settingsChangePhoto}
+                                        className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                                        onChange={(event) => {
+                                            onPhotoSelected(event.target.files?.[0]);
+                                            event.target.value = "";
+                                            setDialog(null);
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </Dialog>
                     </Modal>
@@ -1139,7 +1164,10 @@ export const AccountPage = () => {
                                             }
                                             try {
                                                 const user = await profileApi.uploadPhoto(dialog.file);
-                                                updateProfile({ avatarUrl: profilePictureUrl(user.profilePicture) });
+                                                updateProfile({
+                                                    avatarUrl: await resolveProfilePictureUrl(user.profilePicture),
+                                                    pictureKey: user.profilePicture || null,
+                                                });
                                                 setProfileNotice({ success: t.settingsSaved });
                                                 setDialog(null);
                                             } catch (error) {
@@ -1161,8 +1189,11 @@ export const AccountPage = () => {
                 <TwoFactorDialog
                     t={t}
                     action={dialog.action}
+                    phase={dialog.phase}
                     maskedEmail={dialog.maskedEmail}
+                    loading={dialog.loading}
                     onClose={() => setDialog(null)}
+                    onSendCode={() => void requestTwoFactorCode(dialog.action)}
                     onVerify={(code) => verifyTwoFactorCode(dialog.action, code)}
                 />
             ) : null}
@@ -1269,16 +1300,20 @@ const DeleteAccountDialog = ({
 const TwoFactorDialog = ({
     t,
     action,
+    phase,
     maskedEmail,
     loading = false,
     onClose,
+    onSendCode,
     onVerify,
 }: {
     t: Copy;
     action: TwoFactorAction;
+    phase: "prompt" | "code";
     maskedEmail: string;
     loading?: boolean;
     onClose: () => void;
+    onSendCode: () => void;
     onVerify: (code: string) => Promise<string | null>;
 }) => {
     const [code, setCode] = useState("");
@@ -1311,40 +1346,58 @@ const TwoFactorDialog = ({
                     <Heading slot="title" className="text-lg font-semibold text-primary">
                         {title}
                     </Heading>
-                    <p className="mt-2 text-sm text-tertiary">
-                        {loading
-                            ? t.settingsTwoFactorSending
-                            : t.settingsTwoFactorCodeBody.replace("{email}", maskedEmail).replace("{action}", actionLabel)}
-                    </p>
-                    <form className="mt-6 flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
-                        <Input
-                            label={t.settingsTwoFactorCodeLabel}
-                            value={code}
-                            onChange={(value) => {
-                                setCode(value.replace(/\D/g, "").slice(0, 6));
-                                setError(null);
-                            }}
-                            inputMode="numeric"
-                            maxLength={6}
-                            isRequired
-                            isDisabled={loading || saving}
-                            isInvalid={Boolean(error)}
-                            hint={loading ? t.settingsTwoFactorSending : error ?? t.settingsTwoFactorEmailHint}
-                        />
-                        <div className="flex justify-end gap-3">
-                            <Button color="secondary" type="button" onClick={onClose} isDisabled={saving}>
-                                {t.notifCancel}
-                            </Button>
-                            <Button
-                                color={action === "disable" ? "primary-destructive" : "primary"}
-                                type="submit"
-                                isLoading={loading || saving}
-                                isDisabled={loading || saving}
-                            >
-                                {loading ? t.settingsTwoFactorSending : t.settingsSaveConfirm}
-                            </Button>
-                        </div>
-                    </form>
+                    {phase === "prompt" ? (
+                        <>
+                            <p className="mt-2 text-sm text-tertiary">
+                                {t.settingsTwoFactorPromptBody.replace("{action}", actionLabel)}
+                            </p>
+                            <div className="mt-6 flex justify-end gap-3">
+                                <Button color="secondary" type="button" onClick={onClose}>
+                                    {t.notifCancel}
+                                </Button>
+                                <Button color="primary" type="button" onClick={onSendCode}>
+                                    {t.settingsTwoFactorSendCode}
+                                </Button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <p className="mt-2 text-sm text-tertiary">
+                                {loading
+                                    ? t.settingsTwoFactorSending
+                                    : t.settingsTwoFactorCodeBody.replace("{email}", maskedEmail).replace("{action}", actionLabel)}
+                            </p>
+                            <form className="mt-6 flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
+                                <Input
+                                    label={t.settingsTwoFactorCodeLabel}
+                                    value={code}
+                                    onChange={(value) => {
+                                        setCode(value.replace(/\D/g, "").slice(0, 6));
+                                        setError(null);
+                                    }}
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    isRequired
+                                    isDisabled={loading || saving}
+                                    isInvalid={Boolean(error)}
+                                    hint={loading ? t.settingsTwoFactorSending : error ?? t.settingsTwoFactorEmailHint}
+                                />
+                                <div className="flex justify-end gap-3">
+                                    <Button color="secondary" type="button" onClick={onClose} isDisabled={saving}>
+                                        {t.notifCancel}
+                                    </Button>
+                                    <Button
+                                        color={action === "disable" ? "primary-destructive" : "primary"}
+                                        type="submit"
+                                        isLoading={loading || saving}
+                                        isDisabled={loading || saving}
+                                    >
+                                        {loading ? t.settingsTwoFactorSending : t.settingsSaveConfirm}
+                                    </Button>
+                                </div>
+                            </form>
+                        </>
+                    )}
                 </Dialog>
             </Modal>
         </ModalOverlay>

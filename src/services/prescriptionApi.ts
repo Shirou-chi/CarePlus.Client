@@ -30,12 +30,4 @@ export const prescriptionApi = {
     retrieve<PrescriptionSummary[]>('/api/Prescription/Retrieve', 'Unable to load prescriptions.', signal),
   items: (prescriptionId: string, signal?: AbortSignal) =>
     retrieve<PrescriptionItem[]>(`/api/Prescription/${encodeURIComponent(prescriptionId)}/Items`, 'Unable to load prescription items.', signal),
-  markReadyForPickup: async (prescriptionId: string): Promise<void> => {
-    const result = await request<ApiResponse<unknown>>(`/api/Prescription/${encodeURIComponent(prescriptionId)}/ReadyForPickup`, { method: 'PATCH' }, true)
-    if (!result.isSuccess) throw new Error(result.respMessage || 'Unable to mark the prescription ready for pickup.')
-  },
-  complete: async (prescriptionId: string): Promise<void> => {
-    const result = await request<ApiResponse<unknown>>(`/api/Prescription/${encodeURIComponent(prescriptionId)}/Complete`, { method: 'PATCH' }, true)
-    if (!result.isSuccess) throw new Error(result.respMessage || 'Unable to complete the prescription.')
-  },
 }

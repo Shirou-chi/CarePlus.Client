@@ -14,7 +14,7 @@ import { getAuthToken } from "@/services/api";
 import { stripeApi } from "@/services/stripeApi";
 import { clearCheckoutDraft, readCheckoutDraft } from "@/utils/checkout-draft";
 import { writePaymentCheckout } from "@/utils/payment-checkout";
-import { orderStatusLabel } from "@/utils/order-history";
+import { trackingLabels } from "@/utils/order-history";
 import { PROFILE_ADDRESS_ID } from "@/utils/delivery-address";
 import { formatRm, getClinicPharmacy, medicineName } from "@/utils/prescribed-medicine";
 
@@ -55,30 +55,6 @@ export const CheckoutPage = () => {
             return;
         }
 
-        if (draft.paymentKind === "card" || draft.paymentKind === "fpx") {
-            try {
-                writePaymentCheckout({
-                    kind: "medicine",
-                    amount: total,
-                    methodLabel: draft.paymentLabel,
-                    method: draft.paymentKind,
-                    returnTo: "/orders",
-                    cancelTo: "/checkout",
-                });
-                const session = await stripeApi.createMedicineCheckout({
-                    amount: total,
-                    method: draft.paymentKind,
-                    methodLabel: draft.paymentLabel,
-                    cancelPath: "/checkout",
-                });
-                window.location.assign(session.url);
-            } catch (error) {
-                setPlaceError(error instanceof Error ? error.message : t.checkoutPlaceFailed);
-                setPlacing(false);
-            }
-            return;
-        }
-
         const lines = draft.lines.map((line) => {
             const medicine = catalog.find((item) => item.id === line.medicineId);
             return {
@@ -90,35 +66,61 @@ export const CheckoutPage = () => {
                 qty: line.qty,
             };
         });
-        const labels = {
-            confirmed: t.checkoutStepConfirmed,
-            ready: orderStatusLabel(locale, "ready_pickup"),
-            pickedUp: orderStatusLabel(locale, "picked_up"),
-            delivered: orderStatusLabel(locale, "delivered"),
-        };
-        let order;
+        const labels = trackingLabels(locale);
+        const method = draft.paymentKind;
+        let placedId = draft.orderId ?? "";
         try {
-            const addressId = draft.addressId && draft.addressId !== PROFILE_ADDRESS_ID ? Number(draft.addressId) : null;
-            order = await orderApi.place(
-                {
-                    fulfilment: draft.fulfilment,
-                    paymentMethod: draft.paymentLabel,
-                    deliveryAddressId: Number.isFinite(addressId) ? addressId : null,
-                    deliveryFee: draft.deliveryFee,
-                    lines,
-                },
-                labels,
-            );
+            let orderId = draft.orderId;
+            if (!orderId) {
+                const addressId = draft.addressId && draft.addressId !== PROFILE_ADDRESS_ID ? Number(draft.addressId) : null;
+                const order = await orderApi.place(
+                    {
+                        fulfilment: draft.fulfilment,
+                        paymentMethod: draft.paymentLabel,
+                        deliveryAddressId: Number.isFinite(addressId) ? addressId : null,
+                        deliveryFee: draft.deliveryFee,
+                        lines,
+                    },
+                    labels,
+                );
+                orderId = order.id;
+                writeCheckoutDraft({ ...draft, orderId });
+                removeMany(draft.lines.map((line) => line.medicineId));
+            }
+
+            placedId = orderId;
+            if (method === "card" || method === "fpx") {
+                writePaymentCheckout({
+                    kind: "medicine",
+                    orderId,
+                    amount: total,
+                    methodLabel: draft.paymentLabel,
+                    method,
+                    returnTo: "/orders",
+                    cancelTo: "/checkout",
+                });
+                const session = await stripeApi.createMedicineCheckout({
+                    amount: total,
+                    orderId,
+                    method,
+                    methodLabel: draft.paymentLabel,
+                    cancelPath: "/checkout",
+                });
+                window.location.assign(session.url);
+                return;
+            }
         } catch (error) {
-            const monthLimit = error instanceof Error && error.message.includes("one month");
-            setPlaceError(monthLimit ? t.medQtyMax : t.checkoutPlaceFailed);
+            const message = error instanceof Error ? error.message : "";
+            const monthLimit = message.includes("one month");
+            const noStock = message.toLowerCase().includes("stock");
+            setPlaceError(monthLimit ? t.medQtyMax : noStock ? t.checkoutNoStock : message || t.checkoutPlaceFailed);
             setPlacing(false);
             return;
         }
+
         setPlaced(true);
-        removeMany(draft.lines.map((line) => line.medicineId));
         clearCheckoutDraft();
-        navigate("/orders", { replace: true, state: { placedId: order.id } });
+        navigate("/orders", { replace: true, state: { placedId } });
     };
 
     return (
