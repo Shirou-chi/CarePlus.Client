@@ -24,7 +24,6 @@ import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-ic
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
-import { TextSizeSwitch } from "@/components/application/text-size-switch";
 import { useI18n } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
@@ -548,14 +547,29 @@ const PhoneHome = () => {
                                 {t.sheetDark}
                             </button>
                         </div>
-                        <div className="mt-2">
-                            <TextSizeSwitch
-                                value={textSize}
-                                onChange={setTextSize}
-                                label={t.settingsTextSize}
-                                normalLabel={t.settingsTextSizeNormal}
-                                largeLabel={t.settingsTextSizeLarge}
-                            />
+                        <div className="mt-2 grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1" role="group" aria-label={t.settingsTextSize}>
+                            <button
+                                type="button"
+                                onClick={() => setTextSize("normal")}
+                                className={cx(
+                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 font-semibold outline-focus-ring focus-visible:outline-2",
+                                    !previewLarge ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                            >
+                                <span aria-hidden className="text-sm leading-none">A</span>
+                                <span className="sr-only"> {t.settingsTextSizeNormal}</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTextSize("large")}
+                                className={cx(
+                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 font-semibold outline-focus-ring focus-visible:outline-2",
+                                    previewLarge ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
+                                )}
+                            >
+                                <span aria-hidden className="text-lg leading-none">A</span>
+                                <span className="sr-only"> {t.settingsTextSizeLarge}</span>
+                            </button>
                         </div>
                     </div>
                 </div>
