@@ -7,7 +7,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
-import { doctorApi, doctorPhotoUrl, type DoctorRecord, type DoctorSchedule } from "@/services/doctorApi";
+import { doctorApi, doctorImageSrc, doctorPhotoUrl, type DoctorRecord, type DoctorSchedule } from "@/services/doctorApi";
 
 const formatScheduleTime = (value: string) => {
     const [hourText, minuteText] = value.split(":");
@@ -89,7 +89,14 @@ export const DoctorDetailPage = () => {
                     <>
                         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-start">
                             <div className="overflow-hidden rounded-2xl bg-secondary shadow-xs ring-1 ring-secondary">
-                                <img src={doctorPhotoUrl(doctor.name)} alt="" className="aspect-[4/3] w-full object-cover object-top sm:aspect-square" />
+                                <img
+                                    src={doctorImageSrc(doctor)}
+                                    alt=""
+                                    className="aspect-[4/3] w-full object-cover object-top sm:aspect-square"
+                                    onError={(event) => {
+                                        if (!event.currentTarget.src.includes("ui-avatars.com")) event.currentTarget.src = doctorPhotoUrl(doctor.name);
+                                    }}
+                                />
                             </div>
 
                             <div>
