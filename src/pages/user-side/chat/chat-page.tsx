@@ -1,4 +1,4 @@
-import { useEffect, useState, type FC } from "react";
+import { useEffect, useState, type CSSProperties, type FC } from "react";
 import { CalendarCheck01, LayoutLeft, Plus, Stars02 } from "@untitledui/icons";
 import { SlideoutMenu } from "@/components/application/slideout-menus/slideout-menu";
 import { Button } from "@/components/base/buttons/button";
@@ -14,7 +14,25 @@ import { useAnimatedChatScroll } from "@/components/marketing/chat/use-animated-
 import { useAuth } from "@/providers/auth-provider";
 import { useChat } from "@/providers/chat-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { cx } from "@/utils/cx";
 import { greetingSlot, MAX_CHAT_MESSAGE_CHARS, MAX_CHAT_MESSAGES_PER_HOUR } from "@/utils/chat";
+
+/** True on small screens when the signed-in bottom nav is covering the lower viewport. */
+const useMobileNavClearance = (enabled: boolean) => {
+    const [active, setActive] = useState(false);
+    useEffect(() => {
+        if (!enabled) {
+            setActive(false);
+            return;
+        }
+        const mq = window.matchMedia("(max-width: 1023px)");
+        const sync = () => setActive(mq.matches);
+        sync();
+        mq.addEventListener("change", sync);
+        return () => mq.removeEventListener("change", sync);
+    }, [enabled]);
+    return active;
+};
 
 const resetChatViewport = () => {
     // ponytail: iOS Safari leaves the page scrolled after the keyboard closes
@@ -38,6 +56,21 @@ export const ChatPage = () => {
     const { active, isGuest, send, sendError, isSending, clearSendError, startNew } = useChat();
     const [draft, setDraft] = useState("");
     const [historyOpen, setHistoryOpen] = useState(false);
+    // ponytail: inline bottom beats globals flex:1 / height:100dvh that kept the shell under the Book FAB
+    const liftForMobileNav = useMobileNavClearance(Boolean(profile));
+    const shellStyle: CSSProperties | undefined = liftForMobileNav
+        ? {
+              position: "fixed",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: "calc(8rem + env(safe-area-inset-bottom, 0px))",
+              height: "auto",
+              maxHeight: "none",
+              paddingBottom: 0,
+              zIndex: 1,
+          }
+        : undefined;
 
     // Logged-in: leaving /chat and coming back mounts this page again with a blank chat; prior threads stay in history.
     useEffect(() => {
@@ -106,7 +139,13 @@ export const ChatPage = () => {
                 : null;
 
     return (
-        <div className="careplus-landing careplus-chat-page flex min-h-0 flex-col overflow-hidden pt-[4.5rem] md:pt-22">
+        <div
+            className={cx(
+                "careplus-landing careplus-chat-page flex min-h-0 flex-col overflow-hidden pt-[4.5rem] md:pt-22",
+                liftForMobileNav ? "fixed inset-x-0 top-0 z-[1]" : "h-dvh max-h-dvh",
+            )}
+            style={shellStyle}
+        >
             <LandingHeader />
             <main className="careplus-chat-main mx-auto flex min-h-0 w-full max-w-container flex-1 flex-col overflow-hidden px-4 py-3 md:px-8 md:py-6">
                 <PageBreadcrumb contained={false} />
