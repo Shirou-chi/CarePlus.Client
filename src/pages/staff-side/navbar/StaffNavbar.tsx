@@ -1,5 +1,6 @@
 import { startTransition, useId } from 'react'
 import type { Theme } from '../../../components/theme/useTheme'
+import { TextSizeSwitch } from '@/components/application/text-size-switch'
 import { useAuth } from '@/providers/auth-provider'
 import { useNotices } from '@/providers/notification-provider'
 import { useTheme as useAppTheme } from '@/providers/theme-provider'
@@ -85,26 +86,13 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
             </div>
           ) : null}
         </div>
-        <div className="staff-text-size-toggle" role="group" aria-label="Text size">
-          <button
-            aria-pressed={textSize === 'normal'}
-            className={`staff-text-size-toggle__option${textSize === 'normal' ? ' is-selected' : ''}`}
-            type="button"
-            onClick={() => setTextSize('normal')}
-          >
-            A
-            <span className="sr-only"> Normal text</span>
-          </button>
-          <button
-            aria-pressed={textSize === 'large'}
-            className={`staff-text-size-toggle__option${textSize === 'large' ? ' is-selected' : ''}`}
-            type="button"
-            onClick={() => setTextSize('large')}
-          >
-            A+
-            <span className="sr-only"> Large text</span>
-          </button>
-        </div>
+        <TextSizeSwitch
+          value={textSize}
+          onChange={setTextSize}
+          label="Text size"
+          normalLabel="Normal text"
+          largeLabel="Large text"
+        />
         <button aria-checked={theme === 'dark'} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} className={`staff-theme-toggle staff-theme-toggle--topbar${theme === 'dark' ? ' is-dark' : ''}`} role="switch" title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} type="button" onClick={toggleTheme}>
           <span aria-hidden="true" className="staff-theme-toggle__track"><span className="staff-theme-toggle__thumb"><Icon name={theme === 'dark' ? 'moon' : 'sun'} size={13} /></span></span>
           <span className="sr-only">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>

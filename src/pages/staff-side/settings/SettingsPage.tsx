@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { TextSizeSwitch } from '@/components/application/text-size-switch'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '@/providers/theme-provider'
 import { resolveProfilePictureUrl } from '@/services/profileApi'
@@ -281,26 +282,13 @@ export function SettingsPage() {
                 </div>
                 <div className="staff-settings-text-size">
                   <p className="staff-settings-text-size__label">Text size</p>
-                  <div className="staff-settings-text-size__options" role="group" aria-label="Text size">
-                    <button
-                      aria-pressed={textSize === 'normal'}
-                      className={`staff-settings-text-size__option${textSize === 'normal' ? ' is-selected' : ''}`}
-                      type="button"
-                      onClick={() => setTextSize('normal')}
-                    >
-                      A
-                      <span className="sr-only"> Normal text</span>
-                    </button>
-                    <button
-                      aria-pressed={textSize === 'large'}
-                      className={`staff-settings-text-size__option${textSize === 'large' ? ' is-selected' : ''}`}
-                      type="button"
-                      onClick={() => setTextSize('large')}
-                    >
-                      A+
-                      <span className="sr-only"> Large text</span>
-                    </button>
-                  </div>
+                  <TextSizeSwitch
+                    value={textSize}
+                    onChange={setTextSize}
+                    label="Text size"
+                    normalLabel="Normal text"
+                    largeLabel="Large text"
+                  />
                 </div>
               </section>
 
