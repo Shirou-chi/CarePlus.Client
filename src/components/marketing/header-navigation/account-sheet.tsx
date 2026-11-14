@@ -24,10 +24,11 @@ import { Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Modal as Aria
 import { useNavigate } from "react-router";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { requestHomeTour } from "@/components/marketing/home/home-tour";
+import { TextSizeSwitch } from "@/components/application/text-size-switch";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
-import { type TextSize, useTheme } from "@/providers/theme-provider";
+import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 
 type Icon = FC<{ className?: string }>;
@@ -153,12 +154,12 @@ const SheetBody = ({ close }: { close: () => void }) => {
                             />
                         </SettingRow>
                         <SettingRow label={t.settingsTextSize} Icon={Type01}>
-                            <Segmented
+                            <TextSizeSwitch
                                 value={textSize}
-                                onChange={(value) => setTextSize(value as TextSize)}
-                                options={[
-                                    { id: "normal", label: "A", ariaLabel: t.settingsTextSizeNormal },
-                                    { id: "large", label: "A+", ariaLabel: t.settingsTextSizeLarge },                                ]}
+                                onChange={setTextSize}
+                                label={t.settingsTextSize}
+                                normalLabel={t.settingsTextSizeNormal}
+                                largeLabel={t.settingsTextSizeLarge}
                             />
                         </SettingRow>
                         <SettingRow label={t.language} Icon={Globe01}>

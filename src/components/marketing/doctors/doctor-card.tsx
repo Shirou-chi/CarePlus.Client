@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { ArrowUpRight } from "@untitledui/icons";
 import type { Copy, Locale } from "@/providers/locale-provider";
-import { doctorPhotoUrl, type DoctorRecord } from "@/services/doctorApi";
+import { doctorImageSrc, doctorPhotoUrl, type DoctorRecord } from "@/services/doctorApi";
 
 export const DoctorCard = ({ doctor, locale: _locale, t }: { doctor: DoctorRecord; locale: Locale; t: Copy }) => (
     <Link
@@ -10,9 +10,13 @@ export const DoctorCard = ({ doctor, locale: _locale, t }: { doctor: DoctorRecor
     >
         <div className="relative aspect-[4/5] overflow-hidden bg-secondary">
             <img
-                src={doctorPhotoUrl(doctor.name)}
+                src={doctorImageSrc(doctor)}
                 alt=""
                 className="size-full object-cover transition duration-300 group-hover:scale-105"
+                onError={(event) => {
+                    const fallback = doctorPhotoUrl(doctor.name);
+                    if (!event.currentTarget.src.includes("ui-avatars.com")) event.currentTarget.src = fallback;
+                }}
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/20 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 border-t border-white/20 bg-white/10 p-3 backdrop-blur-md sm:p-4">

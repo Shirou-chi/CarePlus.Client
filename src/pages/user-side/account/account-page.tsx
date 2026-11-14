@@ -12,6 +12,7 @@ import {
 import { Heading } from "react-aria-components";
 import { Navigate, useNavigate } from "react-router";
 import { AddressLocator } from "@/components/application/address-map/address-map";
+import { TextSizeSwitch } from "@/components/application/text-size-switch";
 import { FormStatus } from "@/components/application/form-status";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Table, TableCard } from "@/components/application/table/table";
@@ -856,22 +857,13 @@ export const AccountPage = () => {
                                 </PreferenceBlock>
 
                                 <PreferenceBlock title={t.settingsTextSize}>
-                                    <div className="flex flex-wrap gap-3">
-                                        <Button
-                                            color={textSize === "normal" ? "primary" : "secondary"}
-                                            size="sm"
-                                            onClick={() => setTextSize("normal")}
-                                        >
-                                            {t.settingsTextSizeNormal}
-                                        </Button>
-                                        <Button
-                                            color={textSize === "large" ? "primary" : "secondary"}
-                                            size="sm"
-                                            onClick={() => setTextSize("large")}
-                                        >
-                                            {t.settingsTextSizeLarge}
-                                        </Button>
-                                    </div>
+                                    <TextSizeSwitch
+                                        value={textSize}
+                                        onChange={setTextSize}
+                                        label={t.settingsTextSize}
+                                        normalLabel={t.settingsTextSizeNormal}
+                                        largeLabel={t.settingsTextSizeLarge}
+                                    />
                                 </PreferenceBlock>
 
                                 <PreferenceBlock title={t.language}>

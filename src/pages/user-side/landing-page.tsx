@@ -552,22 +552,22 @@ const PhoneHome = () => {
                                 type="button"
                                 onClick={() => setTextSize("normal")}
                                 className={cx(
-                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 font-semibold outline-focus-ring focus-visible:outline-2",
                                     !previewLarge ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
                                 )}
                             >
-                                A
+                                <span aria-hidden className="text-sm leading-none">A</span>
                                 <span className="sr-only"> {t.settingsTextSizeNormal}</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setTextSize("large")}
                                 className={cx(
-                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold outline-focus-ring focus-visible:outline-2",
+                                    "inline-flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 font-semibold outline-focus-ring focus-visible:outline-2",
                                     previewLarge ? "bg-primary text-primary shadow-xs" : "text-tertiary hover:text-secondary",
                                 )}
                             >
-                                A+
+                                <span aria-hidden className="text-lg leading-none">A</span>
                                 <span className="sr-only"> {t.settingsTextSizeLarge}</span>
                             </button>
                         </div>

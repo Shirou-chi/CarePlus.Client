@@ -23,6 +23,7 @@ import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialog
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
+import { TextSizeSwitch } from "@/components/application/text-size-switch";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Tooltip } from "@/components/base/tooltip/tooltip";
 import { CarePlusLogo } from "@/components/foundations/logo/careplus-logo";
@@ -200,12 +201,7 @@ export const LandingHeader = () => {
                                     <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none" onAction={() => setLocale(locale === "en" ? "zh" : "en")}>
                                         {t.language}
                                     </Dropdown.Item>
-                                    <Dropdown.Item
-                                        icon={Type01}
-                                        addon={textSize === "large" ? "A+" : "A"}
-                                        selectionIndicator="none"
-                                        onAction={() => setTextSize(textSize === "large" ? "normal" : "large")}
-                                    >
+                                    <Dropdown.Item icon={Type01} selectionIndicator="none" onAction={() => setTextSize(textSize === "large" ? "normal" : "large")}>
                                         {t.settingsTextSize}
                                     </Dropdown.Item>
                                     <Dropdown.Separator />
@@ -342,24 +338,13 @@ const TextSizeToggle = () => {
     const { t } = useI18n();
 
     return (
-        <ButtonGroup
-            size="sm"
-            className="careplus-text-size"
-            disallowEmptySelection
-            selectedKeys={new Set([textSize])}
-            onSelectionChange={(keys) => {
-                const next = [...keys][0];
-                if (next === "normal" || next === "large") setTextSize(next);
-            }}
-            aria-label={t.settingsTextSize}
-        >
-            <ButtonGroupItem id="normal" aria-label={t.settingsTextSizeNormal}>
-                A
-            </ButtonGroupItem>
-            <ButtonGroupItem id="large" aria-label={t.settingsTextSizeLarge}>
-                A+
-            </ButtonGroupItem>
-        </ButtonGroup>
+        <TextSizeSwitch
+            value={textSize}
+            onChange={setTextSize}
+            label={t.settingsTextSize}
+            normalLabel={t.settingsTextSizeNormal}
+            largeLabel={t.settingsTextSizeLarge}
+        />
     );
 };
 

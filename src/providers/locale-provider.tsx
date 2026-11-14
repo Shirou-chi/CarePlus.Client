@@ -235,7 +235,7 @@ const copy = {
         phoneHomeBody:
             "Open CarePlus on your phone and add it to your home screen. It opens full screen with the bottom tab bar, follows light or dark, and you can enlarge the text.",
         phoneHomePointTheme: "Light or dark mode",
-        phoneHomePointTextSize: "Normal or large text (A / A+)",
+        phoneHomePointTextSize: "Smaller or larger text",
         phoneHomePointTabs: "Bottom tabs for Home, Visits, Book, Chat and Me",
         phoneHomePointFullscreen: "Full screen, like an app",
         phoneHomeHow: "Show me how",
@@ -1410,7 +1410,7 @@ const copy = {
         phoneHomeTitle: "添加到主屏幕。",
         phoneHomeBody: "用手机打开 CarePlus，并添加到主屏幕。它会全屏打开，带底部导航栏，跟随浅色或深色，也可以放大文字。",
         phoneHomePointTheme: "浅色或深色模式",
-        phoneHomePointTextSize: "标准或大号文字（A / A+）",
+        phoneHomePointTextSize: "较小或较大的文字",
         phoneHomePointTabs: "底部有首页、就诊、挂号、聊天和我的",
         phoneHomePointFullscreen: "全屏显示，像 App 一样",
         phoneHomeHow: "教我怎么加",
