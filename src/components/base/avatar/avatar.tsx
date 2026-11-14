@@ -92,13 +92,14 @@ export const Avatar = ({
     className,
     contentClassName,
 }: AvatarProps) => {
-    const [isFailed, setIsFailed] = useState(false);
+    const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
-    const canShowImage = src && !isFailed;
+    // A saved blob: URL dies on refresh. Retry when a fresh photo URL arrives.
+    const canShowImage = Boolean(src) && failedSrc !== src;
 
     const renderMainContent = () => {
         if (canShowImage) {
-            return <img data-avatar-img className="size-full object-cover" src={src} alt={alt} onError={() => setIsFailed(true)} />;
+            return <img data-avatar-img className="size-full object-cover" src={src} alt={alt} onError={() => src && setFailedSrc(src)} />;
         }
 
         if (initials) {

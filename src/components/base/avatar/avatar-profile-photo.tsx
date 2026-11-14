@@ -53,7 +53,8 @@ export const AvatarProfilePhoto = ({
     status,
     className,
 }: AvatarProfilePhotoProps) => {
-    const [isFailed, setIsFailed] = useState(false);
+    const [failedSrc, setFailedSrc] = useState<string | null>(null);
+    const isFailed = Boolean(src) && failedSrc === src;
 
     const renderMainContent = () => {
         if (src && !isFailed) {
@@ -64,7 +65,7 @@ export const AvatarProfilePhoto = ({
                         styles[size].content,
                     )}
                 >
-                    <img src={src} alt={alt} onError={() => setIsFailed(true)} className="size-full object-cover" />
+                    <img src={src} alt={alt} onError={() => setFailedSrc(src ?? null)} className="size-full object-cover" />
                 </div>
             );
         }

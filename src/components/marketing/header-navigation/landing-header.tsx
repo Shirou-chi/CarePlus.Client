@@ -1,5 +1,5 @@
 import { type FC, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import {
     CalendarCheck01,
     Bell01,
@@ -288,9 +288,9 @@ const HeaderCart = () => {
                         {lines.length === 0 ? (
                             <>
                                 <p className="mt-2 text-sm text-tertiary">{t.medCartEmptyHint}</p>
-                                <Button color="secondary" size="sm" href="/medicine" className="mt-4 w-full">
+                                <Link to="/medicine" className="mt-3 inline-flex text-sm font-semibold text-brand-secondary outline-focus-ring hover:underline focus-visible:outline-2">
                                     {t.medCartBrowseMedicines}
-                                </Button>
+                                </Link>
                             </>
                         ) : (
                             <>
