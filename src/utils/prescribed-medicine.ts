@@ -27,6 +27,7 @@ export type MedicineRow = {
     imageKey: string;
     price: number;
     status: string;
+    stock?: number | null;
 };
 
 export type Medicine = {
@@ -43,6 +44,8 @@ export type Medicine = {
     price: number;
     tone: "amber" | "navy" | "teal";
     imageKey: MedicineImageKey;
+    /** Units left in unexpired batches. Null when the list has not sent a stock figure. */
+    stock: number | null;
 };
 
 export type Pharmacy = {
@@ -100,7 +103,15 @@ const toMedicine = (row: MedicineRow, locale: Locale): Medicine => {
         price: Number(row.price),
         tone: imageKey === "amox" || imageKey === "ibu" ? "amber" : imageKey === "lora" || imageKey === "clox" ? "teal" : "navy",
         imageKey,
+        stock: row.stock == null ? null : Math.max(0, Math.floor(Number(row.stock) || 0)),
     };
+};
+
+/** Monthly cap and batch stock both limit how many units can be added. Missing stock does not block the add. */
+export const buyableUnits = (monthlyRemaining: number, stock: number | null) => {
+    const monthly = Math.max(0, monthlyRemaining);
+    if (stock == null) return monthly;
+    return Math.max(0, Math.min(monthly, Math.floor(stock)));
 };
 
 const clinic: Record<Locale, Pharmacy> = {

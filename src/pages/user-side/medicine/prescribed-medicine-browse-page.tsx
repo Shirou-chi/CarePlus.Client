@@ -14,6 +14,7 @@ import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import {
+    buyableUnits,
     getClinicPharmacy,
     type CatalogView,
     type Medicine,
@@ -45,7 +46,7 @@ export const PrescribedMedicineBrowsePage = () => {
     }
 
     const addOne = (medicine: Medicine, source: HTMLElement) => {
-        const remaining = remainingFor(medicine.id);
+        const remaining = buyableUnits(remainingFor(medicine.id), medicine.stock);
         if (remaining <= 0) {
             return;
         }
@@ -112,7 +113,7 @@ export const PrescribedMedicineBrowsePage = () => {
                 ) : (
                     <ul className={view === "grid" ? "mt-5 grid grid-cols-2 gap-4 lg:grid-cols-3" : "mt-5 flex flex-col gap-3"}>
                         {results.map((medicine) => {
-                            const remaining = remainingFor(medicine.id);
+                            const remaining = buyableUnits(remainingFor(medicine.id), medicine.stock);
                             return (
                                 <li key={medicine.id}>
                                     <MedicineCard
@@ -120,8 +121,8 @@ export const PrescribedMedicineBrowsePage = () => {
                                         remaining={remaining}
                                         layout={view}
                                         kindLabel={kindLabel(medicine.kind, t)}
-                                        inStockLabel={t.medInStock.replace("{count}", String(remaining))}
-                                        atLimitLabel={t.medCartLimit}
+                                        inStockLabel={t.medInStock}
+                                        atLimitLabel={medicine.stock === 0 ? t.medOutOfStock : t.medCartLimit}
                                         viewMoreLabel={t.medViewMore}
                                         addLabel={t.medAddCart}
                                         onAdd={(source) => addOne(medicine, source)}
