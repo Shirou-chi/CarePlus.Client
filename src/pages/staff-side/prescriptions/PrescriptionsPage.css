@@ -78,6 +78,8 @@
 
 .prescription-status[data-status='pending'] { --prescription-status-accent: var(--staff-amber); }
 .prescription-status[data-status='dispensed'] { --prescription-status-accent: var(--staff-teal); }
+.prescription-status[data-status='ready-for-pickup'] { --prescription-status-accent: var(--staff-brand); }
+.prescription-status[data-status='completed'] { --prescription-status-accent: var(--staff-teal); }
 
 .prescription-feedback {
   display: grid;
@@ -91,6 +93,7 @@
 }
 
 .prescription-dialog { width: min(620px, 100%); }
+.prescription-dialog__actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
 .prescription-medicines { margin-top: 20px; }
 .prescription-medicines h3 { margin: 0 0 10px; font-size: 0.85rem; }
 

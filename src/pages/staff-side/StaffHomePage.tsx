@@ -5,8 +5,8 @@ import { useNotices } from '@/providers/notification-provider'
 import { appointmentApi, type StaffAppointmentRecord } from '@/services/appointmentApi'
 import { leaveApi } from '@/services/leaveApi'
 import { medicineBatchApi } from '@/services/medicineBatchApi'
+import { prescriptionApi } from '@/services/prescriptionApi'
 import { queueApi, type StaffQueueEntry } from '@/services/queueApi'
-import { workScheduleApi } from '@/services/workScheduleApi'
 import { sortNotices } from '@/utils/notifications'
 import { useTheme } from '../../components/theme/useTheme'
 import { StaffPageEyebrow } from './components/StaffPageEyebrow'
@@ -47,6 +47,7 @@ const links = {
   leave: '/staff/leave',
   schedules: '/staff/schedules',
   batches: '/staff/medicine-batches',
+  prescriptions: '/staff/prescriptions',
   notifications: '/staff/notifications',
 }
 
@@ -81,11 +82,11 @@ async function readFeed<T>(request: Promise<T[]>): Promise<Feed<T>> {
 
 async function loadOverview(role: StaffRole, day: string, signal: AbortSignal) {
   if (role === 'Pharmacist') {
-    const [batches, shifts] = await Promise.all([
+    const [batches, prescriptions] = await Promise.all([
       readFeed(medicineBatchApi.list()),
-      readFeed(workScheduleApi.retrieveAll()),
+      readFeed(prescriptionApi.list()),
     ])
-    return { kind: 'pharmacy' as const, batches, shifts }
+    return { kind: 'pharmacy' as const, batches, prescriptions }
   }
 
   const [appointments, queue, leave] = await Promise.all([
@@ -139,6 +140,7 @@ function statusTone(status: string): Tone {
   if (status === 'Waiting' || status === 'Low stock') return 'amber'
   if (status === 'In consultation') return 'violet'
   if (status === 'Completed' || status === 'In stock') return 'teal'
+  if (status === 'Ready for pickup') return 'blue'
   if (['Cancelled', 'Missed', 'Expired'].includes(status)) return 'red'
   return 'blue'
 }
@@ -251,7 +253,7 @@ function ClinicalOverview({ data, isAdmin }: { data?: Extract<OverviewData, { ki
   )
 }
 
-function PharmacyOverview({ data, day }: { data?: Extract<OverviewData, { kind: 'pharmacy' }>; day: string }) {
+function PharmacyOverview({ data }: { data?: Extract<OverviewData, { kind: 'pharmacy' }> }) {
   const batches = data?.batches.rows?.map((batch) => ({ ...batch, status: getBatchStatus(batch) }))
   const counts = batches && {
     low: batches.filter((batch) => batch.status === 'Low stock').length,
@@ -277,14 +279,20 @@ function PharmacyOverview({ data, day }: { data?: Extract<OverviewData, { kind: 
       tone: statusTone(batch.status),
       to: links.batches + '?medicineId=' + encodeURIComponent(batch.medicineId),
     }))
-  const shifts = data?.shifts.rows?.filter((shift) => shift.status === 'Active' && shift.workingDate.slice(0, 10) >= day)
-    .sort((left, right) => left.workingDate.localeCompare(right.workingDate))
+  const dispenseStatusOrder: Record<string, number> = { Pending: 0, 'Ready for pickup': 1, Completed: 2 }
+  const dispenseRows = data?.prescriptions.rows
+    ?.filter((prescription) => prescription.status !== 'Completed')
+    ?.slice()
+    .sort((left, right) => (dispenseStatusOrder[left.status] ?? 3) - (dispenseStatusOrder[right.status] ?? 3) || right.createdAt.localeCompare(left.createdAt))
     .slice(0, previewLimit)
-    .map((shift) => ({
-      id: shift.scheduleId,
-      lead: formatDate(shortDate, calendarDate(shift.workingDate)),
-      title: shift.shift ? shift.shift + ' shift' : 'Scheduled shift',
-      detail: shift.roomName ?? '',
+    .map((prescription) => ({
+      id: prescription.prescriptionId,
+      lead: formatDate(shortDate, prescription.createdAt),
+      title: prescription.patientName,
+      detail: prescription.prescriptionId + ' · ' + prescription.doctorName,
+      status: prescription.status,
+      tone: statusTone(prescription.status),
+      to: links.prescriptions,
     }))
 
   return (
@@ -293,8 +301,8 @@ function PharmacyOverview({ data, day }: { data?: Extract<OverviewData, { kind: 
       <div className="staff-overview__grid">
         <OverviewPanel id="overview-inventory" title="Stock alerts" to={links.batches}
           linkLabel="Open batches" rows={alerts} failed={failed} empty="No low stock or expired batches." />
-        <OverviewPanel id="overview-shifts" title="Upcoming shifts" to={links.schedules}
-          linkLabel="Open schedule" rows={shifts} failed={data?.shifts.failed} empty="No upcoming shifts." />
+        <OverviewPanel id="overview-prescriptions" title="Prescription dispensing" to={links.prescriptions}
+          linkLabel="Open prescriptions" rows={dispenseRows} failed={data?.prescriptions.failed} empty="No prescriptions to dispense." />
       </div>
     </>
   )
@@ -371,7 +379,7 @@ export function StaffHomePage() {
           </header>
 
           {role === 'Pharmacist'
-            ? <PharmacyOverview data={current?.data.kind === 'pharmacy' ? current.data : undefined} day={day} />
+            ? <PharmacyOverview data={current?.data.kind === 'pharmacy' ? current.data : undefined} />
             : <ClinicalOverview data={current?.data.kind === 'clinic' ? current.data : undefined} isAdmin={role === 'Admin'} />}
 
           <div className="staff-overview__grid">

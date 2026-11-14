@@ -14,11 +14,12 @@ const clinicDateTime = new Intl.DateTimeFormat('en-MY', {
   timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'medium', timeStyle: 'short',
 })
 
-function PrescriptionDetails({ prescription, onClose }: { prescription: PrescriptionSummary; onClose: () => void }) {
+function PrescriptionDetails({ prescription, canManage, onClose, onStatusChange }: { prescription: PrescriptionSummary; canManage: boolean; onClose: () => void; onStatusChange: (status: string) => void }) {
   const { prescriptionId } = prescription
   const [items, setItems] = useState<PrescriptionItem[]>()
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -29,6 +30,24 @@ function PrescriptionDetails({ prescription, onClose }: { prescription: Prescrip
     })
     return () => controller.abort()
   }, [prescriptionId, attempt])
+
+  const updateStatus = async () => {
+    setActionLoading(true)
+    setError('')
+    try {
+      if (prescription.status === 'Pending') {
+        await prescriptionApi.markReadyForPickup(prescriptionId)
+        onStatusChange('Ready for pickup')
+      } else {
+        await prescriptionApi.complete(prescriptionId)
+        onStatusChange('Completed')
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to update prescription status.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   return (
     <StaffDialog className="prescription-dialog" eyebrow="Prescription" onClose={onClose} title={prescription.patientName} titleId="prescription-detail-title">
@@ -65,12 +84,15 @@ function PrescriptionDetails({ prescription, onClose }: { prescription: Prescrip
           </ul>
         )}
       </section>
+      {canManage && (prescription.status === 'Pending' || prescription.status === 'Ready for pickup') ? <div className="prescription-dialog__actions"><button className="staff-button staff-button--secondary" type="button" onClick={onClose}>Close</button><button className="staff-button staff-button--primary" disabled={actionLoading || !items?.length} type="button" onClick={() => void updateStatus()}><Icon name={prescription.status === 'Pending' ? 'box' : 'check'} size={15} />{actionLoading ? 'Updating…' : prescription.status === 'Pending' ? 'Ready for pickup' : 'Complete prescription'}</button></div> : null}
     </StaffDialog>
   )
 }
 
 export function PrescriptionsPage() {
   const { user } = useAuth()
+  const currentRole = getStaffRole(user?.role)
+  const canManage = currentRole === 'Pharmacist'
   const { theme, toggleTheme } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -100,6 +122,13 @@ export function PrescriptionsPage() {
   const search = query.trim().toLowerCase()
   const visibleRows = rows?.filter((row) => [row.patientName, row.patientId, row.doctorName, row.prescriptionId]
     .some((value) => value.toLowerCase().includes(search))) ?? []
+
+  const handleStatusChange = (prescription: PrescriptionSummary, status: string) => {
+    const updated = { ...prescription, status }
+    setRows((current) => current?.map((row) => row.prescriptionId === prescription.prescriptionId ? updated : row))
+    setSelected(updated)
+    setNotice(status === 'Ready for pickup' ? 'Prescription is ready for pickup.' : 'Prescription completed and payment bill created.')
+  }
 
   return (
     <div className="staff-page prescriptions-page">
@@ -152,7 +181,9 @@ export function PrescriptionsPage() {
                         <td><strong>{row.patientName}</strong><small>{row.patientId}</small></td>
                         <td>{row.doctorName}</td>
                         <td><time dateTime={row.createdAt}>{clinicDateTime.format(new Date(row.createdAt))}</time></td>
-                        <td><span className="prescription-status" data-status={row.status.toLowerCase()}>{row.status}</span></td>
+                        <td><span className="prescription-status" data-status={row.status.toLowerCase().replace(/\s+/g, '-')}>
+                          {row.status}
+                        </span></td>
                         <td><button aria-label={`View prescription for ${row.patientName}`} className="staff-button staff-button--secondary" type="button" onClick={() => setSelected(row)}><Icon name="eye" size={15} /> View</button></td>
                       </tr>
                     ))}
@@ -163,7 +194,7 @@ export function PrescriptionsPage() {
           </section>
         </div>
       </main>
-      {selected ? <PrescriptionDetails key={selected.prescriptionId} prescription={selected} onClose={() => setSelected(undefined)} /> : null}
+      {selected ? <PrescriptionDetails key={`${selected.prescriptionId}-${selected.status}`} canManage={canManage} onClose={() => setSelected(undefined)} onStatusChange={(status) => handleStatusChange(selected, status)} prescription={selected} /> : null}
       {notice ? <div className="staff-toast" role="status">{notice}</div> : null}
     </div>
   )

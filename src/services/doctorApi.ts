@@ -1,4 +1,5 @@
 import { request, type ApiResponse } from "@/services/api";
+import { profilePictureUrl } from "@/services/profileApi";
 import type { DoctorReview } from "@/utils/clinic-records";
 
 export type DoctorSchedule = {
@@ -13,6 +14,7 @@ export type DoctorRecord = {
     specialization: string;
     qualification: string;
     yearsOfExperience: number;
+    profilePicture?: string | null;
     schedules: DoctorSchedule[];
     reviews: DoctorReview[];
 };
@@ -25,7 +27,8 @@ const unwrap = async <T>(path: string): Promise<T> => {
     return result.data;
 };
 
-export const doctorPhotoUrl = (name: string) =>
+export const doctorPhotoUrl = (profilePicture: string | null | undefined, name: string) =>
+    profilePictureUrl(profilePicture) ??
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=512&background=0f766e&color=fff&bold=true`;
 
 export const doctorApi = {

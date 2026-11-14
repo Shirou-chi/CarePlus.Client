@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '@/providers/theme-provider'
+import { profilePictureUrl } from '@/services/profileApi'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
@@ -56,6 +57,8 @@ export function SettingsPage() {
   const [roleDetails, setRoleDetails] = useState<StaffRecord | null>(null)
   const [roleDetailsLoading, setRoleDetailsLoading] = useState(false)
   const [roleDetailsError, setRoleDetailsError] = useState('')
+  const [photoSaving, setPhotoSaving] = useState(false)
+  const [photoError, setPhotoError] = useState('')
 
   const announce = (message: string) => {
     setNotice(message)
@@ -175,6 +178,30 @@ export function SettingsPage() {
     return displayValue(value)
   }
 
+  const handleDoctorPhotoSelected = async (file: File | undefined) => {
+    if (!file || currentRole !== 'Doctor' || !user?.staffId) return
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setPhotoError('Use a JPG, PNG, or WebP photo under 2 MB.')
+      return
+    }
+
+    setPhotoSaving(true)
+    setPhotoError('')
+
+    try {
+      const updated = await staffApi.uploadDoctorPhoto(user.staffId, file)
+      setRoleDetails(updated)
+      announce('Doctor profile photo saved successfully.')
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : 'Unable to save the doctor profile photo.')
+    } finally {
+      setPhotoSaving(false)
+    }
+  }
+
+  const doctorPhoto = currentRole === 'Doctor' ? profilePictureUrl(roleDetails?.profilePicture) : null
+
   return (
     <div className="staff-page staff-settings-page">
       <StaffSidebar activeNav="Settings" announce={announce} onClose={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
@@ -186,8 +213,8 @@ export function SettingsPage() {
           <section className="staff-card staff-settings-profile-card">
               <div className="staff-settings-profile-card__header">
                 <div className="staff-settings-profile-identity">
-                  <span className="staff-settings-profile-avatar">{initials}</span>
-                  <div><p className="staff-card__eyebrow">Account profile</p></div>
+                  <span className="staff-settings-profile-avatar">{doctorPhoto ? <img src={doctorPhoto} alt="Doctor profile" /> : initials}</span>
+                  <div><p className="staff-card__eyebrow">Account profile</p>{currentRole === 'Doctor' ? <label className="staff-settings-profile-photo-action">{photoSaving ? 'Uploading…' : 'Change profile photo'}<input accept="image/jpeg,image/png,image/webp" disabled={photoSaving} type="file" onChange={(event) => { void handleDoctorPhotoSelected(event.target.files?.[0]); event.currentTarget.value = '' }} /></label> : null}{photoError ? <small className="staff-settings-profile-photo-error" role="alert">{photoError}</small> : null}</div>
                 </div>
               </div>
 

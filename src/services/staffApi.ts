@@ -16,6 +16,7 @@ export type StaffRecord = {
   qualification?: string
   certification?: string | null
   yearsOfExperience?: number
+  profilePicture?: string | null
 }
 
 export type StaffRegisterRequest = {
@@ -141,6 +142,17 @@ export const staffApi = {
     if (!result.isSuccess) {
       throw new Error(result.respMessage || 'Unable to update staff password.')
     }
+  },
+
+  async uploadDoctorPhoto(staffId: string, file: File): Promise<StaffRecord> {
+    const body = new FormData()
+    body.append('file', file)
+    const result = await request<ApiResponse<StaffRecord>>(`/api/Doctor/${encodeURIComponent(staffId)}/Photo`, {
+      method: 'POST',
+      body,
+    }, true)
+
+    return unwrap(result, 'Unable to save the doctor profile photo.')
   },
 }
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { useTheme } from '../../../components/theme/useTheme'
+import { profilePictureUrl } from '@/services/profileApi'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
@@ -66,6 +67,10 @@ function roleTone(role: string) {
   if (role === 'Doctor') return 'blue'
   if (role === 'Pharmacist') return 'amber'
   return 'violet'
+}
+
+function staffAvatar(member: StaffRecord) {
+  return member.role === 'Doctor' ? profilePictureUrl(member.profilePicture) : null
 }
 
 export function StaffManagementPage() {
@@ -306,7 +311,7 @@ export function StaffManagementPage() {
                   <tbody>
                     {filteredStaff.map((member) => (
                       <tr key={member.staffId}>
-                        <td><span className={`staff-management-avatar staff-management-avatar--${roleTone(member.role)}`}>{getInitials(member.name || member.username)}</span><span><strong>{member.name || member.username}</strong><small>{member.staffId} · @{member.username}</small></span></td>
+                        <td><span className={`staff-management-avatar staff-management-avatar--${roleTone(member.role)}`}>{staffAvatar(member) ? <img src={staffAvatar(member) ?? undefined} alt="" /> : getInitials(member.name || member.username)}</span><span><strong>{member.name || member.username}</strong><small>{member.staffId} · @{member.username}</small></span></td>
                         <td><span className="staff-management-role">{member.role}</span></td>
                         <td><span className="staff-management-contact"><strong>{member.email}</strong><small>{member.phone || 'No phone number'}</small></span></td>
                         <td><span className={`staff-management-status staff-management-status--${member.status.toLowerCase()}`}><i />{member.status}</span></td>
@@ -332,7 +337,7 @@ export function StaffManagementPage() {
           title={viewingStaff.name || viewingStaff.username}
           titleId="staff-management-view-title"
         >
-            <div className="staff-management-profile-heading"><span className={`staff-management-avatar staff-management-avatar--${roleTone(viewingStaff.role)}`}>{getInitials(viewingStaff.name || viewingStaff.username)}</span><span><strong>{viewingStaff.role}</strong><small>{viewingStaff.status} account</small></span></div>
+            <div className="staff-management-profile-heading"><span className={`staff-management-avatar staff-management-avatar--${roleTone(viewingStaff.role)}`}>{staffAvatar(viewingStaff) ? <img src={staffAvatar(viewingStaff) ?? undefined} alt="" /> : getInitials(viewingStaff.name || viewingStaff.username)}</span><span><strong>{viewingStaff.role}</strong><small>{viewingStaff.status} account</small></span></div>
             <dl className="staff-detail-grid">
               <div><dt>Staff ID</dt><dd>{viewingStaff.staffId}</dd></div>
               <div><dt>Username</dt><dd>@{viewingStaff.username}</dd></div>

@@ -10,7 +10,7 @@ export const DoctorCard = ({ doctor, locale: _locale, t }: { doctor: DoctorRecor
     >
         <div className="relative aspect-[4/5] overflow-hidden bg-secondary">
             <img
-                src={doctorPhotoUrl(doctor.name)}
+                src={doctorPhotoUrl(doctor.profilePicture, doctor.name)}
                 alt=""
                 className="size-full object-cover transition duration-300 group-hover:scale-105"
             />
