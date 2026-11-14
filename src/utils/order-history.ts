@@ -1,6 +1,15 @@
 import type { Locale } from "@/providers/locale-provider";
 
-export type OrderStatus = "processing" | "waiting_delivery" | "ready_pickup" | "picked_up" | "delivered";
+export type OrderStatus =
+    | "awaiting_payment"
+    | "paid"
+    | "preparing"
+    | "shipped"
+    | "processing"
+    | "waiting_delivery"
+    | "ready_pickup"
+    | "picked_up"
+    | "delivered";
 
 export type OrderLine = {
     id: string;
@@ -26,6 +35,10 @@ export type MedicineOrder = {
 
 export const orderStatusLabel = (locale: Locale, status: OrderStatus) => {
     const en: Record<OrderStatus, string> = {
+        awaiting_payment: "Awaiting payment",
+        paid: "Paid",
+        preparing: "Preparing",
+        shipped: "Sent out",
         processing: "Processing",
         waiting_delivery: "Waiting for delivery",
         ready_pickup: "Ready to pickup",
@@ -33,6 +46,10 @@ export const orderStatusLabel = (locale: Locale, status: OrderStatus) => {
         delivered: "Delivered",
     };
     const zh: Record<OrderStatus, string> = {
+        awaiting_payment: "待付款",
+        paid: "已付款",
+        preparing: "准备中",
+        shipped: "已寄出",
         processing: "处理中",
         waiting_delivery: "等待配送",
         ready_pickup: "待自取",
@@ -52,7 +69,17 @@ export const showsPaymentHistory = (order: Pick<MedicineOrder, "payment" | "stat
     return order.fulfilment === "pickup" ? order.status === "picked_up" : order.status === "delivered";
 };
 
-const knownStatuses: OrderStatus[] = ["processing", "waiting_delivery", "ready_pickup", "picked_up", "delivered"];
+const knownStatuses: OrderStatus[] = [
+    "awaiting_payment",
+    "paid",
+    "preparing",
+    "shipped",
+    "processing",
+    "waiting_delivery",
+    "ready_pickup",
+    "picked_up",
+    "delivered",
+];
 
 /** Admin/DB rows may use "Picked_up", "Picked Up", etc.; always fold to snake_case. */
 export const normalizeOrderStatus = (fulfilment: MedicineOrder["fulfilment"], status: string): OrderStatus => {
@@ -60,27 +87,52 @@ export const normalizeOrderStatus = (fulfilment: MedicineOrder["fulfilment"], st
     if (value === "completed" || value === "dispensed") {
         return fulfilment === "delivery" ? "delivered" : "picked_up";
     }
-    const known = knownStatuses.includes(value as OrderStatus) ? (value as OrderStatus) : "processing";
-    if (fulfilment === "pickup" && known === "processing") return "ready_pickup";
-    return known;
+    return knownStatuses.includes(value as OrderStatus) ? (value as OrderStatus) : "processing";
+};
+
+export type TrackingLabels = {
+    awaiting: string;
+    paid: string;
+    preparing: string;
+    shipped: string;
+    ready: string;
+    pickedUp: string;
+    delivered: string;
+};
+
+export const trackingLabels = (locale: Locale): TrackingLabels => ({
+    awaiting: orderStatusLabel(locale, "awaiting_payment"),
+    paid: orderStatusLabel(locale, "paid"),
+    preparing: orderStatusLabel(locale, "preparing"),
+    shipped: orderStatusLabel(locale, "shipped"),
+    ready: orderStatusLabel(locale, "ready_pickup"),
+    pickedUp: orderStatusLabel(locale, "picked_up"),
+    delivered: orderStatusLabel(locale, "delivered"),
+});
+
+const trackRank = (status: OrderStatus) => {
+    if (status === "preparing" || status === "processing" || status === "waiting_delivery") return 1;
+    if (status === "shipped" || status === "ready_pickup") return 2;
+    if (status === "delivered" || status === "picked_up") return 3;
+    return 0;
 };
 
 export const trackingStepsFor = (
     fulfilment: MedicineOrder["fulfilment"],
     status: OrderStatus,
-    labels: { confirmed: string; ready: string; pickedUp: string; delivered: string },
+    labels: TrackingLabels,
 ) => {
-    const steps = [labels.confirmed];
-    if (fulfilment === "pickup") steps.push(labels.ready);
-    if (status === "picked_up") steps.push(labels.pickedUp);
-    if (status === "delivered") steps.push(labels.delivered);
-    return steps;
+    if (status === "awaiting_payment") return [labels.awaiting];
+    const names = fulfilment === "delivery"
+        ? [labels.paid, labels.preparing, labels.shipped, labels.delivered]
+        : [labels.paid, labels.preparing, labels.ready, labels.pickedUp];
+    return names.slice(0, trackRank(status) + 1);
 };
 
 export const orderStatusColor = (status: OrderStatus): "warning" | "success" | "brand" | "gray" => {
-    if (status === "waiting_delivery") return "warning";
+    if (status === "awaiting_payment" || status === "waiting_delivery") return "warning";
     if (status === "delivered" || status === "picked_up") return "success";
-    if (status === "ready_pickup") return "brand";
+    if (status === "preparing" || status === "shipped" || status === "ready_pickup") return "brand";
     return "gray";
 };
 

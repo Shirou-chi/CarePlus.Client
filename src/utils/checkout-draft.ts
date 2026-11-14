@@ -12,8 +12,10 @@ export type CheckoutDraft = {
     profileId: string;
     fulfilment: "pickup" | "delivery";
     paymentLabel: string;
-    /** cod places immediately; card/fpx go through Stripe Checkout first. */
+    /** Both kinds save the order first. Card and FPX then open Stripe for that order. */
     paymentKind: "cod" | "card" | "fpx";
+    /** Set after the order row exists, so a retry does not place a second order. */
+    orderId?: string;
     addressId?: string;
     address?: string;
     deliveryFee: number;
