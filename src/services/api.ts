@@ -4,7 +4,7 @@ export const baseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export const TOKEN_KEY = 'careplus-token'
 export const REMEMBER_ME_KEY = 'careplus-remember-me'
-export const SESSION_EXPIRED_MESSAGE = 'Your session has expired or is invalid. Please sign in again.'
+export const SESSION_EXPIRED_MESSAGE = 'You were inactive for too long, so you were signed out. Sign in again.'
 
 /** Token may live in localStorage (remember me) or sessionStorage (browser session). */
 export function getAuthToken(): string | null {

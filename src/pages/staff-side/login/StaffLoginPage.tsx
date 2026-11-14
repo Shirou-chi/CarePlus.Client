@@ -100,7 +100,7 @@ export function StaffLoginPage() {
             />
           </label>
 
-          {signedOut && !error ? <p className="staff-login-card__copy" role="status">You were signed out because this session ended. Sign in again to continue.</p> : null}
+          {signedOut && !error ? <p className="staff-login-card__copy" role="status">You were inactive for too long, so you were signed out. Sign in again.</p> : null}
           {error ? <p className="staff-login-card__error" role="alert">{error}</p> : null}
 
           <button className="staff-login-card__submit" disabled={isSubmitting} type="submit">
