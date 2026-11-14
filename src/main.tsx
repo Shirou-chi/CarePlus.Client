@@ -2,6 +2,7 @@ import { type ComponentType, StrictMode, Suspense, lazy, useEffect, useLayoutEff
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
 import { useAuth } from "@/providers/auth-provider";
+import { getAuthToken } from "@/services/api";
 import { MobileBottomNav, shouldHideMobileBottomNav } from "@/components/marketing/header-navigation/mobile-bottom-nav";
 import { NotificationToasts } from "@/components/marketing/notifications/notification-toasts";
 import { HomePage } from "@/pages/user-side/home-page";
@@ -213,7 +214,20 @@ const AppRoutes = () => {
         prefetchPatientPages();
     }, [isReady, isStaffRoute]);
 
-    if (isReady && profile && location.pathname === "/") return <Navigate to={invoicesReady && overdue ? "/invoices" : "/home"} replace />;
+    // The saved profile is already in localStorage. Redirect before the token
+    // check finishes, or "/" paints the landing page first.
+    if (profile && location.pathname === "/") return <Navigate to={invoicesReady && overdue ? "/invoices" : "/home"} replace />;
+    if (!isReady && getAuthToken() && location.pathname === "/") {
+        return (
+            <div className="flex min-h-dvh items-center justify-center bg-primary" role="status">
+                <svg fill="none" viewBox="0 0 20 20" className="size-8 text-brand-secondary" aria-hidden>
+                    <circle className="stroke-current opacity-30" cx="10" cy="10" r="8" fill="none" strokeWidth="2" />
+                    <circle className="origin-center animate-spin stroke-current motion-reduce:animate-none" cx="10" cy="10" r="8" fill="none" strokeWidth="2" strokeDasharray="12.5 50" strokeLinecap="round" />
+                </svg>
+                <span className="sr-only">Loading</span>
+            </div>
+        );
+    }
     if (isReady && !profile && location.pathname === "/home") return <Navigate to="/" replace />;
     if (overdueLock) return <Navigate to="/invoices" replace />;
 
