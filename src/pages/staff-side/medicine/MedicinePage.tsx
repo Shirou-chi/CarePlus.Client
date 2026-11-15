@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { medicineImageUrl } from '@/components/marketing/medicine/medicine-shot'
@@ -9,6 +9,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { MedicineImage } from './MedicineImage'
 import '../StaffHomePage.css'
 import './MedicinePage.css'
 
@@ -44,6 +45,34 @@ function normalizeStatus(value: string | null | undefined) {
 
 function statusClass(value: string) {
   return value.toLowerCase().replace(/\s+/g, '-')
+}
+
+type MedicineImagePanelProps = {
+  medicine: MedicineRecord
+  canManage: boolean
+  uploading: boolean
+  error: string
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void
+}
+
+function MedicineImagePanel({ medicine, canManage, uploading, error, onChange }: MedicineImagePanelProps) {
+  return (
+    <div className="medicine-image-panel">
+      <div className="medicine-image-preview">
+        <MedicineImage medicineId={medicine.medicineId} imagePath={medicine.imagePath} alt={`${medicine.medicineName} image`} size={25} />
+      </div>
+      <div className="medicine-image-panel__body">
+        <strong>Medicine image</strong>
+        <small>Shown in the medicine catalogue and details.</small>
+        {canManage ? <label className="medicine-image-upload-button">
+          <Icon name="upload" size={14} />
+          {uploading ? 'Uploading…' : medicine.imagePath ? 'Change image' : 'Upload image'}
+          <input accept="image/jpeg,image/png,image/webp" type="file" onChange={onChange} />
+        </label> : null}
+        {error ? <span className="medicine-image-error">{error}</span> : null}
+      </div>
+    </div>
+  )
 }
 
 export function MedicinePage() {
@@ -163,6 +192,7 @@ export function MedicinePage() {
   const openView = (medicine: MedicineRecord) => {
     setSelectedMedicine(medicine)
     setFormError('')
+    setImageError('')
     setDialogMode('view')
   }
 
@@ -212,6 +242,32 @@ export function MedicinePage() {
   const updateForm = (field: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [field]: value }))
     setFormError('')
+  }
+
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+
+    if (!file || !selectedMedicine) return
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setImageError('Choose a JPG, PNG, or WebP image under 5 MB.')
+      return
+    }
+
+    setImageUploading(true)
+    setImageError('')
+
+    try {
+      const updated = await medicineApi.uploadImage(selectedMedicine.medicineId, file)
+      setSelectedMedicine(updated)
+      setMedicines((current) => current.map((medicine) => medicine.medicineId === updated.medicineId ? updated : medicine))
+      announce('Medicine image uploaded successfully.')
+    } catch (requestError) {
+      setImageError(requestError instanceof Error ? requestError.message : 'Unable to save the medicine image.')
+    } finally {
+      setImageUploading(false)
+    }
   }
 
   const submitForm = async (event: FormEvent<HTMLFormElement>) => {
@@ -334,7 +390,7 @@ export function MedicinePage() {
                   <tbody>{filteredMedicines.map((medicine) => {
                     const status = normalizeStatus(medicine.status)
                     return <tr key={medicine.medicineId}>
-                      <td><span className="medicine-avatar"><Icon name="box" size={17} /></span><span><strong>{medicine.medicineName}</strong><small>{medicine.medicineId}</small></span></td>
+                      <td><span className="medicine-avatar"><MedicineImage medicineId={medicine.medicineId} imagePath={medicine.imagePath} alt={`${medicine.medicineName} image`} /></span><span><strong>{medicine.medicineName}</strong><small>{medicine.medicineId}</small></span></td>
                       <td><span className="medicine-details"><strong>{medicine.form || '—'} · {medicine.kind || '—'}</strong><small>{medicine.pack || medicine.method || medicine.description}</small></span></td>
                       <td><strong className="medicine-price">{formatPrice(medicine.price)}</strong></td>
                       <td><span className={`medicine-purchase-access${medicine.requiresPrescription ? ' medicine-purchase-access--prescription' : ''}`}>{medicine.requiresPrescription ? 'Prescription required' : 'Direct purchase'}</span></td>
@@ -353,6 +409,7 @@ export function MedicinePage() {
 
     {dialogMode && dialogMode !== 'view' ? <StaffDialog className="medicine-dialog" closeLabel="Close medicine form" closeOnBackdropClick={false} eyebrow={dialogMode === 'create' ? 'Pharmacy inventory' : 'Medicine catalogue'} onClose={closeDialog} title={dialogMode === 'create' ? 'Add medicine' : 'Edit medicine'} titleId="medicine-dialog-title">
         <form className="medicine-form" onSubmit={(event) => void submitForm(event)}>
+          {dialogMode === 'edit' && selectedMedicine ? <MedicineImagePanel canManage={canManage} error={imageError} medicine={selectedMedicine} onChange={(event) => void handleImageUpload(event)} uploading={imageUploading} /> : null}
           <label>Medicine name<input required maxLength={100} value={form.medicineName} onChange={(event) => updateForm('medicineName', event.target.value)} /></label>
           <label>Medicine name (中文)<input maxLength={100} value={form.nameZh} onChange={(event) => updateForm('nameZh', event.target.value)} /></label>
           <label>Description<textarea required maxLength={500} rows={4} value={form.description} onChange={(event) => updateForm('description', event.target.value)} /></label>
