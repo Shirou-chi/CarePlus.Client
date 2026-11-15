@@ -10,8 +10,6 @@ export type ShotView = "bottle" | "box" | "blister" | "label";
 export type MedicineForm = "capsule" | "tablet";
 export type MedicineKind = "antibiotic" | "analgesic" | "antihistamine";
 export type CatalogView = "grid" | "list";
-export type MedicineImageKey = "amox" | "para" | "lora" | "ibu" | "ceti" | "clox";
-
 export type MedicineRow = {
     medicineId: string;
     medicineName: string;
@@ -24,8 +22,7 @@ export type MedicineRow = {
     kind: string;
     method: string;
     methodZh: string | null;
-    imageKey: string;
-    imagePath?: string | null;
+    imagePath: string;
     price: number;
     requiresPrescription: boolean;
     status: string;
@@ -45,8 +42,7 @@ export type Medicine = {
     description: string;
     price: number;
     tone: "amber" | "navy" | "teal";
-    imageKey: MedicineImageKey;
-    imagePath?: string | null;
+    imagePath: string;
     requiresPrescription: boolean;
     /** Units left in unexpired batches. Null when the list has not sent a stock figure. */
     stock: number | null;
@@ -73,7 +69,6 @@ export const formFilters: MedicineForm[] = ["capsule", "tablet"];
 export const isMedicineId = (id: string | undefined): id is MedicineId => !!id && /^[a-z0-9]{2,20}$/i.test(id);
 
 const kinds: MedicineKind[] = ["antibiotic", "analgesic", "antihistamine"];
-const imageKeys: MedicineImageKey[] = ["amox", "para", "lora", "ibu", "ceti", "clox"];
 
 let catalogRows: MedicineRow[] = [];
 let catalogReady = false;
@@ -87,12 +82,10 @@ export const medicineCatalogReady = () => catalogReady;
 
 const asKind = (value: string): MedicineKind => (kinds.includes(value as MedicineKind) ? (value as MedicineKind) : "analgesic");
 
-const asImageKey = (value: string): MedicineImageKey => (imageKeys.includes(value as MedicineImageKey) ? (value as MedicineImageKey) : "para");
-
 const toMedicine = (row: MedicineRow, locale: Locale): Medicine => {
     const zh = locale === "zh";
     const formKey: MedicineForm = row.form === "capsule" ? "capsule" : "tablet";
-    const imageKey = asImageKey(row.imageKey);
+    const kind = asKind(row.kind);
     return {
         id: row.medicineId,
         brand: zh ? "CarePlus 药房" : "CarePlus Pharmacy",
@@ -100,14 +93,13 @@ const toMedicine = (row: MedicineRow, locale: Locale): Medicine => {
         pack: zh && row.packZh ? row.packZh : row.pack,
         form: formKey === "capsule" ? (zh ? "胶囊" : "Capsule") : zh ? "片剂" : "Tablet",
         formKey,
-        kind: asKind(row.kind),
+        kind,
         origin: zh ? "马来西亚" : "Malaysia",
         method: zh && row.methodZh ? row.methodZh : row.method,
         description: zh && row.descriptionZh ? row.descriptionZh : row.description,
         price: Number(row.price),
-        tone: imageKey === "amox" || imageKey === "ibu" ? "amber" : imageKey === "lora" || imageKey === "clox" ? "teal" : "navy",
-        imageKey,
-        imagePath: row.imagePath || null,
+        tone: kind === "antibiotic" ? "amber" : kind === "antihistamine" ? "teal" : "navy",
+        imagePath: row.imagePath || "",
         requiresPrescription: row.requiresPrescription === true,
         stock: row.stock == null ? null : Math.max(0, Math.floor(Number(row.stock) || 0)),
     };

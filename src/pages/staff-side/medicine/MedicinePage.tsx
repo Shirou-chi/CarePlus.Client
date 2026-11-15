@@ -224,6 +224,33 @@ export function MedicinePage() {
     setFormError('')
   }
 
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+
+    if (!file || !selectedMedicine) return
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setImageError('Choose a JPG, PNG, or WebP image under 5 MB.')
+      return
+    }
+
+    setImageUploading(true)
+    setImageError('')
+
+    try {
+      const imagePath = await medicineApi.uploadImage(selectedMedicine.medicineId, file)
+      const updated = { ...selectedMedicine, imagePath }
+      setSelectedMedicine(updated)
+      setMedicines((current) => current.map((medicine) => medicine.medicineId === updated.medicineId ? updated : medicine))
+      announce('Medicine image uploaded successfully.')
+    } catch (requestError) {
+      setImageError(requestError instanceof Error ? requestError.message : 'Unable to save the medicine image.')
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
   const submitForm = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -244,6 +271,16 @@ export function MedicinePage() {
       return
     }
 
+    if (!photoFile && !selectedMedicine?.imagePath) {
+      setFormError('Choose a medicine photo.')
+      return
+    }
+
+    if (!photoFile && !selectedMedicine?.imagePath) {
+      setFormError('Choose a medicine photo.')
+      return
+    }
+
     setSaving(true)
     setFormError('')
 
@@ -253,7 +290,7 @@ export function MedicinePage() {
         const previousPath = created.imagePath ?? null
         const imagePath = await savePhoto(created.medicineId, previousPath)
         const photoFailed = photoFile != null && imagePath === previousPath
-        setMedicines((current) => [{ ...created, imagePath }, ...current])
+        setMedicines((current) => [{ ...created, imagePath: imagePath || created.imagePath }, ...current])
         closeDialog()
         announce(photoFailed ? 'Medicine added, but the photo could not be saved.' : 'Medicine added successfully.')
       } else if (dialogMode === 'edit' && selectedMedicine) {
@@ -277,7 +314,7 @@ export function MedicinePage() {
         const imagePath = await savePhoto(selectedMedicine.medicineId, previousPath)
         const photoFailed = photoFile != null && imagePath === previousPath
         setMedicines((current) => current.map((medicine) => medicine.medicineId === selectedMedicine.medicineId
-          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, pack, packZh: packZh || null, form: medicineForm, kind, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status, imagePath }
+          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status, imagePath: imagePath || previousPath || "" }
           : medicine))
         closeDialog()
         announce(photoFailed ? 'Medicine updated, but the photo could not be saved.' : 'Medicine updated successfully.')
@@ -378,7 +415,7 @@ export function MedicinePage() {
           <label className="medicine-purchase-toggle"><input checked={form.requiresPrescription} type="checkbox" onChange={(event) => updateForm('requiresPrescription', event.target.checked)} /><span><strong>Prescription required</strong><small>Patients must consult a doctor before purchasing this medicine.</small></span></label>
           <label className="medicine-photo-field">Photo
             <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => { onPhotoSelected(event.target.files?.[0]); event.currentTarget.value = '' }} />
-            <small>JPG, PNG, or WebP under 5 MB. This replaces the catalog picture.</small>
+            <small>Required. JPG, PNG, or WebP under 5 MB.</small>
             {shownPhoto ? <img alt="" className="medicine-photo-preview" src={shownPhoto} /> : null}
           </label>
           {formError ? <p className="medicine-form-error" role="alert">{formError}</p> : null}

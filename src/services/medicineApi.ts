@@ -89,4 +89,9 @@ export const medicineApi = {
     }
   },
 
+  async uploadImage(medicineId: string, file: File): Promise<string> {
+    const imagePath = await medicineApi.uploadPhoto(medicineId, file)
+    if (!imagePath) throw new Error('Unable to save the medicine image.')
+    return imagePath
+  },
 }
