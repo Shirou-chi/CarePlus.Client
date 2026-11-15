@@ -259,7 +259,8 @@ export function MedicinePage() {
     setImageError('')
 
     try {
-      const updated = await medicineApi.uploadImage(selectedMedicine.medicineId, file)
+      const imagePath = await medicineApi.uploadImage(selectedMedicine.medicineId, file)
+      const updated = { ...selectedMedicine, imagePath }
       setSelectedMedicine(updated)
       setMedicines((current) => current.map((medicine) => medicine.medicineId === updated.medicineId ? updated : medicine))
       announce('Medicine image uploaded successfully.')
@@ -300,7 +301,7 @@ export function MedicinePage() {
         const previousPath = created.imagePath ?? null
         const imagePath = await savePhoto(created.medicineId, previousPath)
         const photoFailed = photoFile != null && imagePath === previousPath
-        setMedicines((current) => [{ ...created, imagePath }, ...current])
+        setMedicines((current) => [{ ...created, imagePath: imagePath || created.imagePath }, ...current])
         closeDialog()
         announce(photoFailed ? 'Medicine added, but the photo could not be saved.' : 'Medicine added successfully.')
       } else if (dialogMode === 'edit' && selectedMedicine) {
@@ -320,7 +321,7 @@ export function MedicinePage() {
         const imagePath = await savePhoto(selectedMedicine.medicineId, previousPath)
         const photoFailed = photoFile != null && imagePath === previousPath
         setMedicines((current) => current.map((medicine) => medicine.medicineId === selectedMedicine.medicineId
-          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status, imagePath }
+          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status, imagePath: imagePath || previousPath || "" }
           : medicine))
         closeDialog()
         announce(photoFailed ? 'Medicine updated, but the photo could not be saved.' : 'Medicine updated successfully.')

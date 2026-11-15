@@ -81,16 +81,9 @@ export const medicineApi = {
     }
   },
 
-  async uploadImage(medicineId: string, file: File): Promise<MedicineRecord> {
-    const body = new FormData()
-    body.append('file', file)
-
-    const result = await request<ApiResponse<MedicineRecord>>(
-      `/api/Medicine/${encodeURIComponent(medicineId)}/Image`,
-      { method: 'POST', body },
-      true,
-    )
-
-    return unwrap(result, 'Unable to save the medicine image.')
+  async uploadImage(medicineId: string, file: File): Promise<string> {
+    const imagePath = await medicineApi.uploadPhoto(medicineId, file)
+    if (!imagePath) throw new Error('Unable to save the medicine image.')
+    return imagePath
   },
 }
