@@ -224,33 +224,6 @@ export function MedicinePage() {
     setFormError('')
   }
 
-  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-
-    if (!file || !selectedMedicine) return
-
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-      setImageError('Choose a JPG, PNG, or WebP image under 5 MB.')
-      return
-    }
-
-    setImageUploading(true)
-    setImageError('')
-
-    try {
-      const imagePath = await medicineApi.uploadImage(selectedMedicine.medicineId, file)
-      const updated = { ...selectedMedicine, imagePath }
-      setSelectedMedicine(updated)
-      setMedicines((current) => current.map((medicine) => medicine.medicineId === updated.medicineId ? updated : medicine))
-      announce('Medicine image uploaded successfully.')
-    } catch (requestError) {
-      setImageError(requestError instanceof Error ? requestError.message : 'Unable to save the medicine image.')
-    } finally {
-      setImageUploading(false)
-    }
-  }
-
   const submitForm = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -268,11 +241,6 @@ export function MedicinePage() {
 
     if (!medicineName || !description || !pack || !medicineForm || !kind || !Number.isFinite(price) || price <= 0) {
       setFormError('Enter the medicine name, description, pack, form, kind, and a valid price.')
-      return
-    }
-
-    if (!photoFile && !selectedMedicine?.imagePath) {
-      setFormError('Choose a medicine photo.')
       return
     }
 
