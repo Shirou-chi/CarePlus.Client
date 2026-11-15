@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { Navigate, useNavigate } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
@@ -28,11 +29,18 @@ export const CheckoutPage = () => {
     const [placeError, setPlaceError] = useState<string | null>(null);
 
     useEffect(() => {
-        const resume = (event: PageTransitionEvent) => {
-            if (event.persisted) setPlacing(false);
+        const show = () => {
+            window.setTimeout(() => setPlacing(false), 0);
         };
-        window.addEventListener("pageshow", resume);
-        return () => window.removeEventListener("pageshow", resume);
+        const hide = () => {
+            flushSync(() => setPlacing(false));
+        };
+        window.addEventListener("pageshow", show);
+        window.addEventListener("pagehide", hide);
+        return () => {
+            window.removeEventListener("pageshow", show);
+            window.removeEventListener("pagehide", hide);
+        };
     }, []);
     const draft = profile ? readCheckoutDraft() : null;
     const { medicines: catalog } = useMedicineCatalog();
@@ -114,6 +122,7 @@ export const CheckoutPage = () => {
                     methodLabel: draft.paymentLabel,
                     cancelPath: "/checkout",
                 });
+                flushSync(() => setPlacing(false));
                 window.location.assign(session.url);
                 return;
             }

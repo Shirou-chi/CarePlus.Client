@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Navigate, useLocation, useParams } from "react-router";
 import { FormStatus } from "@/components/application/form-status";
 import { Badge } from "@/components/base/badges/badges";
@@ -39,11 +40,18 @@ export const InvoicePaymentPage = () => {
     const [cardTick, setCardTick] = useState(0);
 
     useEffect(() => {
-        const resume = (event: PageTransitionEvent) => {
-            if (event.persisted) setBusy(false);
+        const show = () => {
+            window.setTimeout(() => setBusy(false), 0);
         };
-        window.addEventListener("pageshow", resume);
-        return () => window.removeEventListener("pageshow", resume);
+        const hide = () => {
+            flushSync(() => setBusy(false));
+        };
+        window.addEventListener("pageshow", show);
+        window.addEventListener("pagehide", hide);
+        return () => {
+            window.removeEventListener("pageshow", show);
+            window.removeEventListener("pagehide", hide);
+        };
     }, []);
 
     useEffect(() => {
@@ -119,6 +127,7 @@ export const InvoicePaymentPage = () => {
                 methodLabel: paidWith,
                 cancelPath: `/invoices/${invoice.id}/pay`,
             });
+            flushSync(() => setBusy(false));
             window.location.assign(session.url);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : t.invoicesPayFailed);
