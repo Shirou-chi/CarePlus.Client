@@ -334,6 +334,8 @@ export function SettingsPage() {
 
         <div className="staff-content staff-settings-content">
           <StaffPageEyebrow label="Account settings" />
+          <h1 className="staff-page-title">Settings</h1>
+          <p className="staff-page-title__copy">Manage your profile, preferences, and staff account settings.</p>
           <section className="staff-card staff-settings-profile-card">
               <div className="staff-settings-profile-card__header">
                 <div className="staff-settings-profile-identity">

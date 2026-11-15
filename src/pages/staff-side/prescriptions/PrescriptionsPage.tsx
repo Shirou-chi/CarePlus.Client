@@ -117,7 +117,9 @@ export function PrescriptionsPage() {
           toggleTheme={toggleTheme}
         />
         <div className="staff-content">
-          <StaffPageEyebrow label="Prescriptions" />
+          <StaffPageEyebrow label="Prescription management" />
+          <h1 className="staff-page-title">Prescriptions</h1>
+          <p className="staff-page-title__copy">Review prescriptions and dispensing status for every patient visit.</p>
           <section aria-label="Prescriptions" className="staff-card prescription-list">
             <div className="prescription-list__toolbar">
               <label className="prescription-list__search">

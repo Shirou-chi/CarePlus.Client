@@ -150,7 +150,7 @@ export function MedicineOrdersPage() {
           <StaffPageEyebrow label="Medicine orders" />
           <section className="medicine-orders-hero">
             <div>
-              <p className="staff-eyebrow">Pharmacy fulfilment</p>
+              <StaffPageEyebrow label="Pharmacy fulfilment" />
               <h1>Medicine orders</h1>
               <p>Review direct medicine purchases and move each order through fulfilment.</p>
             </div>

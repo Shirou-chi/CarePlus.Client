@@ -3,6 +3,7 @@ import { useAuth } from '@/providers/auth-provider'
 import { medicalRecordApi, type MedicalRecord } from '@/services/medicalRecordApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { StaffDialog } from '../components/StaffDialog'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { StaffSidebar, getStaffRole } from '../navbar/StaffSidebar'
@@ -147,7 +148,7 @@ export function MedicalRecordsPage() {
         <div className="staff-content medical-records-content">
           <section className="medical-records-hero">
             <div>
-              <p className="staff-eyebrow">Clinical records</p>
+              <StaffPageEyebrow label="Clinical records" />
               <h1>Medical records</h1>
               <p>Review diagnoses and clinical notes created from appointment and queue consultations.</p>
             </div>

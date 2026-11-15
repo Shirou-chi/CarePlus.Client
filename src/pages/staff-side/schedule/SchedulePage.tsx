@@ -11,6 +11,7 @@ import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
 import { StaffListReset } from '../components/StaffListControls'
 import { StaffWeekFilter } from '../components/StaffWeekFilter'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './SchedulePage.css'
 
@@ -665,7 +666,7 @@ export function SchedulePage() {
         <div className="staff-content schedule-content">
           <section className="schedule-hero">
             <div>
-              <p className="staff-eyebrow">Operations</p>
+              <StaffPageEyebrow label="Operations" />
               <h1>Schedules</h1>
               <p className="schedule-hero__copy">Coordinate staff availability, consultation hours, and room coverage.</p>
             </div>

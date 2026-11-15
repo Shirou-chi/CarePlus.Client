@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { resolveMedicineImageUrl } from '@/services/medicineImageApi'
+import { medicineImageUrl } from '@/components/marketing/medicine/medicine-shot'
 import { Icon } from '../navbar/StaffIcon'
 
 type MedicineImageProps = {
@@ -10,29 +10,13 @@ type MedicineImageProps = {
 }
 
 export function MedicineImage({ medicineId, imagePath, alt, size = 17 }: MedicineImageProps) {
-  const [src, setSrc] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
+  const src = medicineImageUrl(medicineId, imagePath)
 
   useEffect(() => {
-    let active = true
-    let objectUrl: string | null = null
-
-    setSrc(null)
-    void resolveMedicineImageUrl(medicineId, imagePath).then((url) => {
-      if (!active) {
-        if (url) URL.revokeObjectURL(url)
-        return
-      }
-
-      objectUrl = url
-      setSrc(url)
-    })
-
-    return () => {
-      active = false
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
+    setFailed(false)
   }, [imagePath, medicineId])
 
-  if (!src) return <Icon name="box" size={size} />
-  return <img alt={alt} className="medicine-image" src={src} />
+  if (!src || failed) return <Icon name="box" size={size} />
+  return <img alt={alt} className="medicine-image" onError={() => setFailed(true)} src={src} />
 }

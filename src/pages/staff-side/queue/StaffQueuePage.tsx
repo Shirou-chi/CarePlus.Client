@@ -147,6 +147,8 @@ export function StaffQueuePage() {
 
         <div className="staff-content">
           <StaffPageEyebrow label="Queue management" />
+          <h1 className="staff-page-title">Queue</h1>
+          <p className="staff-page-title__copy">Track checked-in patients and move consultations through the queue.</p>
 
           <section aria-label="Queue totals" className="staff-metrics">
             {metrics.map(({ status, icon, tone }) => (

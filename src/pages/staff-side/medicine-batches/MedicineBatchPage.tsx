@@ -9,6 +9,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { getBatchStatus, LOW_STOCK_THRESHOLD } from './batch-status'
 import '../StaffHomePage.css'
 import './MedicineBatchPage.css'
@@ -262,7 +263,7 @@ export function MedicineBatchPage() {
         <div className="staff-content medicine-batch-content">
           <section className="medicine-batch-hero">
             <div>
-              <p className="staff-eyebrow">Pharmacy inventory</p>
+              <StaffPageEyebrow label="Pharmacy inventory" />
               <h1>{medicineIdFilter ? `${medicines.find((medicine) => medicine.medicineId === medicineIdFilter)?.medicineName || 'Medicine'} batches` : 'Medicine batches'}</h1>
               <p className="medicine-batch-hero__copy">Stock quantities and expiry dates by delivery.</p>
             </div>

@@ -2,6 +2,28 @@
   margin-bottom: 18px;
 }
 
+.staff-overview__heading > div {
+  display: grid;
+  gap: 5px;
+}
+
+.staff-overview__heading h1 {
+  margin: 0;
+  color: var(--staff-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 2.4vw, 1.9rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.staff-overview__description {
+  max-width: 42rem;
+  margin: 0;
+  color: var(--staff-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .staff-overview__heading time {
   color: var(--staff-muted);
   font-size: 0.68rem;

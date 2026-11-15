@@ -874,6 +874,23 @@ body:has(.staff-page) .site-back-to-top {
   text-transform: uppercase;
 }
 
+.staff-page-title {
+  margin: 0 0 16px;
+  color: var(--staff-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 2.4vw, 1.9rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.staff-page-title__copy {
+  max-width: 42rem;
+  margin: -7px 0 18px;
+  color: var(--staff-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .staff-hero h1 {
   margin: 0;
   color: var(--staff-ink);

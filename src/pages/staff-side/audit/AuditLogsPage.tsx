@@ -8,6 +8,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './AuditLogsPage.css'
 
@@ -200,7 +201,7 @@ export function AuditLogsPage() {
         <div className="staff-content audit-content">
           <section className="audit-hero">
             <div>
-              <p className="staff-eyebrow">Governance</p>
+              <StaffPageEyebrow label="Governance" />
               <h1>Audit logs</h1>
               <p className="audit-hero__copy">Who changed what, when it happened, and where it came from.</p>
             </div>

@@ -3,6 +3,7 @@ import { useAuth } from '@/providers/auth-provider'
 import { clinicRoomApi, type ClinicRoomRecord, type ClinicRoomStatus } from '@/services/clinicRoomApi'
 import { useTheme } from '../../../components/theme/useTheme'
 import { StaffDialog } from '../components/StaffDialog'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
@@ -119,7 +120,7 @@ export function ClinicRoomsPage() {
         <div className="staff-content clinic-rooms-content">
           <section className="clinic-rooms-hero">
             <div>
-              <p className="staff-eyebrow">Clinical operations</p>
+              <StaffPageEyebrow label="Clinical operations" />
               <h1>Clinic rooms</h1>
               <p className="clinic-rooms-hero__copy">Manage consultation spaces and room availability.</p>
             </div>

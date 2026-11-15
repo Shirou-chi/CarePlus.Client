@@ -8,6 +8,10 @@ export type MedicineCreateRequest = {
   nameZh?: string
   description: string
   descriptionZh?: string
+  pack: string
+  packZh?: string
+  form: string
+  kind: string
   method?: string
   methodZh?: string
   price: number
@@ -20,6 +24,10 @@ export type MedicineUpdateRequest = {
   nameZh?: string
   description?: string
   descriptionZh?: string
+  pack?: string
+  packZh?: string
+  form?: string
+  kind?: string
   method?: string
   methodZh?: string
   price?: number
@@ -81,16 +89,4 @@ export const medicineApi = {
     }
   },
 
-  async uploadImage(medicineId: string, file: File): Promise<MedicineRecord> {
-    const body = new FormData()
-    body.append('file', file)
-
-    const result = await request<ApiResponse<MedicineRecord>>(
-      `/api/Medicine/${encodeURIComponent(medicineId)}/Image`,
-      { method: 'POST', body },
-      true,
-    )
-
-    return unwrap(result, 'Unable to save the medicine image.')
-  },
 }

@@ -16,6 +16,8 @@ const page = <K extends string>(loader: () => Promise<Record<K, ComponentType>>,
 
 const staffPageLoaders = [
     () => import("@/pages/staff-side/StaffHomePage"),
+    () => import("@/pages/staff-side/billing/BillingPage"),
+    () => import("@/pages/staff-side/reports/ReportsPage"),
     () => import("@/pages/staff-side/login/StaffLoginPage"),
     () => import("@/pages/staff-side/appointments/AppointmentsPage"),
     () => import("@/pages/staff-side/audit/AuditLogsPage"),
@@ -74,6 +76,8 @@ const prefetchPatientPages = () => {
 };
 
 const StaffHomePage = page(() => import("@/pages/staff-side/StaffHomePage"), "StaffHomePage");
+const BillingPage = page(() => import("@/pages/staff-side/billing/BillingPage"), "BillingPage");
+const ReportsPage = page(() => import("@/pages/staff-side/reports/ReportsPage"), "ReportsPage");
 const StaffLoginPage = page(() => import("@/pages/staff-side/login/StaffLoginPage"), "StaffLoginPage");
 const StaffAppointmentsPage = page(() => import("@/pages/staff-side/appointments/AppointmentsPage"), "AppointmentsPage");
 const AuditLogsPage = page(() => import("@/pages/staff-side/audit/AuditLogsPage"), "AuditLogsPage");
@@ -304,6 +308,8 @@ const AppRoutes = () => {
                         <Route path="/staff/staff" element={<StaffManagementPage />} />
                         <Route path="/staff/patients" element={<PatientsPage />} />
                         <Route path="/staff/rooms" element={<ClinicRoomsPage />} />
+                        <Route path="/staff/billing" element={<BillingPage />} />
+                        <Route path="/staff/reports" element={<ReportsPage />} />
                         <Route path="/staff/audit-logs" element={<AuditLogsPage />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />

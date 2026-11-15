@@ -9,6 +9,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
 import { StaffListReset } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './LeavePage.css'
 
@@ -376,7 +377,7 @@ export function LeavePage() {
         <div className="staff-content leave-content">
           <section className="leave-hero">
             <div>
-              <p className="staff-eyebrow">People operations</p>
+              <StaffPageEyebrow label="People operations" />
               <h1>Leave</h1>
               <p className="leave-hero__copy">{isAdmin ? 'Review requests and keep team coverage clear.' : 'Submit time-away requests and track upcoming leave.'}</p>
             </div>

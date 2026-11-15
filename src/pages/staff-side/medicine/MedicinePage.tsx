@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { medicineImageUrl } from '@/components/marketing/medicine/medicine-shot'
@@ -9,6 +9,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { MedicineImage } from './MedicineImage'
 import '../StaffHomePage.css'
 import './MedicinePage.css'
@@ -24,6 +25,10 @@ const emptyForm = {
   nameZh: '',
   description: '',
   descriptionZh: '',
+  pack: '',
+  packZh: '',
+  form: 'tablet',
+  kind: 'analgesic',
   method: '',
   methodZh: '',
   price: '',
@@ -45,34 +50,6 @@ function normalizeStatus(value: string | null | undefined) {
 
 function statusClass(value: string) {
   return value.toLowerCase().replace(/\s+/g, '-')
-}
-
-type MedicineImagePanelProps = {
-  medicine: MedicineRecord
-  canManage: boolean
-  uploading: boolean
-  error: string
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void
-}
-
-function MedicineImagePanel({ medicine, canManage, uploading, error, onChange }: MedicineImagePanelProps) {
-  return (
-    <div className="medicine-image-panel">
-      <div className="medicine-image-preview">
-        <MedicineImage medicineId={medicine.medicineId} imagePath={medicine.imagePath} alt={`${medicine.medicineName} image`} size={25} />
-      </div>
-      <div className="medicine-image-panel__body">
-        <strong>Medicine image</strong>
-        <small>Shown in the medicine catalogue and details.</small>
-        {canManage ? <label className="medicine-image-upload-button">
-          <Icon name="upload" size={14} />
-          {uploading ? 'Uploading…' : medicine.imagePath ? 'Change image' : 'Upload image'}
-          <input accept="image/jpeg,image/png,image/webp" type="file" onChange={onChange} />
-        </label> : null}
-        {error ? <span className="medicine-image-error">{error}</span> : null}
-      </div>
-    </div>
-  )
 }
 
 export function MedicinePage() {
@@ -192,7 +169,6 @@ export function MedicinePage() {
   const openView = (medicine: MedicineRecord) => {
     setSelectedMedicine(medicine)
     setFormError('')
-    setImageError('')
     setDialogMode('view')
   }
 
@@ -203,6 +179,10 @@ export function MedicinePage() {
       nameZh: medicine.nameZh || '',
       description: medicine.description,
       descriptionZh: medicine.descriptionZh || '',
+      pack: medicine.pack || '',
+      packZh: medicine.packZh || '',
+      form: medicine.form || 'tablet',
+      kind: medicine.kind || 'analgesic',
       method: medicine.method || '',
       methodZh: medicine.methodZh || '',
       price: String(medicine.price),
@@ -244,32 +224,6 @@ export function MedicinePage() {
     setFormError('')
   }
 
-  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-
-    if (!file || !selectedMedicine) return
-
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-      setImageError('Choose a JPG, PNG, or WebP image under 5 MB.')
-      return
-    }
-
-    setImageUploading(true)
-    setImageError('')
-
-    try {
-      const updated = await medicineApi.uploadImage(selectedMedicine.medicineId, file)
-      setSelectedMedicine(updated)
-      setMedicines((current) => current.map((medicine) => medicine.medicineId === updated.medicineId ? updated : medicine))
-      announce('Medicine image uploaded successfully.')
-    } catch (requestError) {
-      setImageError(requestError instanceof Error ? requestError.message : 'Unable to save the medicine image.')
-    } finally {
-      setImageUploading(false)
-    }
-  }
-
   const submitForm = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -277,12 +231,16 @@ export function MedicinePage() {
     const nameZh = form.nameZh.trim()
     const description = form.description.trim()
     const descriptionZh = form.descriptionZh.trim()
+    const pack = form.pack.trim()
+    const packZh = form.packZh.trim()
+    const medicineForm = form.form.trim()
+    const kind = form.kind.trim()
     const method = form.method.trim()
     const methodZh = form.methodZh.trim()
     const price = Number(form.price)
 
-    if (!medicineName || !description || !Number.isFinite(price) || price <= 0) {
-      setFormError('Enter a medicine name, description, and price greater than 0.')
+    if (!medicineName || !description || !pack || !medicineForm || !kind || !Number.isFinite(price) || price <= 0) {
+      setFormError('Enter the medicine name, description, pack, form, kind, and a valid price.')
       return
     }
 
@@ -291,7 +249,7 @@ export function MedicinePage() {
 
     try {
       if (dialogMode === 'create') {
-        const created = await medicineApi.create({ medicineName, nameZh, description, descriptionZh, method, methodZh, price, requiresPrescription: form.requiresPrescription })
+        const created = await medicineApi.create({ medicineName, nameZh, description, descriptionZh, pack, packZh, form: medicineForm, kind, method, methodZh, price, requiresPrescription: form.requiresPrescription })
         const previousPath = created.imagePath ?? null
         const imagePath = await savePhoto(created.medicineId, previousPath)
         const photoFailed = photoFile != null && imagePath === previousPath
@@ -305,6 +263,10 @@ export function MedicinePage() {
           nameZh,
           description,
           descriptionZh,
+          pack,
+          packZh,
+          form: medicineForm,
+          kind,
           method,
           methodZh,
           price,
@@ -315,7 +277,7 @@ export function MedicinePage() {
         const imagePath = await savePhoto(selectedMedicine.medicineId, previousPath)
         const photoFailed = photoFile != null && imagePath === previousPath
         setMedicines((current) => current.map((medicine) => medicine.medicineId === selectedMedicine.medicineId
-          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status, imagePath }
+          ? { ...medicine, medicineName, nameZh: nameZh || null, description, descriptionZh: descriptionZh || null, pack, packZh: packZh || null, form: medicineForm, kind, method, methodZh: methodZh || null, price, requiresPrescription: form.requiresPrescription, status: form.status, imagePath }
           : medicine))
         closeDialog()
         announce(photoFailed ? 'Medicine updated, but the photo could not be saved.' : 'Medicine updated successfully.')
@@ -355,7 +317,7 @@ export function MedicinePage() {
         <div className="staff-content medicine-content">
           <section className="medicine-hero">
             <div>
-              <p className="staff-eyebrow">Pharmacy inventory</p>
+              <StaffPageEyebrow label="Pharmacy inventory" />
               <h1>Medicine</h1>
               <p className="medicine-hero__copy">Catalogue used by pharmacy and patient ordering.</p>
             </div>
@@ -404,11 +366,12 @@ export function MedicinePage() {
 
     {dialogMode && dialogMode !== 'view' ? <StaffDialog className="medicine-dialog" closeLabel="Close medicine form" closeOnBackdropClick={false} eyebrow={dialogMode === 'create' ? 'Pharmacy inventory' : 'Medicine catalogue'} onClose={closeDialog} title={dialogMode === 'create' ? 'Add medicine' : 'Edit medicine'} titleId="medicine-dialog-title">
         <form className="medicine-form" onSubmit={(event) => void submitForm(event)}>
-          {dialogMode === 'edit' && selectedMedicine ? <MedicineImagePanel canManage={canManage} error={imageError} medicine={selectedMedicine} onChange={(event) => void handleImageUpload(event)} uploading={imageUploading} /> : null}
           <label>Medicine name<input required maxLength={100} value={form.medicineName} onChange={(event) => updateForm('medicineName', event.target.value)} /></label>
           <label>Medicine name (中文)<input maxLength={100} value={form.nameZh} onChange={(event) => updateForm('nameZh', event.target.value)} /></label>
           <label>Description<textarea required maxLength={500} rows={4} value={form.description} onChange={(event) => updateForm('description', event.target.value)} /></label>
           <label>Description (中文)<textarea maxLength={500} rows={4} value={form.descriptionZh} onChange={(event) => updateForm('descriptionZh', event.target.value)} /></label>
+          <div className="medicine-form-grid"><label>Pack<input required maxLength={40} value={form.pack} onChange={(event) => updateForm('pack', event.target.value)} /></label><label>Pack (中文)<input maxLength={40} value={form.packZh} onChange={(event) => updateForm('packZh', event.target.value)} /></label></div>
+          <div className="medicine-form-grid"><label>Form<select value={form.form} onChange={(event) => updateForm('form', event.target.value)}><option value="tablet">Tablet</option><option value="capsule">Capsule</option></select></label><label>Kind<select value={form.kind} onChange={(event) => updateForm('kind', event.target.value)}><option value="analgesic">Analgesic</option><option value="antibiotic">Antibiotic</option><option value="antihistamine">Antihistamine</option></select></label></div>
           <label>Method / usage instructions<textarea maxLength={160} rows={2} value={form.method} onChange={(event) => updateForm('method', event.target.value)} /></label>
           <label>Method / usage instructions (中文)<textarea maxLength={160} rows={2} value={form.methodZh} onChange={(event) => updateForm('methodZh', event.target.value)} /></label>
           <div className="medicine-form-grid"><label>Price (MYR)<input required min="0.01" step="0.01" type="number" value={form.price} onChange={(event) => updateForm('price', event.target.value)} /></label>{dialogMode === 'edit' ? <label>Status<select value={form.status} onChange={(event) => updateForm('status', event.target.value)}><option>Available</option><option>Unavailable</option></select></label> : null}</div>
