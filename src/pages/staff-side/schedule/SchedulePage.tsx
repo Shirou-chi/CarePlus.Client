@@ -538,7 +538,6 @@ export function SchedulePage() {
           activeScheduleDatesByStaff.set(schedule.staffId, dates)
         })
 
-      const requestedCount = form.staffIds.length * workingDates.length
       const blockedStaffErrors: Record<string, string> = {}
 
       form.staffIds.forEach((staffId) => {

@@ -1,7 +1,6 @@
 import { startTransition, useId } from 'react'
 import type { Theme } from '../../../components/theme/useTheme'
 import { TextSizeSwitch } from '@/components/application/text-size-switch'
-import { useAuth } from '@/providers/auth-provider'
 import { useNotices } from '@/providers/notification-provider'
 import { useTheme as useAppTheme } from '@/providers/theme-provider'
 import { useNavigate } from 'react-router'
