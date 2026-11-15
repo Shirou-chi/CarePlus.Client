@@ -8,6 +8,10 @@ export type MedicineCreateRequest = {
   nameZh?: string
   description: string
   descriptionZh?: string
+  pack: string
+  packZh?: string
+  form: string
+  kind: string
   method?: string
   methodZh?: string
   price: number
@@ -20,6 +24,10 @@ export type MedicineUpdateRequest = {
   nameZh?: string
   description?: string
   descriptionZh?: string
+  pack?: string
+  packZh?: string
+  form?: string
+  kind?: string
   method?: string
   methodZh?: string
   price?: number

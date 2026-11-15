@@ -4,6 +4,6 @@ type StaffPageEyebrowProps = {
   className?: string
 }
 
-export function StaffPageEyebrow({ as: Tag = 'h1', label, className = 'staff-eyebrow' }: StaffPageEyebrowProps) {
+export function StaffPageEyebrow({ as: Tag = 'p', label, className = 'staff-eyebrow' }: StaffPageEyebrowProps) {
   return <Tag className={className}>CarePlus Clinic · {label}</Tag>
 }

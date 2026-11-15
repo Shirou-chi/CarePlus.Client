@@ -9,6 +9,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './StaffManagementPage.css'
 
@@ -300,7 +301,7 @@ export function StaffManagementPage() {
         <div className="staff-content staff-management-content">
           <section className="staff-management-hero">
             <div>
-              <p className="staff-eyebrow">Administration</p>
+              <StaffPageEyebrow label="Administration" />
               <h1>Staff</h1>
               <p className="staff-management-hero__copy">Create accounts, update roles, and manage access status.</p>
             </div>

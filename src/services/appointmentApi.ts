@@ -253,4 +253,15 @@ export const appointmentApi = {
 
     return unwrap(result, 'Unable to load appointments.')
   },
+
+  async retrieveForStaffRange(startDate: string, endDate: string): Promise<StaffAppointmentRecord[]> {
+    const query = `?date=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
+    const result = await request<ApiResponse<StaffAppointmentRecord[]>>(
+      `/api/Appointment/Staff${query}`,
+      {},
+      true,
+    )
+
+    return unwrap(result, 'Unable to load appointments for the selected report period.')
+  },
 }

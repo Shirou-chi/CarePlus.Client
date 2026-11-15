@@ -10,6 +10,7 @@ import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDateFilter } from '../components/StaffDateFilter'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { StaffWeekFilter } from '../components/StaffWeekFilter'
 import '../StaffHomePage.css'
 import './AppointmentsPage.css'
@@ -580,8 +581,9 @@ export function AppointmentsPage() {
         <div className="staff-content appointments-content">
           <section className="appointments-hero">
             <div>
-              <p className="staff-eyebrow">Appointment management</p>
+              <StaffPageEyebrow label="Appointment management" />
               <h1>Appointments</h1>
+              <p className="appointments-hero__copy">Manage bookings, check-ins, and daily appointment availability.</p>
             </div>
             {canCreate ? <button className="staff-button staff-button--primary" type="button" onClick={() => { setPatientSearch(''); setSelectedPatientId(''); setPatientDropdownOpen(false); setAppointmentDate(''); setAppointmentTime(''); setAppointmentShift('morning'); setBookingTimeDialogOpen(false); setAppointmentVisitType('General consultation'); setAppointmentNotes(''); setAvailableDoctors([]); setProviderAvailabilityError(''); setSelectedProviderId(''); setDialogOpen(true) }}><Icon name="plus" size={17} /> New appointment</button> : <span className="appointments-role-note"><Icon name="shield" size={15} /> {currentRole} view</span>}
            </section>

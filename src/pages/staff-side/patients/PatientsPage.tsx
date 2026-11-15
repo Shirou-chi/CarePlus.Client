@@ -7,6 +7,7 @@ import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './PatientsPage.css'
 
@@ -227,7 +228,7 @@ export function PatientsPage() {
         <div className="staff-content patients-content">
           <section className="patients-hero">
             <div>
-              <p className="staff-eyebrow">Patient management</p>
+              <StaffPageEyebrow label="Patient management" />
               <h1>Patients</h1>
               <p className="patients-hero__copy">Patient accounts, contact details, demographics, and access status.</p>
             </div>

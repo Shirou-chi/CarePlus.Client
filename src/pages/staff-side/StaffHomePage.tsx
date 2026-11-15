@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { useNotices } from '@/providers/notification-provider'
 import { appointmentApi, type StaffAppointmentRecord } from '@/services/appointmentApi'
+import { adminBillingApi } from '@/services/adminBillingApi'
 import { leaveApi } from '@/services/leaveApi'
 import { medicineBatchApi } from '@/services/medicineBatchApi'
 import { queueApi, type StaffQueueEntry } from '@/services/queueApi'
@@ -47,6 +48,7 @@ const links = {
   leave: '/staff/leave',
   schedules: '/staff/schedules',
   batches: '/staff/medicine-batches',
+  billing: '/staff/billing',
   notifications: '/staff/notifications',
 }
 
@@ -88,12 +90,13 @@ async function loadOverview(role: StaffRole, day: string, signal: AbortSignal) {
     return { kind: 'pharmacy' as const, batches, shifts }
   }
 
-  const [appointments, queue, leave] = await Promise.all([
+  const [appointments, queue, leave, billing] = await Promise.all([
     readFeed(appointmentApi.retrieveForStaff(day)),
     readFeed(queueApi.staffList(signal)),
     role === 'Admin' ? readFeed(leaveApi.retrieveAll()) : undefined,
+    role === 'Admin' ? readFeed(adminBillingApi.list()) : undefined,
   ])
-  return { kind: 'clinic' as const, appointments, queue, leave }
+  return { kind: 'clinic' as const, appointments, queue, leave, billing }
 }
 
 type OverviewData = Awaited<ReturnType<typeof loadOverview>>
@@ -136,7 +139,7 @@ function appointmentStatus(appointment: StaffAppointmentRecord, queueEntry?: Sta
 }
 
 function statusTone(status: string): Tone {
-  if (status === 'Waiting' || status === 'Low stock') return 'amber'
+  if (status === 'Waiting' || status === 'Low stock' || status === 'Overdue') return 'amber'
   if (status === 'In consultation') return 'violet'
   if (status === 'Completed' || status === 'In stock') return 'teal'
   if (['Cancelled', 'Missed', 'Expired'].includes(status)) return 'red'
@@ -203,12 +206,15 @@ function ClinicalOverview({ data, isAdmin }: { data?: Extract<OverviewData, { ki
   const appointments = data?.appointments.rows
   const queue = data?.queue.rows
   const leave = data?.leave?.rows
+  const billing = data?.billing?.rows
   const queueByAppointment = new Map(queue?.map((entry) => [entry.appointmentId, entry]))
   const activeQueue = queue?.filter((entry) => ['Waiting', 'Called', 'InConsultation'].includes(entry.status))
 
   const metrics: Metric[] = [
     { label: 'Appointments today', value: appointments?.length, failed: data?.appointments.failed, icon: 'calendar', tone: 'teal', to: links.appointments },
-    { label: 'Waiting in queue', value: queue?.filter((entry) => entry.status === 'Waiting').length, failed: data?.queue.failed, icon: 'clock', tone: 'amber', to: links.queue },
+    isAdmin
+      ? { label: 'Unpaid or overdue bills', value: billing?.filter((bill) => bill.status !== 'Paid').length, failed: data?.billing?.failed, icon: 'file', tone: 'amber', to: links.billing }
+      : { label: 'Waiting in queue', value: queue?.filter((entry) => entry.status === 'Waiting').length, failed: data?.queue.failed, icon: 'clock', tone: 'amber', to: links.queue },
     { label: 'In consultation', value: queue?.filter((entry) => entry.status === 'InConsultation').length, failed: data?.queue.failed, icon: 'activity', tone: 'violet', to: links.queue },
     isAdmin
       ? { label: 'Pending leave requests', value: leave?.filter((entry) => entry.status === 'Pending').length, failed: data?.leave?.failed, icon: 'staff', tone: 'blue', to: links.leave }
@@ -237,6 +243,28 @@ function ClinicalOverview({ data, isAdmin }: { data?: Extract<OverviewData, { ki
       tone: statusTone(status),
     }
   })
+  const billRows = isAdmin
+    ? data?.billing?.rows
+      ?.filter((bill) => bill.status !== 'Paid')
+      .sort((left, right) => {
+        if (left.status === 'Overdue' && right.status !== 'Overdue') return -1
+        if (right.status === 'Overdue' && left.status !== 'Overdue') return 1
+        return right.issuedAt.localeCompare(left.issuedAt)
+      })
+      .slice(0, previewLimit)
+      .map((bill) => {
+        const status = bill.status === 'Overdue' ? 'Overdue' : 'Unpaid'
+        return {
+          id: bill.invoiceId,
+          lead: status,
+          title: bill.patientName,
+          detail: 'Invoice ' + bill.invoiceId + ' · RM ' + bill.amountOutstanding.toFixed(2) + ' due',
+          status,
+          tone: statusTone(status),
+          to: links.billing,
+        }
+      })
+    : undefined
 
   return (
     <>
@@ -244,8 +272,13 @@ function ClinicalOverview({ data, isAdmin }: { data?: Extract<OverviewData, { ki
       <div className="staff-overview__grid">
         <OverviewPanel id="overview-appointments" title="Today’s appointments" to={links.appointments}
           linkLabel="Open appointments" rows={appointmentRows} failed={data?.appointments.failed} empty="No appointments today." />
-        <OverviewPanel id="overview-queue" title="Active queue" to={links.queue}
-          linkLabel="Open queue" rows={queueRows} failed={data?.queue.failed} empty="No patients in the active queue." />
+        {isAdmin ? (
+          <OverviewPanel id="overview-billing" title="Unpaid or overdue bills" to={links.billing}
+            linkLabel="Open billing" rows={billRows} failed={data?.billing?.failed} empty="No unpaid or overdue bills." />
+        ) : (
+          <OverviewPanel id="overview-queue" title="Active queue" to={links.queue}
+            linkLabel="Open queue" rows={queueRows} failed={data?.queue.failed} empty="No patients in the active queue." />
+        )}
       </div>
     </>
   )
@@ -366,7 +399,11 @@ export function StaffHomePage() {
         />
         <div className="staff-content">
           <header className="staff-page-heading staff-overview__heading">
-            <StaffPageEyebrow label="Staff overview" />
+            <div>
+              <StaffPageEyebrow label="Clinic overview" />
+              <h1 className="staff-page-title">Overview</h1>
+              <p className="staff-overview__description">Review today’s clinic activity and operational priorities.</p>
+            </div>
             <time dateTime={day}>{formatDate(dateHeading, calendarDate(day))}</time>
           </header>
 
