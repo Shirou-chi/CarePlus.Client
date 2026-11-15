@@ -47,8 +47,9 @@ export const PrescribedMedicinePage = () => {
 
     const medicine = medicines.find((item) => item.id === id);
     const stock = medicine?.stock ?? null;
-    const remaining = medicine ? buyableUnits(remainingFor(medicine.id), stock) : 0;
-    const canAdd = Boolean(medicine) && remaining > 0 && !adding;
+    const clinicOnly = Boolean(medicine?.requiresPrescription);
+    const remaining = medicine && !clinicOnly ? buyableUnits(remainingFor(medicine.id), stock) : 0;
+    const canAdd = Boolean(medicine) && !clinicOnly && remaining > 0 && !adding;
 
     useEffect(() => {
         setView("bottle");
@@ -80,6 +81,7 @@ export const PrescribedMedicinePage = () => {
     ];
 
     const addToCart = () => {
+        if (clinicOnly) return;
         if (!canAdd) {
             setSuccess(null);
             setError(stock === 0 ? t.medOutOfStock : t.medQtyMax);
@@ -186,6 +188,14 @@ export const PrescribedMedicinePage = () => {
                         <p className="mt-0.5 text-sm text-tertiary">{t.medFulfilmentHint}</p>
                         <p className="mt-4 text-display-xs font-semibold text-[#0f766e] dark:text-[#5eead4]">{formatRm(medicine.price)}</p>
 
+                        {clinicOnly ? (
+                            <p className="mt-5 text-sm text-tertiary">
+                                {t.medClinicOnly}{" "}
+                                <Link to="/book" className="font-semibold text-brand-secondary hover:underline">
+                                    {t.bookVisit}
+                                </Link>
+                            </p>
+                        ) : (
                         <div className="mt-5">
                             <InputNumber
                                 ref={qtyInputRef}
@@ -209,12 +219,15 @@ export const PrescribedMedicinePage = () => {
                             {stock === 0 ? <p className="mt-1.5 text-sm font-medium text-fg-error-primary">{t.medOutOfStock}</p> : null}
                             {stock !== 0 && remaining === 0 ? <p className="mt-1.5 text-sm font-medium text-fg-error-primary">{t.medQtyMax}</p> : null}
                         </div>
+                        )}
 
                         <FormStatus error={error} success={success} />
 
-                        <Button color="primary" size="lg" className="careplus-ink mt-5 w-full" isDisabled={!canAdd} onPress={addToCart}>
-                            {t.medAddCart}
-                        </Button>
+                        {clinicOnly ? null : (
+                            <Button color="primary" size="lg" className="careplus-ink mt-5 w-full" isDisabled={!canAdd} onPress={addToCart}>
+                                {t.medAddCart}
+                            </Button>
+                        )}
                     </aside>
                 </div>
             </main>

@@ -54,6 +54,7 @@ export const PrescribedMedicineBrowsePage = () => {
     }
 
     const addOne = (medicine: Medicine, source: HTMLElement) => {
+        if (medicine.requiresPrescription) return;
         const remaining = buyableUnits(remainingFor(medicine.id), medicine.stock);
         if (remaining <= 0) {
             return;
@@ -145,6 +146,7 @@ export const PrescribedMedicineBrowsePage = () => {
                                         kindLabel={kindLabel(medicine.kind, t)}
                                         inStockLabel={t.medInStock}
                                         atLimitLabel={medicine.stock === 0 ? t.medOutOfStock : t.medCartLimit}
+                                        clinicOnlyLabel={t.medClinicOnly}
                                         viewMoreLabel={t.medViewMore}
                                         addLabel={t.medAddCart}
                                         onAdd={(source) => addOne(medicine, source)}

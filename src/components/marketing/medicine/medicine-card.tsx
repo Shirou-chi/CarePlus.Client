@@ -12,6 +12,7 @@ type MedicineCardProps = {
     kindLabel: string;
     inStockLabel: string;
     atLimitLabel: string;
+    clinicOnlyLabel: string;
     viewMoreLabel: string;
     addLabel: string;
     onAdd: (source: HTMLElement) => void;
@@ -24,11 +25,13 @@ export const MedicineCard = ({
     kindLabel,
     inStockLabel,
     atLimitLabel,
+    clinicOnlyLabel,
     viewMoreLabel,
     addLabel,
     onAdd,
 }: MedicineCardProps) => {
-    const inStock = remaining > 0;
+    const clinicOnly = medicine.requiresPrescription;
+    const inStock = !clinicOnly && remaining > 0;
     const list = layout === "list";
 
     const addOne = (event: PressEvent) => {
@@ -73,8 +76,8 @@ export const MedicineCard = ({
             </Link>
 
             <div className={cx("flex flex-col gap-3", list ? "w-full sm:w-auto sm:shrink-0 sm:self-end" : "mt-4")}>
-                <p className={cx("text-sm font-medium", inStock ? "text-[#0f766e] dark:text-[#5eead4]" : "text-fg-error-primary")}>
-                    {inStock ? inStockLabel : atLimitLabel}
+                <p className={cx("text-sm font-medium", clinicOnly ? "text-tertiary" : inStock ? "text-[#0f766e] dark:text-[#5eead4]" : "text-fg-error-primary")}>
+                    {clinicOnly ? clinicOnlyLabel : inStock ? inStockLabel : atLimitLabel}
                 </p>
                 <div className="flex items-center gap-2">
                     <Button
@@ -85,15 +88,17 @@ export const MedicineCard = ({
                     >
                         {viewMoreLabel}
                     </Button>
-                    <Button
-                        color="primary"
-                        size="sm"
-                        iconLeading={Plus}
-                        aria-label={addLabel}
-                        isDisabled={!inStock}
-                        className="careplus-ink shrink-0 rounded-full"
-                        onPress={addOne}
-                    />
+                    {clinicOnly ? null : (
+                        <Button
+                            color="primary"
+                            size="sm"
+                            iconLeading={Plus}
+                            aria-label={addLabel}
+                            isDisabled={!inStock}
+                            className="careplus-ink shrink-0 rounded-full"
+                            onPress={addOne}
+                        />
+                    )}
                 </div>
             </div>
         </article>
