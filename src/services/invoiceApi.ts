@@ -30,10 +30,10 @@ export const invoiceApi = {
         return result.data ?? [];
     },
 
-    async pay(id: string, paymentMethod: string): Promise<void> {
+    async pay(id: string, cardId: string): Promise<void> {
         const result = await request<ApiResponse<OutstandingInvoiceRow>>(
             `/api/Invoice/${encodeURIComponent(id)}/Pay`,
-            { method: "POST", body: JSON.stringify({ paymentMethod }) },
+            { method: "POST", body: JSON.stringify({ cardId: Number(cardId) }) },
             true,
         );
         if (!result.isSuccess) {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { Button } from "@/components/base/buttons/button";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
@@ -26,6 +26,14 @@ export const CheckoutPage = () => {
     const [placing, setPlacing] = useState(false);
     const [placed, setPlaced] = useState(false);
     const [placeError, setPlaceError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const resume = (event: PageTransitionEvent) => {
+            if (event.persisted) setPlacing(false);
+        };
+        window.addEventListener("pageshow", resume);
+        return () => window.removeEventListener("pageshow", resume);
+    }, []);
     const draft = profile ? readCheckoutDraft() : null;
     const { medicines: catalog } = useMedicineCatalog();
 
