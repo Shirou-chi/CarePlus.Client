@@ -28,7 +28,7 @@ const catalog: Medicine[] = [
         description: "course",
         price: 12.5,
         tone: "amber",
-        imageKey: "amox",
+        imagePath: "",
         requiresPrescription: false,
         stock: 4,
     },

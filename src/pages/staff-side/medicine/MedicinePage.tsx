@@ -230,6 +230,11 @@ export function MedicinePage() {
       return
     }
 
+    if (!photoFile && !selectedMedicine?.imagePath) {
+      setFormError('Choose a medicine photo.')
+      return
+    }
+
     setSaving(true)
     setFormError('')
 
@@ -358,7 +363,7 @@ export function MedicinePage() {
           <label className="medicine-purchase-toggle"><input checked={form.requiresPrescription} type="checkbox" onChange={(event) => updateForm('requiresPrescription', event.target.checked)} /><span><strong>Prescription required</strong><small>Patients must consult a doctor before purchasing this medicine.</small></span></label>
           <label className="medicine-photo-field">Photo
             <input accept="image/jpeg,image/png,image/webp" type="file" onChange={(event) => { onPhotoSelected(event.target.files?.[0]); event.currentTarget.value = '' }} />
-            <small>JPG, PNG, or WebP under 5 MB. This replaces the catalog picture.</small>
+            <small>Required. JPG, PNG, or WebP under 5 MB.</small>
             {shownPhoto ? <img alt="" className="medicine-photo-preview" src={shownPhoto} /> : null}
           </label>
           {formError ? <p className="medicine-form-error" role="alert">{formError}</p> : null}
