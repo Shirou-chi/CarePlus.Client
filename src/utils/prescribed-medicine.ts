@@ -25,6 +25,7 @@ export type MedicineRow = {
     method: string;
     methodZh: string | null;
     imageKey: string;
+    imagePath?: string | null;
     price: number;
     requiresPrescription: boolean;
     status: string;

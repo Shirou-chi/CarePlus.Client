@@ -69,4 +69,17 @@ export const medicineApi = {
       throw new Error(messageFromBody(result, 'Unable to update medicine.'))
     }
   },
+
+  async uploadImage(medicineId: string, file: File): Promise<MedicineRecord> {
+    const body = new FormData()
+    body.append('file', file)
+
+    const result = await request<ApiResponse<MedicineRecord>>(
+      `/api/Medicine/${encodeURIComponent(medicineId)}/Image`,
+      { method: 'POST', body },
+      true,
+    )
+
+    return unwrap(result, 'Unable to save the medicine image.')
+  },
 }
