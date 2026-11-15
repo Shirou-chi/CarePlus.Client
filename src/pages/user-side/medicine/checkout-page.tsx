@@ -12,7 +12,7 @@ import { useI18n } from "@/providers/locale-provider";
 import { orderApi } from "@/services/orderApi";
 import { getAuthToken } from "@/services/api";
 import { stripeApi } from "@/services/stripeApi";
-import { clearCheckoutDraft, readCheckoutDraft } from "@/utils/checkout-draft";
+import { clearCheckoutDraft, readCheckoutDraft, writeCheckoutDraft } from "@/utils/checkout-draft";
 import { writePaymentCheckout } from "@/utils/payment-checkout";
 import { trackingLabels } from "@/utils/order-history";
 import { PROFILE_ADDRESS_ID } from "@/utils/delivery-address";
