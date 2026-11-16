@@ -125,8 +125,54 @@ function messageFromHttpStatus(status: number) {
   return `Request failed with status ${status}`
 }
 
+type IdleSignOut = 'keep' | 'idle' | 'quiet'
+
+function decodeJwtPayload(token: string): { exp?: number; iat?: number; remember?: string | number } | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+    const payload = JSON.parse(json) as { exp?: number; iat?: number; remember?: string | number }
+    return payload && typeof payload === 'object' ? payload : null
+  } catch {
+    return null
+  }
+}
+
+/** Remember Me stays until logout. A normal session still signs out when its short token ends. */
+export function idleSignOutAction(token: string, nowMs = Date.now()): IdleSignOut {
+  const payload = decodeJwtPayload(token)
+  if (!payload) return 'idle'
+  if (payload.remember === '1' || payload.remember === 1) return 'keep'
+  if (typeof payload.exp !== 'number') return 'idle'
+  const lifetimeMinutes = typeof payload.iat === 'number' ? (payload.exp - payload.iat) / 60 : 0
+  // ponytail: older Remember Me tokens have no claim; anything over 2 hours is one of those
+  const remembered = lifetimeMinutes > 120
+  const valid = payload.exp * 1000 > nowMs
+  if (remembered && valid) return 'keep'
+  if (remembered) return 'quiet'
+  return 'idle'
+}
+
+function checkIdleSignOut() {
+  const now = 1_700_000_000
+  const token = (payload: { iat: number; exp: number; remember?: string }) => {
+    const body = btoa(JSON.stringify(payload)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+    return `h.${body}.s`
+  }
+  const short = token({ iat: now - 3600, exp: now - 1 })
+  const kept = token({ iat: now - 40 * 24 * 3600, exp: now - 1, remember: '1' })
+  const ended = token({ iat: now - 40 * 24 * 3600, exp: now - 1 })
+  if (idleSignOutAction(short, now * 1000) !== 'idle') throw new Error('idle sign-out check failed')
+  if (idleSignOutAction(kept, now * 1000) !== 'keep') throw new Error('remember me keep check failed')
+  if (idleSignOutAction(ended, now * 1000) !== 'quiet') throw new Error('remember me quiet check failed')
+}
+checkIdleSignOut()
+
 function redirectExpiredSession(token: string) {
   if (getAuthToken() !== token) return
+  const action = idleSignOutAction(token)
+  if (action === 'keep') return
 
   clearAuthToken()
   localStorage.removeItem(SESSION_KEY)
@@ -135,6 +181,11 @@ function redirectExpiredSession(token: string) {
   const path = window.location.pathname.toLowerCase()
   const isStaffPage = path === '/staff' || path.startsWith('/staff/')
   const target = isStaffPage ? '/staff/login' : '/login'
+  if (action === 'quiet') {
+    if (path === target) return
+    window.location.replace(target)
+    return
+  }
   if (path === target && new URLSearchParams(window.location.search).get('expired') === '1') return
   window.location.replace(`${target}?expired=1`)
 }
@@ -165,7 +216,8 @@ export async function request<T>(
 
   const body = await response.json().catch(() => null)
   const expired = token !== null && (response.status === 401 || (body?.isSuccess === false && body.respCode === 401))
-  if (expired) {
+  const signOut = expired ? idleSignOutAction(token) : null
+  if (signOut === 'idle' || signOut === 'quiet') {
     redirectExpiredSession(token)
   }
 
@@ -174,7 +226,8 @@ export async function request<T>(
     const code = body && typeof body === 'object' && 'reason' in body && typeof body.reason === 'string'
       ? body.reason
       : undefined
-    throw new ApiRequestError(messageFromBody(body, messageFromHttpStatus(status)), status, code)
+    const fallback = signOut === 'idle' ? SESSION_EXPIRED_MESSAGE : signOut ? 'Please try again.' : messageFromHttpStatus(status)
+    throw new ApiRequestError(messageFromBody(body, fallback), status, code)
   }
 
   return body as T

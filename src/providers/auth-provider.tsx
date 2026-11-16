@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ApiRequestError, SESSION_EXPIRED_MESSAGE, getAuthToken } from "@/services/api";
+import { ApiRequestError, SESSION_EXPIRED_MESSAGE, getAuthToken, idleSignOutAction } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, resolveProfilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
@@ -222,6 +222,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     error instanceof ApiRequestError && error.status === 401
                     || (error instanceof Error && error.message === SESSION_EXPIRED_MESSAGE);
                 if (!unauthorized) return;
+                const current = getAuthToken();
+                if (current && idleSignOutAction(current) === "keep") return;
 
                 authApi.clearToken();
                 saveSession(null);
