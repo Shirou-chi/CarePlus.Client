@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router";
 import { LoginCardCombined } from "@/components/login/login-card-combined";
+import { SessionIdleToast } from "@/components/marketing/notifications/notification-toasts";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { safeAppPath } from "@/utils/chat";
@@ -17,13 +18,18 @@ export const LoginPage = () => {
     const { t } = useI18n();
     const navigate = useNavigate();
     const location = useLocation();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const nextPath = safeAppPath(searchParams.get("next")) ?? "/home";
     const notice = (location.state as { notice?: string } | null)?.notice ?? null;
     const signedOut = searchParams.get("expired") === "1";
     const passwordChanged = searchParams.get("password") === "1";
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(passwordChanged ? t.sessionPasswordChanged : signedOut ? t.sessionIdle : notice);
+    const [success, setSuccess] = useState<string | null>(passwordChanged ? t.sessionPasswordChanged : notice);
+    const clearIdleNotice = useCallback(() => {
+        const next = new URLSearchParams(searchParams);
+        next.delete("expired");
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
     const [isLoading, setIsLoading] = useState(false);
     const [twoFactor, setTwoFactor] = useState<TwoFactorStep | null>(null);
 
@@ -54,6 +60,8 @@ export const LoginPage = () => {
     };
 
     return (
+        <>
+        {signedOut ? <SessionIdleToast message={t.sessionIdle} onDone={clearIdleNotice} /> : null}
         <LoginCardCombined
             error={error}
             success={success}
@@ -123,5 +131,6 @@ export const LoginPage = () => {
                 setSuccess(null);
             }}
         />
+        </>
     );
 };
