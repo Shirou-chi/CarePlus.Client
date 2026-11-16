@@ -6,8 +6,8 @@ import { appointmentApi, type StaffAppointmentRecord } from '@/services/appointm
 import { adminBillingApi } from '@/services/adminBillingApi'
 import { leaveApi } from '@/services/leaveApi'
 import { medicineBatchApi } from '@/services/medicineBatchApi'
+import { isClosedPrescriptionStatus, prescriptionApi } from '@/services/prescriptionApi'
 import { queueApi, type StaffQueueEntry } from '@/services/queueApi'
-import { workScheduleApi } from '@/services/workScheduleApi'
 import { sortNotices } from '@/utils/notifications'
 import { useTheme } from '../../components/theme/useTheme'
 import { StaffPageEyebrow } from './components/StaffPageEyebrow'
@@ -48,6 +48,7 @@ const links = {
   leave: '/staff/leave',
   schedules: '/staff/schedules',
   batches: '/staff/medicine-batches',
+  prescriptions: '/staff/prescriptions',
   billing: '/staff/billing',
   notifications: '/staff/notifications',
 }
@@ -83,11 +84,11 @@ async function readFeed<T>(request: Promise<T[]>): Promise<Feed<T>> {
 
 async function loadOverview(role: StaffRole, day: string, signal: AbortSignal) {
   if (role === 'Pharmacist') {
-    const [batches, shifts] = await Promise.all([
+    const [batches, prescriptions] = await Promise.all([
       readFeed(medicineBatchApi.list()),
-      readFeed(workScheduleApi.retrieveAll()),
+      readFeed(prescriptionApi.list()),
     ])
-    return { kind: 'pharmacy' as const, batches, shifts }
+    return { kind: 'pharmacy' as const, batches, prescriptions }
   }
 
   const [appointments, queue, leave, billing] = await Promise.all([
@@ -284,7 +285,7 @@ function ClinicalOverview({ data, isAdmin }: { data?: Extract<OverviewData, { ki
   )
 }
 
-function PharmacyOverview({ data, day }: { data?: Extract<OverviewData, { kind: 'pharmacy' }>; day: string }) {
+function PharmacyOverview({ data }: { data?: Extract<OverviewData, { kind: 'pharmacy' }> }) {
   const batches = data?.batches.rows?.map((batch) => ({ ...batch, status: getBatchStatus(batch) }))
   const counts = batches && {
     low: batches.filter((batch) => batch.status === 'Low stock').length,
@@ -292,11 +293,13 @@ function PharmacyOverview({ data, day }: { data?: Extract<OverviewData, { kind: 
     inStock: batches.filter((batch) => batch.status === 'In stock').length,
   }
   const failed = data?.batches.failed
+  const prescriptionFeed = data?.prescriptions
+  const activePrescriptions = prescriptionFeed?.rows?.filter((prescription) => !isClosedPrescriptionStatus(prescription.status))
   const metrics: Metric[] = [
     { label: 'Total batches', value: batches?.length, failed, icon: 'box', tone: 'blue', to: links.batches },
     { label: 'In stock', value: counts?.inStock, failed, icon: 'check', tone: 'teal', to: links.batches },
     { label: 'Low stock', value: counts?.low, failed, icon: 'activity', tone: 'amber', to: links.batches },
-    { label: 'Expired batches', value: counts?.expired, failed, icon: 'clock', tone: 'violet', to: links.batches },
+    { label: 'Prescriptions to dispense', value: activePrescriptions?.length, failed: prescriptionFeed?.failed, icon: 'file', tone: 'violet', to: links.prescriptions },
   ]
   const alerts = batches?.filter((batch) => batch.status !== 'In stock')
     .sort((left, right) => left.status.localeCompare(right.status) || left.expiryDate.localeCompare(right.expiryDate))
@@ -310,14 +313,15 @@ function PharmacyOverview({ data, day }: { data?: Extract<OverviewData, { kind: 
       tone: statusTone(batch.status),
       to: links.batches + '?medicineId=' + encodeURIComponent(batch.medicineId),
     }))
-  const shifts = data?.shifts.rows?.filter((shift) => shift.status === 'Active' && shift.workingDate.slice(0, 10) >= day)
-    .sort((left, right) => left.workingDate.localeCompare(right.workingDate))
-    .slice(0, previewLimit)
-    .map((shift) => ({
-      id: shift.scheduleId,
-      lead: formatDate(shortDate, calendarDate(shift.workingDate)),
-      title: shift.shift ? shift.shift + ' shift' : 'Scheduled shift',
-      detail: shift.roomName ?? '',
+  const prescriptionRows = activePrescriptions?.slice(0, previewLimit)
+    .map((prescription) => ({
+      id: prescription.prescriptionId,
+      lead: formatDate(shortDate, calendarDate(prescription.createdAt)),
+      title: prescription.patientName,
+      detail: prescription.prescriptionId + ' · ' + prescription.doctorName,
+      status: prescription.status || 'Pending',
+      tone: 'amber' as const,
+      to: links.prescriptions,
     }))
 
   return (
@@ -326,8 +330,8 @@ function PharmacyOverview({ data, day }: { data?: Extract<OverviewData, { kind: 
       <div className="staff-overview__grid">
         <OverviewPanel id="overview-inventory" title="Stock alerts" to={links.batches}
           linkLabel="Open batches" rows={alerts} failed={failed} empty="No low stock or expired batches." />
-        <OverviewPanel id="overview-shifts" title="Upcoming shifts" to={links.schedules}
-          linkLabel="Open schedule" rows={shifts} failed={data?.shifts.failed} empty="No upcoming shifts." />
+        <OverviewPanel id="overview-prescriptions" title="Prescriptions to dispense" to={links.prescriptions}
+          linkLabel="Open prescriptions" rows={prescriptionRows} failed={prescriptionFeed?.failed} empty="No active prescriptions to dispense." />
       </div>
     </>
   )
@@ -408,7 +412,7 @@ export function StaffHomePage() {
           </header>
 
           {role === 'Pharmacist'
-            ? <PharmacyOverview data={current?.data.kind === 'pharmacy' ? current.data : undefined} day={day} />
+            ? <PharmacyOverview data={current?.data.kind === 'pharmacy' ? current.data : undefined} />
             : <ClinicalOverview data={current?.data.kind === 'clinic' ? current.data : undefined} isAdmin={role === 'Admin'} />}
 
           <div className="staff-overview__grid">

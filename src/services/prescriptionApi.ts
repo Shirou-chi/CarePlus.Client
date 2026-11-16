@@ -17,6 +17,11 @@ export type PrescriptionItem = {
   instructions: string
 }
 
+export function isClosedPrescriptionStatus(status: string) {
+  const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, '_')
+  return ['completed', 'dispensed', 'picked_up', 'cancelled'].includes(normalized)
+}
+
 async function retrieve<T>(path: string, fallback: string, signal?: AbortSignal): Promise<T> {
   const result = await request<ApiResponse<T>>(path, { cache: 'no-store', signal }, true)
   if (!result.isSuccess || result.data === null) {

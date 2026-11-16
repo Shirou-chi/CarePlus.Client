@@ -150,19 +150,19 @@ export function MedicalRecordsPage() {
             <div>
               <StaffPageEyebrow label="Clinical records" />
               <h1>Medical records</h1>
-              <p>Review diagnoses and clinical notes created from appointment and queue consultations.</p>
+              <p>Review clinic-wide diagnoses and clinical notes created from appointment and queue consultations.</p>
             </div>
            </section>
 
           <section aria-label="Medical record summary" className="medical-records-summary">
-            <article className="medical-records-summary-card medical-records-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Total records</small><strong>{records.length}</strong><em>Assigned to you</em></article>
+            <article className="medical-records-summary-card medical-records-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Total records</small><strong>{records.length}</strong><em>Across the clinic</em></article>
             <article className="medical-records-summary-card medical-records-summary-card--blue"><span><Icon name="calendar" size={18} /></span><small>This month</small><strong>{thisMonthCount}</strong><em>Consultations documented</em></article>
-            <article className="medical-records-summary-card medical-records-summary-card--violet"><span><Icon name="users" size={18} /></span><small>Patients</small><strong>{new Set(records.map((record) => record.patientId)).size}</strong><em>With a record from you</em></article>
+            <article className="medical-records-summary-card medical-records-summary-card--violet"><span><Icon name="users" size={18} /></span><small>Patients</small><strong>{new Set(records.map((record) => record.patientId)).size}</strong><em>With clinic records</em></article>
           </section>
 
           <section className="staff-card medical-records-list-card">
             <div className="staff-card__header medical-records-list-card__header">
-              <div><p className="staff-card__eyebrow">Patient history</p><h2>Medical records</h2><span className="medical-records-description">Review your consultation notes and keep patient history up to date.</span></div>
+              <div><p className="staff-card__eyebrow">Patient history</p><h2>Medical records</h2><span className="medical-records-description">Review clinic consultation notes and keep patient history up to date.</span></div>
               <span className="medical-records-count">{filteredRecords.length} shown</span>
             </div>
 
