@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ApiRequestError, SESSION_EXPIRED_MESSAGE, getAuthToken, idleSignOutAction } from "@/services/api";
+import { ApiRequestError, REMEMBER_ME_KEY, SESSION_EXPIRED_MESSAGE, getAuthToken, idleSignOutAction, saveAuthToken, sessionNeedsRefresh } from "@/services/api";
 import { authApi, type CurrentUserResponse } from "@/services/authApi";
 import { profileApi, resolveProfilePictureUrl, type AppSettingResponse } from "@/services/profileApi";
 import { useI18n } from "@/providers/locale-provider";
@@ -305,6 +305,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             document.removeEventListener("visibilitychange", onVisible);
         };
     }, [isReady, profile?.id]);
+
+    // Clicks, typing, and scrolling keep a normal session alive. The background poll does not.
+    useEffect(() => {
+        let lastInput = 0;
+        let refreshing = false;
+        const mark = () => {
+            lastInput = Date.now();
+        };
+        const listen: AddEventListenerOptions = { capture: true, passive: true };
+        window.addEventListener("pointerdown", mark, listen);
+        window.addEventListener("keydown", mark, listen);
+        window.addEventListener("scroll", mark, listen);
+        window.addEventListener("touchstart", mark, listen);
+
+        const extendSession = async () => {
+            const token = getAuthToken();
+            if (!token || refreshing || Date.now() - lastInput > 15 * 60 * 1000) return;
+            if (!sessionNeedsRefresh(token)) return;
+            refreshing = true;
+            try {
+                const next = await authApi.refreshSession();
+                if (getAuthToken() === token) {
+                    saveAuthToken(next.token, localStorage.getItem(REMEMBER_ME_KEY) === "1");
+                }
+            } catch {
+                // An expired token already redirects. A failed refresh leaves the current one in place.
+            } finally {
+                refreshing = false;
+            }
+        };
+
+        const timer = window.setInterval(() => void extendSession(), 20_000);
+        return () => {
+            window.clearInterval(timer);
+            window.removeEventListener("pointerdown", mark, listen);
+            window.removeEventListener("keydown", mark, listen);
+            window.removeEventListener("scroll", mark, listen);
+            window.removeEventListener("touchstart", mark, listen);
+        };
+    }, []);
 
     const establishPatientSession = async (token: string, rememberMe = true) => {
         authApi.saveToken(token, rememberMe);

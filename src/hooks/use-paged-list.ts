@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export const LIST_PAGE_SIZE = 5;
 
@@ -13,10 +13,10 @@ export function usePagedList<T>(items: readonly T[], resetKey: string, pageSize 
         setPage(1);
     }, [resetKey]);
 
-    const go = (next: number) => {
+    const go = useCallback((next: number) => {
         setPage(Math.min(pages, Math.max(1, next)));
         anchorRef.current?.scrollIntoView({ block: "start" });
-    };
+    }, [pages]);
 
     return {
         anchorRef,

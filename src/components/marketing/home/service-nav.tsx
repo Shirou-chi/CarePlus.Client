@@ -236,7 +236,7 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                             <span className={cx("pointer-events-none flex aspect-square w-full max-w-[4.25rem] items-center justify-center rounded-[1.35rem] md:max-w-[4.75rem]", item.tone)}>
                                 <item.Icon className="pointer-events-none size-7" />
                             </span>
-                            <span className="pointer-events-none text-center text-xs font-medium text-tertiary md:text-sm">{item.label}</span>
+                            <span className="pointer-events-none w-full text-balance text-center text-xs font-medium leading-4 text-tertiary md:text-sm [:lang(zh-CN)_&]:max-w-[2.2em]">{item.label}</span>
                         </>
                     );
 

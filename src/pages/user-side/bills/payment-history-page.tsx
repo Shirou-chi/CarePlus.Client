@@ -24,6 +24,8 @@ import { invoiceApi } from "@/services/invoiceApi";
 import { type MedicineOrder } from "@/utils/order-history";
 import { formatRm } from "@/utils/prescribed-medicine";
 
+const PAYMENT_PAGE_SIZE = 6;
+
 type PaidOrder = "oldest" | "latest";
 
 type HistoryEntry =
@@ -87,13 +89,6 @@ export const PaymentHistoryPage = () => {
     const [historyAttempt, setHistoryAttempt] = useState(0);
     const [params] = useSearchParams();
     const requestedOrder = params.get("order");
-    const openedOrder = useRef(false);
-    useEffect(() => {
-        if (openedOrder.current || !requestedOrder) return;
-        if (!medicineOrders.some((item) => item.id === requestedOrder)) return;
-        openedOrder.current = true;
-        setOpenId(requestedOrder);
-    }, [medicineOrders, requestedOrder]);
     useEffect(() => {
         if (!profile?.id || profile.id.startsWith("fam-")) {
             setMedicineOrders([]);
@@ -131,9 +126,28 @@ export const PaymentHistoryPage = () => {
             return order === "oldest" ? diff : -diff;
         });
     }, [clinicPayments, medicineOrders, order]);
-    const page = usePagedList(filtered, order);
+    const page = usePagedList(filtered, `${order}:${requestedOrder ?? ""}`, PAYMENT_PAGE_SIZE);
     const totalPaid = filtered.reduce((sum, entry) => sum + (entry.kind === "clinic" ? entry.invoice.total : entry.order.total), 0);
     const openEntry = filtered.find((entry) => (entry.kind === "clinic" ? entry.invoice.id : entry.order.id) === openId) ?? null;
+    const entryId = (entry: HistoryEntry) => (entry.kind === "clinic" ? entry.invoice.id : entry.order.id);
+    const focusedOrder = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!requestedOrder || historyLoading) return;
+        const index = filtered.findIndex((entry) => entryId(entry) === requestedOrder);
+        if (index < 0) return;
+        const targetPage = Math.floor(index / PAYMENT_PAGE_SIZE) + 1;
+        const focusKey = `${requestedOrder}:${order}`;
+        if (focusedOrder.current !== focusKey) {
+            focusedOrder.current = focusKey;
+            if (page.page !== targetPage) {
+                page.go(targetPage);
+                return;
+            }
+        }
+        if (page.page !== targetPage) return;
+        document.getElementById(`payment-${requestedOrder}`)?.scrollIntoView({ block: "center" });
+    }, [filtered, historyLoading, order, page.go, page.page, requestedOrder]);
 
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
@@ -213,8 +227,9 @@ export const PaymentHistoryPage = () => {
                                       : t.medCartPickup;
                             const method = entry.kind === "clinic" ? entry.invoice.method : entry.order.payment;
                             const total = entry.kind === "clinic" ? entry.invoice.total : entry.order.total;
+                            const highlighted = id === requestedOrder;
                             return (
-                                <li key={id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5">
+                                <li key={id} id={`payment-${id}`} className={highlighted ? "scroll-mt-28 rounded-2xl bg-[#eef8fb] p-4 ring-2 ring-[#122b4b] shadow-[0_0_0_4px_rgba(18,43,75,0.18)] sm:p-5 dark:bg-[rgba(118,226,235,0.16)] dark:ring-[#76e2eb] dark:shadow-[0_0_0_4px_rgba(118,226,235,0.35)]" : "scroll-mt-28 rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5"}>
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
                                             <p className="text-sm font-semibold text-brand-secondary">{id}</p>

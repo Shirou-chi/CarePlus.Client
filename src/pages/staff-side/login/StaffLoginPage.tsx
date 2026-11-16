@@ -16,6 +16,7 @@ export function StaffLoginPage() {
   const [searchParams] = useSearchParams()
   const [error, setError] = useState('')
   const signedOut = searchParams.get('expired') === '1'
+  const passwordChanged = searchParams.get('password') === '1'
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -100,7 +101,8 @@ export function StaffLoginPage() {
             />
           </label>
 
-          {signedOut && !error ? <p className="staff-login-card__copy" role="status">You were inactive for too long, so you were signed out. Sign in again.</p> : null}
+          {passwordChanged && !error ? <p className="staff-login-card__copy" role="status">Your password was changed on another device, so you were signed out.</p> : null}
+          {signedOut && !passwordChanged && !error ? <p className="staff-login-card__copy" role="status">You were inactive for too long, so you were signed out. Sign in again.</p> : null}
           {error ? <p className="staff-login-card__error" role="alert">{error}</p> : null}
 
           <button className="staff-login-card__submit" disabled={isSubmitting} type="submit">

@@ -6,6 +6,12 @@ export type StripeCheckoutSession = {
     publishableKey: string;
 };
 
+export type StripeCardSetup = {
+    setupIntentId: string;
+    clientSecret: string;
+    publishableKey: string;
+};
+
 export type StripeCompletedCheckout = {
     kind: "invoice" | "medicine" | string;
     method: string;
@@ -69,8 +75,8 @@ export const stripeApi = {
         return result.data;
     },
 
-    async createCardSetup(): Promise<StripeCheckoutSession> {
-        const result = await request<ApiResponse<StripeCheckoutSession>>(
+    async createCardSetup(): Promise<StripeCardSetup> {
+        const result = await request<ApiResponse<StripeCardSetup>>(
             "/api/Stripe/Setup/Card",
             {
                 method: "POST",
@@ -78,10 +84,18 @@ export const stripeApi = {
             },
             true,
         );
-        if (!result.isSuccess || !result.data?.url) {
-            throw new Error(result.respMessage || "Stripe could not start card setup.");
+        const setup = result.data;
+        if (!result.isSuccess || !setup?.clientSecret || !setup.publishableKey) {
+            const stale = setup && "url" in setup;
+            throw new Error(
+                stale
+                    ? "The card form is not loaded yet. Restart the API, then add the card again."
+                    : result.respMessage && result.respMessage !== "Success"
+                      ? result.respMessage
+                      : "Stripe could not open the card form.",
+            );
         }
-        return result.data;
+        return setup;
     },
 
     async completeCardSetup(sessionId: string): Promise<void> {

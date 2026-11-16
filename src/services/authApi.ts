@@ -140,6 +140,14 @@ export const authApi = {
     return unwrap(result, 'Unable to verify the code.')
   },
 
+  async refreshSession(): Promise<LoginResponse> {
+    const result = await request<ApiResponse<LoginResponse>>('/api/User/Refresh', {
+      method: 'POST',
+    }, true)
+
+    return unwrap(result, 'Unable to refresh the session.')
+  },
+
   async resendPatientLoginTwoFactor(challengeId: string): Promise<LoginTwoFactorRequired> {
     const result = await request<ApiResponse<LoginTwoFactorRequired>>('/api/Patient/Login/ResendTwoFactor', {
       method: 'POST',
