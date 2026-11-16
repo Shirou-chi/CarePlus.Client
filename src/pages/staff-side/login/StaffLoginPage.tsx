@@ -13,6 +13,7 @@ export function StaffLoginPage() {
   const { theme, toggleTheme } = useTheme()
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [searchParams] = useSearchParams()
   const [error, setError] = useState('')
   const signedOut = searchParams.get('expired') === '1'
@@ -24,7 +25,7 @@ export function StaffLoginPage() {
     setIsSubmitting(true)
 
     try {
-      await staffLogin(identifier, password)
+      await staffLogin(identifier, password, rememberMe)
       navigate('/staff', { replace: true })
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Login failed.')
@@ -98,6 +99,11 @@ export function StaffLoginPage() {
               type="password"
               value={password}
             />
+          </label>
+
+          <label className="staff-login-card__remember">
+            <input checked={rememberMe} type="checkbox" onChange={(event) => setRememberMe(event.target.checked)} />
+            <span>Remember for 30 days</span>
           </label>
 
           {signedOut && !error ? <p className="staff-login-card__copy" role="status">You were inactive for too long, so you were signed out. Sign in again.</p> : null}

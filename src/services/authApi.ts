@@ -113,10 +113,10 @@ async function unwrap<T>(result: ApiResponse<T>, failureMessage: string): Promis
 }
 
 export const authApi = {
-  async staffLogin(identifier: string, password: string): Promise<LoginResponse> {
+  async staffLogin(identifier: string, password: string, rememberMe = false): Promise<LoginResponse> {
     const result = await request<ApiResponse<LoginResponse>>('/api/Staff/Login', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, rememberMe }),
     })
 
     return unwrap(result, 'Staff login failed.')

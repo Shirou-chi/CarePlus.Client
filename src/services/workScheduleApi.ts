@@ -27,7 +27,7 @@ export type WorkScheduleUpdateRequest = {
   scheduleId: string
   workingDate?: string
   shift?: WorkShift
-  status?: 'Active' | 'Inactive'
+  status?: 'Active' | 'Inactive' | 'Room Reassignment Required'
 }
 
 async function unwrap<T>(result: ApiResponse<T>, failureMessage: string): Promise<T> {

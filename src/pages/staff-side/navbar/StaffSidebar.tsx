@@ -37,6 +37,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Administration',
     items: [
       { label: 'Notifications', icon: 'bell', roles: ['Admin', 'Doctor', 'Pharmacist'] },
+      { label: 'Announcements', icon: 'bell', roles: ['Admin'] },
       { label: 'Reports & analysis', icon: 'chart', roles: ['Admin'] },
       { label: 'Billing', icon: 'file', roles: ['Admin'] },
       { label: 'Audit & logs', icon: 'activity', roles: ['Admin'] },
@@ -75,6 +76,7 @@ const staffRoutes: Record<string, string> = {
   Prescriptions: '/staff/prescriptions',
   'Medical records': '/staff/medical-records',
   Notifications: '/staff/notifications',
+  Announcements: '/staff/announcements',
   'Reports & analysis': '/staff/reports',
   Billing: '/staff/billing',
   'Audit & logs': '/staff/audit-logs',

@@ -23,6 +23,7 @@ const staffPageLoaders = [
     () => import("@/pages/staff-side/audit/AuditLogsPage"),
     () => import("@/pages/staff-side/leave/LeavePage"),
     () => import("@/pages/staff-side/notifications/NotificationsPage"),
+    () => import("@/pages/staff-side/announcements/AnnouncementsPage"),
     () => import("@/pages/staff-side/patients/PatientsPage"),
     () => import("@/pages/staff-side/queue/StaffQueuePage"),
     () => import("@/pages/staff-side/consultation/ConsultationPage"),
@@ -83,6 +84,7 @@ const StaffAppointmentsPage = page(() => import("@/pages/staff-side/appointments
 const AuditLogsPage = page(() => import("@/pages/staff-side/audit/AuditLogsPage"), "AuditLogsPage");
 const LeavePage = page(() => import("@/pages/staff-side/leave/LeavePage"), "LeavePage");
 const StaffNotificationsPage = page(() => import("@/pages/staff-side/notifications/NotificationsPage"), "NotificationsPage");
+const StaffAnnouncementsPage = page(() => import("@/pages/staff-side/announcements/AnnouncementsPage"), "AnnouncementsPage");
 const PatientsPage = page(() => import("@/pages/staff-side/patients/PatientsPage"), "PatientsPage");
 const StaffQueuePage = page(() => import("@/pages/staff-side/queue/StaffQueuePage"), "StaffQueuePage");
 const ConsultationPage = page(() => import("@/pages/staff-side/consultation/ConsultationPage"), "ConsultationPage");
@@ -305,6 +307,7 @@ const AppRoutes = () => {
                         <Route path="/staff/medical-records" element={<MedicalRecordsPage />} />
                     </Route>
                     <Route element={<StaffRouteGuard roles={["Admin"]} />}>
+                        <Route path="/staff/announcements" element={<StaffAnnouncementsPage />} />
                         <Route path="/staff/staff" element={<StaffManagementPage />} />
                         <Route path="/staff/patients" element={<PatientsPage />} />
                         <Route path="/staff/rooms" element={<ClinicRoomsPage />} />

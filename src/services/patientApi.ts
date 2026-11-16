@@ -17,6 +17,10 @@ export const patientApi = {
   async retrieveAll(): Promise<PatientRecord[]> {
     const result = await request<ApiResponse<PatientRecord[]>>('/api/Patient/Retrieve', {}, true)
 
+    if (!result.isSuccess && result.respCode === 404 && result.respMessage?.toLowerCase().includes('no patients found')) {
+      return []
+    }
+
     if (!result.isSuccess || !Array.isArray(result.data)) {
       throw new Error(result.respMessage || 'Unable to load patient records.')
     }

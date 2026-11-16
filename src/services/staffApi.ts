@@ -9,8 +9,6 @@ export type StaffRecord = {
   phone: string
   status: 'Active' | 'Inactive' | 'Suspended' | string
   role: 'Admin' | 'Doctor' | 'Pharmacist' | string
-  accessLevel?: number
-  department?: string | null
   licenseNumber?: string
   specialization?: string
   qualification?: string
@@ -25,8 +23,6 @@ export type StaffRegisterRequest = {
   email: string
   password: string
   role: 'Admin' | 'Doctor' | 'Pharmacist'
-  accessLevel?: number
-  department?: string
   licenseNumber?: string
   specialization?: string
   qualification?: string

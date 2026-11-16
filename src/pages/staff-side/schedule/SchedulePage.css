@@ -746,6 +746,11 @@
   color: #c94b55;
 }
 
+.schedule-list-status--room-reassignment-required {
+  background: rgba(210, 92, 84, 0.14);
+  color: #e77d75;
+}
+
 .schedule-list-icon {
   display: grid;
   width: 32px;
