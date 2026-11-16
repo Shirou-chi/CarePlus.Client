@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck01 } from "@untitledui/icons";
 import { Link, Navigate } from "react-router";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -13,6 +14,7 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { appointmentApi, type Appointment } from "@/services/appointmentApi";
 
 type StatusFilter = "all" | "completed" | "cancelled";
@@ -75,6 +77,7 @@ export const VisitHistoryPage = () => {
         [visits, status, doctor],
     );
 
+    const page = usePagedList(filtered, `${status}:${doctor}`);
     const filtering = status !== "all" || doctor !== "all";
     const clearFilters = () => {
         setStatus("all");
@@ -169,8 +172,9 @@ export const VisitHistoryPage = () => {
                 ) : null}
 
                 {!loading && filtered.length > 0 ? (
+                    <div ref={page.anchorRef} className="scroll-mt-28">
                     <ul className="mt-8 space-y-3">
-                        {filtered.map((visit) => {
+                        {page.slice.map((visit) => {
                             const cancelled = visit.status === "cancelled";
                             return (
                                 <li key={visit.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5">
@@ -201,6 +205,8 @@ export const VisitHistoryPage = () => {
                             );
                         })}
                     </ul>
+                    <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                    </div>
                 ) : null}
             </main>
             <LandingFooter />

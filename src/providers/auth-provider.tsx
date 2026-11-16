@@ -396,7 +396,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         saveSession(null);
         setSession(null);
         setHasCompletedTutorial(null);
-        applyTheme("light");
         applyLocale("en");
     };
 

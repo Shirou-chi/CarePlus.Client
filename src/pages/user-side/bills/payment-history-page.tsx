@@ -3,6 +3,7 @@ import { Download01, Receipt } from "@untitledui/icons";
 import { Navigate, useSearchParams } from "react-router";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
@@ -17,6 +18,7 @@ import { useClinicRecords } from "@/hooks/use-clinic-records";
 import { clinicChargeCategoryLabel, getClinicRecordTotals, type ClinicRecord } from "@/utils/clinic-records";
 import { printHtmlDocument } from "@/utils/document-download";
 import { type PaidInvoice } from "@/utils/invoices";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { paymentApi } from "@/services/paymentApi";
 import { invoiceApi } from "@/services/invoiceApi";
 import { type MedicineOrder } from "@/utils/order-history";
@@ -129,6 +131,7 @@ export const PaymentHistoryPage = () => {
             return order === "oldest" ? diff : -diff;
         });
     }, [clinicPayments, medicineOrders, order]);
+    const page = usePagedList(filtered, order);
     const totalPaid = filtered.reduce((sum, entry) => sum + (entry.kind === "clinic" ? entry.invoice.total : entry.order.total), 0);
     const openEntry = filtered.find((entry) => (entry.kind === "clinic" ? entry.invoice.id : entry.order.id) === openId) ?? null;
 
@@ -197,8 +200,9 @@ export const PaymentHistoryPage = () => {
                         <p className="mt-2 text-sm text-tertiary">{t.paymentsEmptyBody}</p>
                     </div>
                 ) : (
+                    <div ref={page.anchorRef} className="scroll-mt-28">
                     <ul className="mt-6 grid gap-3 lg:grid-cols-2">
-                        {filtered.map((entry) => {
+                        {page.slice.map((entry) => {
                             const id = entry.kind === "clinic" ? entry.invoice.id : entry.order.id;
                             const title = entry.kind === "clinic" ? entry.invoice.doctorName : entry.order.lines.map((line) => line.name).join(", ");
                             const subtitle =
@@ -252,6 +256,8 @@ export const PaymentHistoryPage = () => {
                             );
                         })}
                     </ul>
+                    <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                    </div>
                 )}
             </main>
             {openEntry?.kind === "clinic" ? (

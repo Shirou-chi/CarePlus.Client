@@ -37,6 +37,7 @@ import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { getAuthToken } from "@/services/api";
 import { authApi } from "@/services/authApi";
 import { profileApi, resolveProfilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
+import { stripeApi } from "@/services/stripeApi";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { type Profile } from "@/utils/auth";
@@ -128,6 +129,8 @@ export const AccountPage = () => {
     const [securityNotice, setSecurityNotice] = useState<{ success?: string; error?: string } | null>(null);
     const [twoFactorBusy, setTwoFactorBusy] = useState(false);
     const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+    const [cardSetupError, setCardSetupError] = useState<string | null>(null);
+    const [cardSetupBusy, setCardSetupBusy] = useState(false);
     const [activity, setActivity] = useState<AccountActivity[]>([]);
     const sectionRefs = useRef<Record<SectionId, HTMLElement | null>>({ profile: null, preference: null, payment: null, security: null });
     const photoInputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +150,33 @@ export const AccountPage = () => {
             return synced;
         });
     }, [profile?.id, profile?.address, t.settingsProfileAddressLabel]);
+
+    useEffect(() => {
+        if (!profile || profile.id.startsWith("fam-")) return;
+        const sessionId = new URLSearchParams(window.location.search).get("card_setup");
+        if (!sessionId) return;
+        let cancelled = false;
+        stripeApi
+            .completeCardSetup(sessionId)
+            .then(() => profileApi.listPaymentCards())
+            .then((rows) => {
+                if (cancelled) return;
+                setSettings((current) => {
+                    const next = applyPaymentCards(current, rows);
+                    writeProfileSettings(profile.id, next);
+                    return next;
+                });
+                setPaymentNotice(t.settingsSaved);
+                setCardSetupError(null);
+                window.history.replaceState({}, "", "/account");
+            })
+            .catch((error: unknown) => {
+                if (!cancelled) setCardSetupError(error instanceof Error ? error.message : t.authFailed);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [profile?.id, t.authFailed, t.settingsSaved]);
 
     useEffect(() => {
         if (!profile || profile.id.startsWith("fam-")) {
@@ -279,6 +309,21 @@ export const AccountPage = () => {
     const persistSettings = (next: ProfileSettings) => {
         setSettings(next);
         writeProfileSettings(profile.id, next);
+    };
+
+    const startStripeCard = () => {
+        setPaymentNotice(null);
+        setCardSetupError(null);
+        setCardSetupBusy(true);
+        void stripeApi
+            .createCardSetup()
+            .then((session) => {
+                window.location.assign(session.url);
+            })
+            .catch((error: unknown) => {
+                setCardSetupBusy(false);
+                setCardSetupError(error instanceof Error ? error.message : t.authFailed);
+            });
     };
 
     const openTwoFactorPrompt = (action: TwoFactorAction) => {
@@ -903,7 +948,7 @@ export const AccountPage = () => {
                             className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPayment} description={t.settingsPaymentBody} />
-                            <FormStatus success={paymentNotice} className="mt-4" />
+                            <FormStatus error={cardSetupError} success={paymentNotice} className="mt-4" />
 
                             <div className="mt-6 flex flex-col gap-4">
                                 {settings.paymentCards.map((card) => (
@@ -935,10 +980,21 @@ export const AccountPage = () => {
                                 ) : (
                                     <div className="flex flex-col gap-4 rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary sm:flex-row sm:items-center sm:justify-between">
                                         <CreditCard width={180} type="gray-light" company="CarePlus" cardNumber="•••• •••• •••• ••••" cardHolder="YOUR NAME" cardExpiration="MM/YY" />
-                                        <Button color="secondary" size="sm" iconLeading={Plus} onClick={() => {
-                                            setPaymentNotice(null);
-                                            setEditingCardId("new");
-                                        }}>
+                                        <Button
+                                            color="secondary"
+                                            size="sm"
+                                            iconLeading={Plus}
+                                            isLoading={cardSetupBusy}
+                                            isDisabled={cardSetupBusy}
+                                            onClick={() => {
+                                                setPaymentNotice(null);
+                                                if (profile.id.startsWith("fam-")) {
+                                                    setEditingCardId("new");
+                                                    return;
+                                                }
+                                                startStripeCard();
+                                            }}
+                                        >
                                             {t.settingsAddCard}
                                         </Button>
                                     </div>

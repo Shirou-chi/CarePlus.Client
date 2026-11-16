@@ -5,6 +5,7 @@ import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Table, TableCard } from "@/components/application/table/table";
 import { Input } from "@/components/base/input/input";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
@@ -14,6 +15,7 @@ import { SectionDivider } from "@/components/section-divider";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { clinicRecordApi } from "@/services/clinicRecordApi";
 import { downloadPdfDocument } from "@/utils/document-download";
 import {
@@ -46,6 +48,7 @@ export const ClinicRecordsPage = () => {
                 record.visitType.toLowerCase().includes(q),
         );
     }, [query, records]);
+    const page = usePagedList(filtered, query);
 
     const formatWhen = (iso: string) =>
         new Date(iso).toLocaleString(locale === "zh" ? "zh-MY" : "en-MY", {
@@ -113,8 +116,9 @@ export const ClinicRecordsPage = () => {
                     </div>
                 ) : null}
                 {!loading && !error && records.length > 0 ? (
+                    <div ref={page.anchorRef} className="scroll-mt-28">
                     <ul className="mt-6 flex flex-col gap-3 md:hidden">
-                        {filtered.map((record) => (
+                        {page.slice.map((record) => (
                             <li key={record.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary">
                                 <div className="flex items-start gap-3">
                                     <img src={record.doctorPhoto} alt="" className="size-10 shrink-0 rounded-full object-cover" />
@@ -141,8 +145,7 @@ export const ClinicRecordsPage = () => {
                             </li>
                         ))}
                     </ul>
-                ) : null}
-                {!loading && !error && records.length > 0 ? <TableCard.Root className="mt-8 hidden overflow-hidden md:block">
+                    <TableCard.Root className="mt-8 hidden overflow-hidden md:block">
                     <Table aria-label={t.clinicRecordsTitle}>
                         <Table.Header>
                             <Table.Head id="id" label={t.clinicRecordsId} isRowHeader />
@@ -153,7 +156,7 @@ export const ClinicRecordsPage = () => {
                             <Table.Head id="status" label={t.clinicRecordsStatus} />
                             <Table.Head id="actions" label={t.clinicRecordsActions} />
                         </Table.Header>
-                        <Table.Body items={filtered}>
+                        <Table.Body items={page.slice}>
                             {(record) => (
                                 <Table.Row id={record.id}>
                                     <Table.Cell>
@@ -205,7 +208,10 @@ export const ClinicRecordsPage = () => {
                             )}
                         </Table.Body>
                     </Table>
-                </TableCard.Root> : null}
+                </TableCard.Root>
+                    <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                    </div>
+                ) : null}
             </main>
             <LandingFooter />
 

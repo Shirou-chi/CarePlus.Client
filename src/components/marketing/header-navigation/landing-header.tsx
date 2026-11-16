@@ -154,6 +154,8 @@ export const LandingHeader = () => {
     const navigate = useNavigate();
     const overdue = useOverdueLock();
     const signedInName = profile?.fullName.split(" ")[0] ?? t.signIn;
+    const appearance =
+        theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
     const signOut = async () => {
         await logout();
         navigate("/login");
@@ -195,15 +197,55 @@ export const LandingHeader = () => {
                                         {t.viewProfile}
                                     </Dropdown.Item>
                                     <Dropdown.Separator />
-                                    <Dropdown.Item icon={theme === "dark" ? Sun : Moon01} selectionIndicator="none" onAction={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                                        {theme === "dark" ? t.themeToLight : t.themeToDark}
-                                    </Dropdown.Item>
-                                    <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none" onAction={() => setLocale(locale === "en" ? "zh" : "en")}>
-                                        {t.language}
-                                    </Dropdown.Item>
-                                    <Dropdown.Item icon={Type01} selectionIndicator="none" onAction={() => setTextSize(textSize === "large" ? "normal" : "large")}>
-                                        {t.settingsTextSize}
-                                    </Dropdown.Item>
+                                    <Dropdown.Submenu>
+                                        <Dropdown.Item icon={appearance === "dark" ? Moon01 : Sun} selectionIndicator="none">
+                                            {t.themeMenu}
+                                        </Dropdown.Item>
+                                        <Dropdown.Popover placement="right top">
+                                            <Dropdown.Menu
+                                                selectionMode="single"
+                                                selectedKeys={[appearance]}
+                                                onAction={(key) => {
+                                                    if (key === "light" || key === "dark") setTheme(key);
+                                                }}
+                                            >
+                                                <Dropdown.Item id="light" icon={Sun}>{t.themeLight}</Dropdown.Item>
+                                                <Dropdown.Item id="dark" icon={Moon01}>{t.themeDark}</Dropdown.Item>
+                                            </Dropdown.Menu>
+                                        </Dropdown.Popover>
+                                    </Dropdown.Submenu>
+                                    <Dropdown.Submenu>
+                                        <Dropdown.Item icon={Globe01} addon={locale === "en" ? "EN" : "CN"} selectionIndicator="none">
+                                            {t.language}
+                                        </Dropdown.Item>
+                                        <Dropdown.Popover placement="right top">
+                                            <Dropdown.Menu
+                                                selectionMode="single"
+                                                selectedKeys={[locale]}
+                                                onAction={(key) => {
+                                                    if (key === "en" || key === "zh") setLocale(key);
+                                                }}
+                                            >
+                                                <Dropdown.Item id="en" icon={Globe01}>English</Dropdown.Item>
+                                                <Dropdown.Item id="zh" icon={Globe01}>中文</Dropdown.Item>
+                                            </Dropdown.Menu>
+                                        </Dropdown.Popover>
+                                    </Dropdown.Submenu>
+                                    <Dropdown.Submenu>
+                                        <Dropdown.Item icon={Type01} selectionIndicator="none">
+                                            {t.settingsTextSize}
+                                        </Dropdown.Item>
+                                        <Dropdown.Popover placement="right top">
+                                            <Dropdown.Menu
+                                                selectionMode="single"
+                                                selectedKeys={[textSize]}
+                                                onAction={(key) => setTextSize(key === "large" ? "large" : "normal")}
+                                            >
+                                                <Dropdown.Item id="normal" icon={Type01}>{t.settingsTextSizeNormal}</Dropdown.Item>
+                                                <Dropdown.Item id="large" icon={Type01}>{t.settingsTextSizeLarge}</Dropdown.Item>
+                                            </Dropdown.Menu>
+                                        </Dropdown.Popover>
+                                    </Dropdown.Submenu>
                                     <Dropdown.Separator />
                                     <Dropdown.Item selectionIndicator="none" onAction={() => void signOut()}>
                                         {t.signOut}

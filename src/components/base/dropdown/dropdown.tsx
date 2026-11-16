@@ -17,6 +17,7 @@ import {
     MenuTrigger as AriaMenuTrigger,
     Popover as AriaPopover,
     Separator as AriaSeparator,
+    SubmenuTrigger as AriaSubmenuTrigger,
 } from "react-aria-components";
 import { cx } from "@/utils/cx";
 import { Avatar } from "../avatar/avatar";
@@ -46,7 +47,7 @@ const DropdownItem = ({ label, children, addon, icon: Icon, avatarUrl, unstyled,
                 return (
                     <Check
                         aria-hidden="true"
-                        className={cx("size-4 shrink-0 stroke-[2.25px] text-fg-brand-primary", !state.isSelected && "invisible", state.className)}
+                        className={cx("size-4 shrink-0 stroke-[2.5px] text-brand-700 dark:text-white", !state.isSelected && "invisible", state.className)}
                     />
                 );
             }
@@ -187,6 +188,7 @@ export const Dropdown = {
     Section: AriaMenuSection,
     SectionHeader: AriaHeader,
     Item: DropdownItem,
+    Submenu: AriaSubmenuTrigger,
     Separator: DropdownSeparator,
     DotsButton: DropdownDotsButton,
 };

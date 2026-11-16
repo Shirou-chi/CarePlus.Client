@@ -69,6 +69,32 @@ export const stripeApi = {
         return result.data;
     },
 
+    async createCardSetup(): Promise<StripeCheckoutSession> {
+        const result = await request<ApiResponse<StripeCheckoutSession>>(
+            "/api/Stripe/Setup/Card",
+            {
+                method: "POST",
+                body: JSON.stringify({ returnOrigin: window.location.origin }),
+            },
+            true,
+        );
+        if (!result.isSuccess || !result.data?.url) {
+            throw new Error(result.respMessage || "Stripe could not start card setup.");
+        }
+        return result.data;
+    },
+
+    async completeCardSetup(sessionId: string): Promise<void> {
+        const result = await request<ApiResponse<StripeCompletedCheckout>>(
+            "/api/Stripe/Setup/Card/Complete",
+            { method: "POST", body: JSON.stringify({ sessionId }) },
+            true,
+        );
+        if (!result.isSuccess) {
+            throw new Error(result.respMessage || "Stripe could not save this card.");
+        }
+    },
+
     async complete(sessionId: string): Promise<StripeCompletedCheckout> {
         if (!getAuthToken()) {
             throw new Error("Sign in to finish payment.");

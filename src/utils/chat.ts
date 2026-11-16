@@ -66,7 +66,8 @@ export const clearGuestChats = () => {
     }
 };
 
-export const MAX_CHAT_MESSAGE_CHARS = 2000;
+export const MAX_CHAT_MESSAGE_CHARS = 500;
+export const MAX_CHAT_WORDS = 80;
 export const MAX_CHAT_MESSAGES_PER_HOUR = 15;
 export const MIN_CHAT_MESSAGE_INTERVAL_MS = 3_000;
 export const DUPLICATE_CHAT_WINDOW_MS = 60_000;
@@ -86,7 +87,7 @@ export const validateChatSend = (threads: ChatThread[], text: string, now = Date
     if (!line) {
         return { ok: false as const, reason: "empty" as const };
     }
-    if (line.length > MAX_CHAT_MESSAGE_CHARS) {
+    if (line.length > MAX_CHAT_MESSAGE_CHARS || line.split(/\s+/).filter(Boolean).length > MAX_CHAT_WORDS) {
         return { ok: false as const, reason: "too_long" as const };
     }
     const recentUserMessages = threads

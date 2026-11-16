@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Plus, Trash01 } from "@untitledui/icons";
 import { Navigate } from "react-router";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Table, TableCard } from "@/components/application/table/table";
 import { Tabs } from "@/components/application/tabs/tabs";
@@ -16,6 +17,7 @@ import { BpLineChart } from "@/components/marketing/health/bp-line-chart";
 import { HealthScoreCard } from "@/components/marketing/health/health-score-card";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { personalHealthRecordApi, type PersonalRecord } from "@/services/personalHealthRecordApi";
 import {
     scoreHealth,
@@ -113,6 +115,7 @@ export const HealthRecordsPage = () => {
         });
     const formatDay = (iso: string) =>
         new Date(iso).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
+    const pdfPage = usePagedList(history, history.map((row) => row.id).join(","));
 
     const scoreBody = (copy: Copy) => {
         if (score.band === "empty") {
@@ -233,8 +236,8 @@ export const HealthRecordsPage = () => {
                             const file = event.target.files?.[0];
                             event.target.value = "";
                             if (!file) return;
-                            if (file.size > 10 * 1024 * 1024 || (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf")) {
-                                setError(locale === "zh" ? "请选择小于 10 MB 的 PDF 文件。" : "Choose a PDF smaller than 10 MB.");
+                            if (file.size > 15 * 1024 * 1024 || (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf")) {
+                                setError(locale === "zh" ? "请选择小于 15 MB 的 PDF 文件。" : "Choose a PDF smaller than 15 MB.");
                                 return;
                             }
                             void save(() => personalHealthRecordApi.uploadPdf(file));
@@ -246,7 +249,7 @@ export const HealthRecordsPage = () => {
                             <Table.Head label="" />
                         </Table.Header>
                         <Table.Body
-                            items={history}
+                            items={pdfPage.slice}
                             renderEmptyState={() => <p className="px-6 py-8 text-sm text-tertiary">{loading ? "…" : locale === "zh" ? "尚未上传 PDF 病历。" : "No PDF medical records uploaded yet."}</p>}
                         >
                             {(item) => (
@@ -273,6 +276,9 @@ export const HealthRecordsPage = () => {
                             )}
                         </Table.Body>
                     </Table>
+                    <div className="px-4 pb-4 md:px-6">
+                        <ListPager page={pdfPage.page} pages={pdfPage.pages} from={pdfPage.from} to={pdfPage.to} total={pdfPage.total} onPage={pdfPage.go} />
+                    </div>
                 </TableCard.Root>
             </main>
             <LandingFooter />
