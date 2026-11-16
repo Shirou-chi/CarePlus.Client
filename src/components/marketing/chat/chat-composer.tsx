@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ArrowUp, Clock, Plus } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -17,8 +18,17 @@ type ChatComposerProps = {
 
 export const ChatComposer = ({ value, onChange, onSend, onHistory, compact, error, isSending }: ChatComposerProps) => {
     const { t } = useI18n();
+    const field = useRef<HTMLInputElement>(null);
+    const wasSending = useRef(false);
     const canSend = value.trim().length > 0 && !isSending;
-    const nearLimit = value.length >= MAX_CHAT_MESSAGE_CHARS - 200;
+    const nearLimit = value.length >= MAX_CHAT_MESSAGE_CHARS - 80;
+
+    useEffect(() => {
+        if (wasSending.current && !isSending) {
+            field.current?.focus();
+        }
+        wasSending.current = Boolean(isSending);
+    }, [isSending]);
 
     return (
         <div className="w-full min-w-0">
@@ -32,6 +42,7 @@ export const ChatComposer = ({ value, onChange, onSend, onHistory, compact, erro
                 <ButtonUtility color="tertiary" size="sm" icon={Plus} tooltip={t.chatAttachSoon} className="shrink-0" />
                 {onHistory ? <ButtonUtility color="tertiary" size="sm" icon={Clock} tooltip={t.chatHistory} className="shrink-0" onClick={onHistory} /> : null}
                 <input
+                    ref={field}
                     value={value}
                     maxLength={MAX_CHAT_MESSAGE_CHARS}
                     onChange={(event) => onChange(clampChatText(event.target.value))}

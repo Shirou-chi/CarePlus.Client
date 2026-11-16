@@ -1,9 +1,8 @@
-import { Area, AreaChart, CartesianGrid, Label, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartLegendContent, ChartTooltipContent } from "@/components/application/charts/charts-base";
+import { Area, AreaChart, CartesianGrid, Label, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartTooltipContent } from "@/components/application/charts/charts-base";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
-import { useBreakpoint } from "@/hooks/use-breakpoint";
 import type { BloodPressureReading } from "@/utils/health-records";
 import { cx } from "@/utils/cx";
 import { ActivityHeart, Edit01, Plus } from "@untitledui/icons";
@@ -39,7 +38,6 @@ export const BpLineChart = ({
     onEdit,
     formatWhen,
 }: BpLineChartProps) => {
-    const isDesktop = useBreakpoint("lg");
     const data = readings.map((item) => ({
         date: new Date(item.recordedAt),
         systolic: item.systolic,
@@ -79,9 +77,20 @@ export const BpLineChart = ({
                     </EmptyState.Content>
                 </EmptyState>
             ) : (
-                <div className="flex h-60 flex-col gap-2">
+                <div className="flex h-64 flex-col gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm text-tertiary">
+                        <span className="inline-flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-utility-brand-700" />
+                            {systolicLabel}
+                        </span>
+                        <span className="inline-flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-utility-brand-400" />
+                            {diastolicLabel}
+                        </span>
+                        <span>{axisLabel}</span>
+                    </div>
                     <ResponsiveContainer initialDimension={{ width: 1, height: 1 }} className="h-full">
-                        <AreaChart data={data} className="text-tertiary [&_.recharts-text]:text-xs" margin={{ top: isDesktop ? 12 : 6, bottom: isDesktop ? 16 : 0 }}>
+                        <AreaChart data={data} className="text-tertiary [&_.recharts-text]:text-xs" margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="bp-sys-fill" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="currentColor" className="text-utility-brand-700" stopOpacity="0.7" />
@@ -89,12 +98,6 @@ export const BpLineChart = ({
                                 </linearGradient>
                             </defs>
                             <CartesianGrid vertical={false} stroke="currentColor" className="text-utility-neutral-100" />
-                            <Legend
-                                align="right"
-                                verticalAlign="top"
-                                layout={isDesktop ? "vertical" : "horizontal"}
-                                content={<ChartLegendContent className="-translate-y-2" />}
-                            />
                             <XAxis
                                 fill="currentColor"
                                 axisLine={false}
@@ -106,17 +109,15 @@ export const BpLineChart = ({
                                     new Date(value as string | number | Date).toLocaleDateString(locale, { month: "short", day: "numeric" })
                                 }
                             />
-                            <YAxis fill="currentColor" axisLine={false} tickLine={false} domain={[40, 200]} interval="preserveStartEnd">
-                                {isDesktop ? (
-                                    <Label
-                                        value={axisLabel}
-                                        fill="currentColor"
-                                        className="text-xs! font-medium"
-                                        style={{ textAnchor: "middle" }}
-                                        angle={-90}
-                                        position="insideLeft"
-                                    />
-                                ) : null}
+                            <YAxis fill="currentColor" axisLine={false} tickLine={false} domain={[40, 200]} interval="preserveStartEnd" width={36}>
+                                <Label
+                                    value={axisLabel}
+                                    fill="currentColor"
+                                    className="text-xs! font-medium"
+                                    style={{ textAnchor: "middle" }}
+                                    angle={-90}
+                                    position="insideLeft"
+                                />
                             </YAxis>
                             <Tooltip
                                 content={<ChartTooltipContent />}

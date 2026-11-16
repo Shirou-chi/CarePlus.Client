@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarCheck01 } from "@untitledui/icons";
 import { Link, Navigate } from "react-router";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Avatar } from "@/components/base/avatar/avatar";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -13,9 +14,31 @@ import { LandingHeader } from "@/components/marketing/header-navigation/landing-
 import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-breadcrumb";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
+import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { appointmentApi, type Appointment } from "@/services/appointmentApi";
+import type { ClinicRecord } from "@/utils/clinic-records";
 
 type StatusFilter = "all" | "completed" | "cancelled";
+
+const malaysiaDay = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+
+const recordForVisit = (visit: Appointment, records: ClinicRecord[]) => {
+    const day = malaysiaDay(visit.startAt);
+    const matches = records.filter((record) => record.doctorId === visit.doctorId && malaysiaDay(record.visitedAt) === day);
+    return matches.sort((left, right) => Math.abs(Date.parse(left.visitedAt) - Date.parse(visit.startAt)) - Math.abs(Date.parse(right.visitedAt) - Date.parse(visit.startAt)))[0] ?? null;
+};
+
+const checkRecordMatch = () => {
+    const visit = { doctorId: "D1", startAt: "2026-11-15T02:00:00+08:00" } as Appointment;
+    const records = [
+        { id: "other-doctor", doctorId: "D2", visitedAt: "2026-11-15T02:00:00+08:00" },
+        { id: "later", doctorId: "D1", visitedAt: "2026-11-15T18:00:00+08:00" },
+        { id: "closest", doctorId: "D1", visitedAt: "2026-11-15T02:30:00+08:00" },
+    ] as ClinicRecord[];
+    if (recordForVisit(visit, records)?.id !== "closest") throw new Error("visit record match failed");
+};
+checkRecordMatch();
 
 const initials = (name: string) =>
     name
@@ -30,6 +53,7 @@ const initials = (name: string) =>
 export const VisitHistoryPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
+    const { records } = useClinicRecords();
     const [visits, setVisits] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -75,6 +99,7 @@ export const VisitHistoryPage = () => {
         [visits, status, doctor],
     );
 
+    const page = usePagedList(filtered, `${status}:${doctor}`);
     const filtering = status !== "all" || doctor !== "all";
     const clearFilters = () => {
         setStatus("all");
@@ -169,9 +194,11 @@ export const VisitHistoryPage = () => {
                 ) : null}
 
                 {!loading && filtered.length > 0 ? (
+                    <div ref={page.anchorRef} className="scroll-mt-28">
                     <ul className="mt-8 space-y-3">
-                        {filtered.map((visit) => {
+                        {page.slice.map((visit) => {
                             const cancelled = visit.status === "cancelled";
+                            const record = cancelled ? null : recordForVisit(visit, records);
                             return (
                                 <li key={visit.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5">
                                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -192,15 +219,19 @@ export const VisitHistoryPage = () => {
                                         </Badge>
                                     </div>
                                     {visit.notes ? <p className="mt-3 text-sm text-tertiary">{visit.notes}</p> : null}
-                                    <div className="mt-4">
-                                        <Link to="/clinic-records" className="text-sm font-semibold text-brand-secondary hover:underline">
-                                            {t.clinicRecordsTitle}
-                                        </Link>
-                                    </div>
+                                    {record ? (
+                                        <div className="mt-4">
+                                            <Link to={`/clinic-records?record=${encodeURIComponent(record.id)}`} className="text-sm font-semibold text-brand-secondary hover:underline">
+                                                {t.clinicRecordsTitle}
+                                            </Link>
+                                        </div>
+                                    ) : null}
                                 </li>
                             );
                         })}
                     </ul>
+                    <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                    </div>
                 ) : null}
             </main>
             <LandingFooter />

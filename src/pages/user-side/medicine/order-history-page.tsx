@@ -8,6 +8,7 @@ import { Input } from "@/components/base/input/input";
 import { Select } from "@/components/base/select/select";
 import { SelectItem } from "@/components/base/select/select-item";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
 import { LandingHeader } from "@/components/marketing/header-navigation/landing-header";
@@ -17,6 +18,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy, type Locale } from "@/providers/locale-provider";
 import { copyText } from "@/utils/document-download";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { orderApi } from "@/services/orderApi";
 import { isCompletedOrder, orderStatusColor, orderStatusLabel, showsPaymentHistory, trackingLabels, type MedicineOrder } from "@/utils/order-history";
 import { CLINIC_POINT, locateAddress, mapEmbedSrc, type MapPoint } from "@/utils/order-map";
@@ -83,6 +85,7 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
         });
         return list;
     }, [completed, orders, query, sort]);
+    const page = usePagedList(filtered, `${completed}:${query}:${sort}`);
 
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
@@ -145,8 +148,9 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
                         <p className="mt-2 text-sm text-tertiary">{query.trim() ? t.historyNoMatchBody : emptyBody}</p>
                     </div>
                 ) : null}
-                <ul className={filtered.length === 0 ? "hidden" : "mt-8 space-y-4"}>
-                    {filtered.map((order) => {
+                <div ref={page.anchorRef} className={filtered.length === 0 ? "hidden" : "scroll-mt-28"}>
+                <ul className="mt-8 space-y-4">
+                    {page.slice.map((order) => {
                         const open = expanded === order.id;
                         return (
                             <li key={order.id} className="overflow-hidden rounded-2xl bg-primary shadow-xs ring-1 ring-secondary">
@@ -249,6 +253,8 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
                         );
                     })}
                 </ul>
+                <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                </div>
             </main>
             <LandingFooter />
 

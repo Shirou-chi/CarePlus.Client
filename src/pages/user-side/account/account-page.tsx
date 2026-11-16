@@ -4,7 +4,9 @@ import {
     CreditCard01,
     Edit01,
     Plus,
+    XClose,
     Settings01,
+    Key01,
     Shield01,
     Trash01,
     User01,
@@ -14,6 +16,7 @@ import { Navigate, useNavigate } from "react-router";
 import { AddressLocator } from "@/components/application/address-map/address-map";
 import { TextSizeSwitch } from "@/components/application/text-size-switch";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Table, TableCard } from "@/components/application/table/table";
 import { AvatarProfilePhoto } from "@/components/base/avatar/avatar-profile-photo";
@@ -37,6 +40,9 @@ import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { getAuthToken } from "@/services/api";
 import { authApi } from "@/services/authApi";
 import { profileApi, resolveProfilePictureUrl, type DeliveryAddressResponse, type TwoFactorAction } from "@/services/profileApi";
+import { stripeApi } from "@/services/stripeApi";
+import { usePagedList } from "@/hooks/use-paged-list";
+import { AddCardDialog } from "@/pages/user-side/account/add-card-dialog";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { type Profile } from "@/utils/auth";
@@ -122,12 +128,15 @@ export const AccountPage = () => {
         profile ? readProfileSettings(profile.id) : readProfileSettings("guest"),
     );
     const [editingCardId, setEditingCardId] = useState<string | "new" | null>(null);
+    const cardPage = usePagedList(settings.paymentCards, String(settings.paymentCards.length), 3);
     const [editingAddressId, setEditingAddressId] = useState<string | "new" | null>(null);
     const [dialog, setDialog] = useState<DialogState | null>(null);
     const [profileNotice, setProfileNotice] = useState<{ success?: string; error?: string } | null>(null);
     const [securityNotice, setSecurityNotice] = useState<{ success?: string; error?: string } | null>(null);
     const [twoFactorBusy, setTwoFactorBusy] = useState(false);
     const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+    const [cardSetupError, setCardSetupError] = useState<string | null>(null);
+    const [addCardOpen, setAddCardOpen] = useState(false);
     const [activity, setActivity] = useState<AccountActivity[]>([]);
     const sectionRefs = useRef<Record<SectionId, HTMLElement | null>>({ profile: null, preference: null, payment: null, security: null });
     const photoInputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +156,39 @@ export const AccountPage = () => {
             return synced;
         });
     }, [profile?.id, profile?.address, t.settingsProfileAddressLabel]);
+
+    useEffect(() => {
+        if (!profile || profile.id.startsWith("fam-")) return;
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get("card_setup") || (params.get("redirect_status") === "succeeded" ? params.get("setup_intent") : null);
+        if (params.get("redirect_status") === "failed") {
+            setCardSetupError(t.authFailed);
+            window.history.replaceState({}, "", "/account");
+            return;
+        }
+        if (!sessionId) return;
+        let cancelled = false;
+        stripeApi
+            .completeCardSetup(sessionId)
+            .then(() => profileApi.listPaymentCards())
+            .then((rows) => {
+                if (cancelled) return;
+                setSettings((current) => {
+                    const next = applyPaymentCards(current, rows);
+                    writeProfileSettings(profile.id, next);
+                    return next;
+                });
+                setPaymentNotice(t.settingsSaved);
+                setCardSetupError(null);
+                window.history.replaceState({}, "", "/account");
+            })
+            .catch((error: unknown) => {
+                if (!cancelled) setCardSetupError(error instanceof Error ? error.message : t.authFailed);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [profile?.id, t.authFailed, t.settingsSaved]);
 
     useEffect(() => {
         if (!profile || profile.id.startsWith("fam-")) {
@@ -279,6 +321,18 @@ export const AccountPage = () => {
     const persistSettings = (next: ProfileSettings) => {
         setSettings(next);
         writeProfileSettings(profile.id, next);
+    };
+
+    const finishAddedCard = async () => {
+        const rows = await profileApi.listPaymentCards();
+        setSettings((current) => {
+            const next = applyPaymentCards(current, rows);
+            writeProfileSettings(profile.id, next);
+            return next;
+        });
+        setPaymentNotice(t.settingsSaved);
+        setCardSetupError(null);
+        setAddCardOpen(false);
     };
 
     const openTwoFactorPrompt = (action: TwoFactorAction) => {
@@ -837,49 +891,53 @@ export const AccountPage = () => {
                         >
                             <SectionHeader title={t.settingsNavPreference} />
                             <div className="mt-6 flex flex-col gap-8">
-                                <PreferenceBlock title={t.settingsAppearance}>
-                                    <div className="flex flex-wrap gap-3">
-                                        <Button
-                                            color={theme === "light" ? "primary" : "secondary"}
-                                            size="sm"
-                                            onClick={() => setTheme("light")}
-                                        >
-                                            {t.settingsThemeLight}
-                                        </Button>
-                                        <Button
-                                            color={theme === "dark" ? "primary" : "secondary"}
-                                            size="sm"
-                                            onClick={() => setTheme("dark")}
-                                        >
-                                            {t.settingsThemeDark}
-                                        </Button>
+                                <div className="overflow-hidden rounded-2xl bg-primary shadow-xs ring-1 ring-secondary">
+                                    <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-primary">{t.settingsAppearance}</h3>
+                                            <p className="mt-0.5 text-sm text-tertiary">{t.settingsAppearanceHint}</p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button color={theme === "light" ? "primary" : "secondary"} size="sm" onClick={() => setTheme("light")}>
+                                                {t.settingsThemeLight}
+                                            </Button>
+                                            <Button color={theme === "dark" ? "primary" : "secondary"} size="sm" onClick={() => setTheme("dark")}>
+                                                {t.settingsThemeDark}
+                                            </Button>
+                                        </div>
                                     </div>
-                                </PreferenceBlock>
-
-                                <PreferenceBlock title={t.settingsTextSize}>
-                                    <TextSizeSwitch
-                                        value={textSize}
-                                        onChange={setTextSize}
-                                        label={t.settingsTextSize}
-                                        normalLabel={t.settingsTextSizeNormal}
-                                        largeLabel={t.settingsTextSizeLarge}
-                                    />
-                                </PreferenceBlock>
-
-                                <PreferenceBlock title={t.language}>
-                                    <Select
-                                        selectedKey={locale}
-                                        onSelectionChange={(key) => setLocale(String(key) as "en" | "zh")}
-                                        size="sm"
-                                        className="w-full max-w-md"
-                                        items={[
-                                            { id: "en", label: "English" },
-                                            { id: "zh", label: "中文" },
-                                        ]}
-                                    >
-                                        {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
-                                    </Select>
-                                </PreferenceBlock>
+                                    <div className="flex flex-col gap-4 border-t border-secondary px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-primary">{t.settingsTextSize}</h3>
+                                            <p className="mt-0.5 text-sm text-tertiary">{t.settingsTextSizeHint}</p>
+                                        </div>
+                                        <TextSizeSwitch
+                                            value={textSize}
+                                            onChange={setTextSize}
+                                            label={t.settingsTextSize}
+                                            normalLabel={t.settingsTextSizeNormal}
+                                            largeLabel={t.settingsTextSizeLarge}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-4 border-t border-secondary px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-primary">{t.language}</h3>
+                                            <p className="mt-0.5 text-sm text-tertiary">{t.settingsLanguageHint}</p>
+                                        </div>
+                                        <Select
+                                            selectedKey={locale}
+                                            onSelectionChange={(key) => setLocale(String(key) as "en" | "zh")}
+                                            size="sm"
+                                            className="w-full sm:max-w-56"
+                                            items={[
+                                                { id: "en", label: "English" },
+                                                { id: "zh", label: "中文" },
+                                            ]}
+                                        >
+                                            {(item) => <SelectItem id={item.id}>{item.label}</SelectItem>}
+                                        </Select>
+                                    </div>
+                                </div>
 
                                 <PreferenceBlock title={t.settingsNotifications}>
                                     <RadioGroup
@@ -903,26 +961,22 @@ export const AccountPage = () => {
                             className="scroll-mt-36 lg:scroll-mt-28"
                         >
                             <SectionHeader title={t.settingsNavPayment} description={t.settingsPaymentBody} />
-                            <FormStatus success={paymentNotice} className="mt-4" />
+                            <FormStatus error={cardSetupError} success={paymentNotice} className="mt-4" />
 
-                            <div className="mt-6 flex flex-col gap-4">
-                                {settings.paymentCards.map((card) => (
+                            <div ref={cardPage.anchorRef} className="mt-6 flex scroll-mt-28 flex-col gap-4">
+                                {cardPage.slice.map((card) => (
                                     <PaymentCardRow
                                         key={card.id}
                                         t={t}
                                         card={card}
                                         isDefault={settings.defaultCardId === card.id}
-                                        isEditing={editingCardId === card.id}
-                                        onEdit={() => {
-                                            setPaymentNotice(null);
-                                            setEditingCardId(card.id);
-                                        }}
                                         onCancel={() => setEditingCardId(null)}
                                         onSave={(payload) => savePaymentCard(card.id, payload)}
                                         onSetDefault={() => setDefaultCard(card.id)}
                                         onRemove={() => setDialog({ type: "remove-card", id: card.id, label: `${card.brand} ···· ${card.last4}` })}
                                     />
                                 ))}
+                                <ListPager page={cardPage.page} pages={cardPage.pages} from={cardPage.from} to={cardPage.to} total={cardPage.total} onPage={cardPage.go} />
 
                                 {editingCardId === "new" ? (
                                     <PaymentCardRow
@@ -935,10 +989,20 @@ export const AccountPage = () => {
                                 ) : (
                                     <div className="flex flex-col gap-4 rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary sm:flex-row sm:items-center sm:justify-between">
                                         <CreditCard width={180} type="gray-light" company="CarePlus" cardNumber="•••• •••• •••• ••••" cardHolder="YOUR NAME" cardExpiration="MM/YY" />
-                                        <Button color="secondary" size="sm" iconLeading={Plus} onClick={() => {
-                                            setPaymentNotice(null);
-                                            setEditingCardId("new");
-                                        }}>
+                                        <Button
+                                            color="secondary"
+                                            size="sm"
+                                            iconLeading={Plus}
+                                            onClick={() => {
+                                                setPaymentNotice(null);
+                                                setCardSetupError(null);
+                                                if (profile.id.startsWith("fam-")) {
+                                                    setEditingCardId("new");
+                                                    return;
+                                                }
+                                                setAddCardOpen(true);
+                                            }}
+                                        >
                                             {t.settingsAddCard}
                                         </Button>
                                     </div>
@@ -1076,6 +1140,8 @@ export const AccountPage = () => {
                     </Modal>
                 </ModalOverlay>
             ) : null}
+
+            <AddCardDialog open={addCardOpen} onClose={() => setAddCardOpen(false)} onSaved={finishAddedCard} />
 
             {dialog?.type === "remove-card" ? (
                 <ModalOverlay isDismissable isOpen onOpenChange={(open) => !open && setDialog(null)}>
@@ -1687,6 +1753,7 @@ const EditFieldDialog = ({
 
 const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: boolean }) => {
     const { profile } = useAuth();
+    const [open, setOpen] = useState(false);
     const [current, setCurrent] = useState("");
     const [next, setNext] = useState("");
     const [confirm, setConfirm] = useState("");
@@ -1698,18 +1765,54 @@ const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: b
     const currentIssue =
         fieldError === t.settingsCurrentPasswordRequired || fieldError === t.settingsCurrentPasswordWrong ? fieldError : null;
 
+    const close = () => {
+        setOpen(false);
+        setCurrent("");
+        setNext("");
+        setConfirm("");
+        setFieldError(null);
+    };
+
     const finishSaved = () => {
         setCurrent("");
         setNext("");
         setConfirm("");
         setFieldError(null);
         setFieldSuccess(t.settingsPasswordChanged);
+        setOpen(false);
     };
 
     return (
-        <PreferenceBlock title={t.settingsChangePassword}>
+        <div className="overflow-hidden rounded-2xl bg-primary shadow-xs ring-1 ring-secondary">
+            {fieldSuccess ? <FormStatus success={fieldSuccess} className="px-5 pt-4" /> : null}
+            <div className="flex items-center gap-3 px-5 py-4">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-secondary text-tertiary">
+                    <Key01 className="size-5" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-primary">{t.settingsPasswordTitle}</h3>
+                    <p className="mt-0.5 text-sm text-tertiary">{t.settingsPasswordRowHint}</p>
+                </div>
+                <Button
+                    color="secondary"
+                    size="sm"
+                    className="shrink-0"
+                    isDisabled={isDisabled || saving}
+                    onClick={() => {
+                        setFieldSuccess(null);
+                        setFieldError(null);
+                        setOpen(true);
+                    }}
+                >
+                    {t.settingsChange}
+                </Button>
+            </div>
+            {open ? (
+            <ModalOverlay isDismissable={!saving} isOpen onOpenChange={(next) => !next && !saving && close()}>
+                <Modal className="w-full max-w-lg">
+                    <Dialog className="flex w-full flex-col items-stretch rounded-2xl bg-primary p-6 shadow-xl ring-1 ring-secondary outline-hidden">
             <Form
-                className="max-w-3xl"
+                className="flex w-full flex-col"
                 onSubmit={(event) => {
                     event.preventDefault();
                     if (saving || isDisabled) {
@@ -1749,11 +1852,21 @@ const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: b
                         .finally(() => setSaving(false));
                 }}
             >
-                <FormStatus error={fieldError} success={fieldSuccess} className="mb-4" />
-                <div className="grid w-full max-w-2xl gap-4">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <Heading slot="title" className="text-lg font-semibold text-primary">
+                            {t.settingsChangePassword}
+                        </Heading>
+                        <p className="mt-1 text-sm text-tertiary">{t.settingsPasswordModalHint}</p>
+                    </div>
+                    <Button type="button" color="tertiary" size="sm" iconLeading={XClose} isDisabled={saving} onClick={close} aria-label={t.notifCancel} />
+                </div>
+                <FormStatus error={fieldError} className="mt-4" />
+                <div className="mt-4 grid w-full gap-4">
                     <Input
                         type="password"
                         label={t.settingsCurrentPassword}
+                        autoComplete="current-password"
                         size="md"
                         value={current}
                         onChange={(nextValue) => {
@@ -1771,6 +1884,7 @@ const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: b
                         <Input
                             type="password"
                             label={t.settingsNewPassword}
+                            autoComplete="new-password"
                             size="md"
                             value={next}
                             onChange={setNext}
@@ -1785,7 +1899,8 @@ const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: b
                     </div>
                     <Input
                         type="password"
-                        label={t.confirmPassword}
+                        label={t.settingsConfirmNewPassword}
+                        autoComplete="new-password"
                         size="md"
                         value={confirm}
                         onChange={(nextValue) => {
@@ -1799,14 +1914,21 @@ const ChangePasswordForm = ({ t, isDisabled = false }: { t: Copy; isDisabled?: b
                         isInvalid={Boolean(confirmIssue)}
                         hint={confirmIssue ?? undefined}
                     />
-                    <div>
-                        <Button type="submit" color="primary" size="sm" isLoading={saving} isDisabled={saving || isDisabled}>
-                            {t.settingsSave}
+                    <div className="mt-2 flex justify-end gap-3">
+                        <Button type="button" color="secondary" isDisabled={saving} onClick={close}>
+                            {t.notifCancel}
+                        </Button>
+                        <Button type="submit" color="primary" isLoading={saving} isDisabled={saving || isDisabled}>
+                            {t.settingsUpdatePassword}
                         </Button>
                     </div>
                 </div>
             </Form>
-        </PreferenceBlock>
+                    </Dialog>
+                </Modal>
+            </ModalOverlay>
+            ) : null}
+        </div>
     );
 };
 
@@ -1816,7 +1938,6 @@ const PaymentCardRow = ({
     isDefault,
     isEditing,
     isNew,
-    onEdit,
     onCancel,
     onSave,
     onSetDefault,
@@ -1827,7 +1948,6 @@ const PaymentCardRow = ({
     isDefault?: boolean;
     isEditing?: boolean;
     isNew?: boolean;
-    onEdit?: () => void;
     onCancel: () => void;
     onSave: (payload: { number: string; expiry: string; holderName: string; cvv: string }) => string | null | Promise<string | null>;
     onSetDefault?: () => void;
@@ -1837,28 +1957,9 @@ const PaymentCardRow = ({
     const [expiry, setExpiry] = useState(card?.expiry ?? "");
     const [holderName, setHolderName] = useState(card?.holderName ?? "");
     const [cvv, setCvv] = useState("");
-    const [cvvFocused, setCvvFocused] = useState(false);
     const [asking, setAsking] = useState(false);
     const [pending, setPending] = useState<{ number: string; expiry: string; holderName: string; cvv: string } | null>(null);
     const [fieldError, setFieldError] = useState<string | null>(null);
-    const cvvFieldRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const node = cvvFieldRef.current;
-        if (!node || !isEditing) return;
-        const showBack = () => setCvvFocused(true);
-        const showFront = (event: FocusEvent) => {
-            const next = event.relatedTarget;
-            if (next instanceof Node && node.contains(next)) return;
-            setCvvFocused(false);
-        };
-        node.addEventListener("focusin", showBack);
-        node.addEventListener("focusout", showFront);
-        return () => {
-            node.removeEventListener("focusin", showBack);
-            node.removeEventListener("focusout", showFront);
-        };
-    }, [isEditing]);
 
     const digits = number.replace(/\D/g, "");
     const numberCheck = validateCardNumber(number, t);
@@ -1884,8 +1985,6 @@ const PaymentCardRow = ({
                     cardNumber={isEditing ? previewNumber : card ? `•••• •••• •••• ${card.last4}` : "•••• •••• •••• ••••"}
                     cardHolder={isEditing ? previewHolder : (card?.holderName ?? "YOUR NAME")}
                     cardExpiration={isEditing ? previewExpiry : (card?.expiry ?? "MM/YY")}
-                    flipped={isEditing ? cvvFocused : undefined}
-                    cvv={cvv}
                 />
 
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -1905,9 +2004,6 @@ const PaymentCardRow = ({
                                 ) : null}
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Button color="secondary" size="sm" iconLeading={Edit01} onClick={onEdit}>
-                                    {t.settingsEdit}
-                                </Button>
                                 {!isDefault && onSetDefault ? (
                                     <Button color="secondary" size="sm" iconLeading={Check} onClick={onSetDefault}>
                                         {t.settingsSetDefault}
@@ -1958,9 +2054,7 @@ const PaymentCardRow = ({
                             <FormStatus error={fieldError} className="sm:col-span-2" />
                             <PaymentInput label={t.settingsCardNumber} size="md" value={number} onChange={setNumber} isRequired className="w-full sm:col-span-2" isInvalid={Boolean(numberIssue)} hint={numberIssue ?? undefined} />
                             <Input label={t.settingsCardExpiry} placeholder="MM/YY" size="md" value={expiry} onChange={(value) => setExpiry(formatCardExpiryInput(value))} isRequired maxLength={5} className="w-full" isInvalid={Boolean(expiryIssue)} hint={expiryIssue ?? undefined} />
-                            <div ref={cvvFieldRef} className="w-full">
-                                <Input label={t.settingsCardCvv} placeholder="123" size="md" value={cvv} onChange={setCvv} isRequired maxLength={4} inputMode="numeric" type="password" autoComplete="off" className="w-full" isInvalid={Boolean(cvvIssue)} hint={cvvIssue ?? undefined} />
-                            </div>
+                            <Input label={t.settingsCardCvv} placeholder="123" size="md" value={cvv} onChange={setCvv} isRequired maxLength={4} inputMode="numeric" type="password" autoComplete="off" className="w-full" isInvalid={Boolean(cvvIssue)} hint={cvvIssue ?? undefined} />
                             <Input label={t.settingsCardHolder} size="md" value={holderName} onChange={setHolderName} isRequired maxLength={CARD_HOLDER_MAX} className="w-full sm:col-span-2" isInvalid={Boolean(holderIssue)} hint={holderIssue ?? undefined} />
                             {asking ? (
                                 <SaveAsk

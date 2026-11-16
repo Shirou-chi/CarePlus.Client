@@ -4,6 +4,7 @@ import {
     CalendarCheck01,
     CalendarPlus01,
     Clock,
+    CreditCard01,
     File06,
     Grid01,
     Mail01,
@@ -107,6 +108,7 @@ export const HomePage = () => {
         { label: t.visitHistory, hint: t.tourVisit, href: profile ? "/history" : "/login", Icon: Clock, tone: "bg-[#e5e7eb] text-[#374151]" },
         { label: t.ordersTrack, hint: t.tourOrders, href: ordersHref, Icon: Truck01, tone: "bg-[#ffedd5] text-[#c2410c]" },
         { label: t.dispensingTitle, hint: t.tourDispensing, href: dispensingHref, Icon: Package, tone: "bg-[#fce7f3] text-[#be185d]" },
+        { label: t.payments, hint: t.tourPayments, href: profile ? "/payments" : "/login", Icon: CreditCard01, tone: "bg-[#d1fae5] text-[#047857]" },
         { label: t.homeNavClinicRecords, hint: t.tourClinicRecords, href: clinicRecordsHref, Icon: File06, tone: "bg-[#e0e7ff] text-[#4338ca]" },
         { label: t.homeNavPhr, hint: t.tourPhr, href: recordsHref, Icon: ActivityHeart, tone: "bg-[#dcfce7] text-[#15803d]" },
     ];

@@ -16,14 +16,14 @@ export const TextSizeSwitch = ({
     <div
         role="group"
         aria-label={label}
-        className="inline-flex h-9 items-stretch overflow-hidden rounded-full bg-[#ececee] text-[#171717] ring-1 ring-black/10 dark:bg-[#3a3a3a] dark:text-white dark:ring-white/10"
+        className="inline-flex h-9 w-fit items-stretch self-start overflow-hidden rounded-full bg-[#ececee] text-[#171717] ring-1 ring-black/10 dark:bg-[#3a3a3a] dark:text-white dark:ring-white/10"
     >
         <button
             type="button"
             aria-pressed={value === "normal"}
             onClick={() => onChange("normal")}
             className={cx(
-                "flex min-w-11 items-center justify-center px-3 outline-focus-ring focus-visible:outline-2",
+                "flex min-w-11 cursor-pointer items-center justify-center px-3 outline-focus-ring focus-visible:outline-2",
                 value === "normal" ? "opacity-100" : "opacity-40 hover:opacity-70",
             )}
         >
@@ -38,7 +38,7 @@ export const TextSizeSwitch = ({
             aria-pressed={value === "large"}
             onClick={() => onChange("large")}
             className={cx(
-                "flex min-w-11 items-center justify-center px-3 outline-focus-ring focus-visible:outline-2",
+                "flex min-w-11 cursor-pointer items-center justify-center px-3 outline-focus-ring focus-visible:outline-2",
                 value === "large" ? "opacity-100" : "opacity-40 hover:opacity-70",
             )}
         >

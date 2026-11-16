@@ -125,8 +125,98 @@ function messageFromHttpStatus(status: number) {
   return `Request failed with status ${status}`
 }
 
+type IdleSignOut = 'keep' | 'idle' | 'quiet'
+
+function decodeJwtPayload(token: string): { exp?: number; iat?: number; remember?: string | number } | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/'))
+    const payload = JSON.parse(json) as { exp?: number; iat?: number; remember?: string | number }
+    return payload && typeof payload === 'object' ? payload : null
+  } catch {
+    return null
+  }
+}
+
+/** Remember Me stays until logout. A normal session still signs out when its short token ends. */
+export function idleSignOutAction(token: string, nowMs = Date.now()): IdleSignOut {
+  const payload = decodeJwtPayload(token)
+  if (!payload) return 'idle'
+  if (payload.remember === '1' || payload.remember === 1) return 'keep'
+  if (typeof payload.exp !== 'number') return 'idle'
+  const lifetimeMinutes = typeof payload.iat === 'number' ? (payload.exp - payload.iat) / 60 : 0
+  // ponytail: older Remember Me tokens have no claim; anything over 2 hours is one of those
+  const remembered = lifetimeMinutes > 120
+  const valid = payload.exp * 1000 > nowMs
+  if (remembered && valid) return 'keep'
+  if (remembered) return 'quiet'
+  // A live short session is still in use. Only an ended one is the idle sign-out.
+  if (valid) return 'keep'
+  return 'idle'
+}
+
+/** A normal session that is still valid and inside the last 20 minutes. Remember Me does not slide. */
+export function sessionNeedsRefresh(token: string, nowMs = Date.now()): boolean {
+  const payload = decodeJwtPayload(token)
+  if (!payload || typeof payload.exp !== 'number') return false
+  if (payload.remember === '1' || payload.remember === 1) return false
+  const lifetimeMinutes = typeof payload.iat === 'number' ? (payload.exp - payload.iat) / 60 : 0
+  if (lifetimeMinutes > 120) return false
+  const remainingMs = payload.exp * 1000 - nowMs
+  return remainingMs > 0 && remainingMs <= 20 * 60 * 1000
+}
+
+function checkIdleSignOut() {
+  const now = 1_700_000_000
+  const token = (payload: { iat: number; exp: number; remember?: string }) => {
+    const body = btoa(JSON.stringify(payload)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')
+    return `h.${body}.s`
+  }
+  const short = token({ iat: now - 3600, exp: now - 1 })
+  const live = token({ iat: now - 60, exp: now + 3600 })
+  const due = token({ iat: now - 50 * 60, exp: now + 10 * 60 })
+  const fresh = token({ iat: now, exp: now + 50 * 60 })
+  const kept = token({ iat: now - 40 * 24 * 3600, exp: now - 1, remember: '1' })
+  const ended = token({ iat: now - 40 * 24 * 3600, exp: now - 1 })
+  if (idleSignOutAction(short, now * 1000) !== 'idle') throw new Error('idle sign-out check failed')
+  if (idleSignOutAction(live, now * 1000) !== 'keep') throw new Error('live session check failed')
+  if (idleSignOutAction(kept, now * 1000) !== 'keep') throw new Error('remember me keep check failed')
+  if (idleSignOutAction(ended, now * 1000) !== 'quiet') throw new Error('remember me quiet check failed')
+  if (!sessionNeedsRefresh(due, now * 1000)) throw new Error('session refresh due check failed')
+  if (sessionNeedsRefresh(fresh, now * 1000)) throw new Error('fresh session refresh check failed')
+  if (sessionNeedsRefresh(kept, now * 1000)) throw new Error('remember me refresh check failed')
+}
+checkIdleSignOut()
+
+let replacingSession = false
+
+/** Set while a password change is saving a replacement token, so that request does not sign this device out. */
+export function beginSessionReplace(): void {
+  replacingSession = true
+}
+
+export function endSessionReplace(): void {
+  replacingSession = false
+}
+
+function redirectPasswordChanged(token: string) {
+  if (replacingSession || getAuthToken() !== token) return
+  clearAuthToken()
+  localStorage.removeItem(SESSION_KEY)
+  localStorage.removeItem(OLD_STAFF_SESSION_KEY)
+
+  const path = window.location.pathname.toLowerCase()
+  const isStaffPage = path === '/staff' || path.startsWith('/staff/')
+  const target = isStaffPage ? '/staff/login' : '/login'
+  if (path === target && new URLSearchParams(window.location.search).get('password') === '1') return
+  window.location.replace(`${target}?password=1`)
+}
+
 function redirectExpiredSession(token: string) {
   if (getAuthToken() !== token) return
+  const action = idleSignOutAction(token)
+  if (action === 'keep') return
 
   clearAuthToken()
   localStorage.removeItem(SESSION_KEY)
@@ -135,6 +225,11 @@ function redirectExpiredSession(token: string) {
   const path = window.location.pathname.toLowerCase()
   const isStaffPage = path === '/staff' || path.startsWith('/staff/')
   const target = isStaffPage ? '/staff/login' : '/login'
+  if (action === 'quiet') {
+    if (path === target) return
+    window.location.replace(target)
+    return
+  }
   if (path === target && new URLSearchParams(window.location.search).get('expired') === '1') return
   window.location.replace(`${target}?expired=1`)
 }
@@ -164,8 +259,14 @@ export async function request<T>(
   })
 
   const body = await response.json().catch(() => null)
+  const passwordChanged = token !== null && body?.respMessage === 'password-changed'
+  if (passwordChanged) {
+    redirectPasswordChanged(token)
+    throw new ApiRequestError(messageFromBody(body, 'Your password was changed on another device, so you were signed out.'), 401)
+  }
   const expired = token !== null && (response.status === 401 || (body?.isSuccess === false && body.respCode === 401))
-  if (expired) {
+  const signOut = expired ? idleSignOutAction(token) : null
+  if (signOut === 'idle' || signOut === 'quiet') {
     redirectExpiredSession(token)
   }
 
@@ -174,7 +275,8 @@ export async function request<T>(
     const code = body && typeof body === 'object' && 'reason' in body && typeof body.reason === 'string'
       ? body.reason
       : undefined
-    throw new ApiRequestError(messageFromBody(body, messageFromHttpStatus(status)), status, code)
+    const fallback = signOut === 'idle' ? SESSION_EXPIRED_MESSAGE : signOut ? 'Please try again.' : messageFromHttpStatus(status)
+    throw new ApiRequestError(messageFromBody(body, fallback), status, code)
   }
 
   return body as T

@@ -1,4 +1,4 @@
-import { baseUrl, getAuthToken, messageFromBody, request } from "./api";
+import { REMEMBER_ME_KEY, baseUrl, beginSessionReplace, endSessionReplace, getAuthToken, messageFromBody, request, saveAuthToken } from "./api";
 import type { ApiResponse } from "./api";
 import type { CurrentUserResponse } from "./authApi";
 
@@ -87,13 +87,21 @@ export const profileApi = {
     },
 
     async changePassword(body: { currentPassword: string; newPassword: string }): Promise<void> {
-        const result = await request<ApiResponse<{ updated: boolean }>>(
-            "/api/User/Password",
-            { method: "PUT", body: JSON.stringify(body) },
-            true,
-        );
-        if (!result.isSuccess) {
-            throw new Error(messageFromBody(result, "Unable to update the password."));
+        beginSessionReplace();
+        try {
+            const result = await request<ApiResponse<{ updated: boolean; token?: string }>>(
+                "/api/User/Password",
+                { method: "PUT", body: JSON.stringify(body) },
+                true,
+            );
+            if (!result.isSuccess) {
+                throw new Error(messageFromBody(result, "Unable to update the password."));
+            }
+            if (result.data?.token) {
+                saveAuthToken(result.data.token, localStorage.getItem(REMEMBER_ME_KEY) === "1");
+            }
+        } finally {
+            endSessionReplace();
         }
     },
 

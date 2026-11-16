@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download01, Eye, SearchLg, Star01 } from "@untitledui/icons";
 import { Navigate, useSearchParams } from "react-router";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Table, TableCard } from "@/components/application/table/table";
 import { Input } from "@/components/base/input/input";
 import { LandingFooter } from "@/components/marketing/header-navigation/landing-footer";
@@ -14,6 +15,7 @@ import { SectionDivider } from "@/components/section-divider";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { LIST_PAGE_SIZE, usePagedList } from "@/hooks/use-paged-list";
 import { clinicRecordApi } from "@/services/clinicRecordApi";
 import { downloadPdfDocument } from "@/utils/document-download";
 import {
@@ -32,7 +34,8 @@ export const ClinicRecordsPage = () => {
     const [picked, setPicked] = useState<ClinicRecord | null>(null);
     const [reviewRecordId, setReviewRecordId] = useState<string | null>(null);
     const [reviewSuccess, setReviewSuccess] = useState(false);
-    const detail = reviewRecordId ? null : records.find((record) => record.id === (picked?.id ?? searchParams.get("record"))) ?? null;
+    const focusId = searchParams.get("record");
+    const detail = reviewRecordId ? null : records.find((record) => record.id === (picked?.id ?? (searchParams.get("from") ? focusId : null))) ?? null;
     const reviewTarget = records.find((record) => record.id === reviewRecordId) ?? null;
 
     const filtered = useMemo(() => {
@@ -46,6 +49,27 @@ export const ClinicRecordsPage = () => {
                 record.visitType.toLowerCase().includes(q),
         );
     }, [query, records]);
+    const page = usePagedList(filtered, `${query}:${focusId ?? ""}`, LIST_PAGE_SIZE);
+    const focused = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!focusId || loading) return;
+        const index = filtered.findIndex((record) => record.id === focusId);
+        if (index < 0) return;
+        const targetPage = Math.floor(index / LIST_PAGE_SIZE) + 1;
+        if (focused.current !== focusId) {
+            focused.current = focusId;
+            if (page.page !== targetPage) {
+                page.go(targetPage);
+                return;
+            }
+        }
+        if (page.page !== targetPage) return;
+        const card = document.getElementById(`clinic-record-card-${focusId}`);
+        const row = document.getElementById(`clinic-record-row-${focusId}`);
+        const node = card && card.getClientRects().length > 0 ? card : row;
+        node?.scrollIntoView({ block: "center" });
+    }, [filtered, focusId, loading, page.go, page.page]);
 
     const formatWhen = (iso: string) =>
         new Date(iso).toLocaleString(locale === "zh" ? "zh-MY" : "en-MY", {
@@ -113,9 +137,10 @@ export const ClinicRecordsPage = () => {
                     </div>
                 ) : null}
                 {!loading && !error && records.length > 0 ? (
+                    <div ref={page.anchorRef} className="scroll-mt-28">
                     <ul className="mt-6 flex flex-col gap-3 md:hidden">
-                        {filtered.map((record) => (
-                            <li key={record.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary">
+                        {page.slice.map((record) => (
+                            <li id={`clinic-record-card-${record.id}`} key={record.id} className={record.id === focusId ? "scroll-mt-28 rounded-2xl bg-[#eef8fb] p-4 ring-2 ring-[#122b4b] shadow-[0_0_0_4px_rgba(18,43,75,0.18)] dark:bg-[rgba(118,226,235,0.16)] dark:ring-[#76e2eb] dark:shadow-[0_0_0_4px_rgba(118,226,235,0.35)]" : "scroll-mt-28 rounded-2xl bg-primary p-4 ring-1 ring-secondary"}>
                                 <div className="flex items-start gap-3">
                                     <img src={record.doctorPhoto} alt="" className="size-10 shrink-0 rounded-full object-cover" />
                                     <div className="min-w-0 flex-1">
@@ -141,8 +166,7 @@ export const ClinicRecordsPage = () => {
                             </li>
                         ))}
                     </ul>
-                ) : null}
-                {!loading && !error && records.length > 0 ? <TableCard.Root className="mt-8 hidden overflow-hidden md:block">
+                    <TableCard.Root className="mt-8 hidden overflow-hidden md:block">
                     <Table aria-label={t.clinicRecordsTitle}>
                         <Table.Header>
                             <Table.Head id="id" label={t.clinicRecordsId} isRowHeader />
@@ -153,9 +177,9 @@ export const ClinicRecordsPage = () => {
                             <Table.Head id="status" label={t.clinicRecordsStatus} />
                             <Table.Head id="actions" label={t.clinicRecordsActions} />
                         </Table.Header>
-                        <Table.Body items={filtered}>
+                        <Table.Body items={page.slice}>
                             {(record) => (
-                                <Table.Row id={record.id}>
+                                <Table.Row id={`clinic-record-row-${record.id}`} className={record.id === focusId ? "bg-[#eef8fb] shadow-[inset_4px_0_0_#122b4b] dark:bg-[rgba(118,226,235,0.16)] dark:shadow-[inset_4px_0_0_#76e2eb]" : undefined}>
                                     <Table.Cell>
                                         <span className="font-medium text-brand-secondary">#{record.id}</span>
                                     </Table.Cell>
@@ -205,7 +229,10 @@ export const ClinicRecordsPage = () => {
                             )}
                         </Table.Body>
                     </Table>
-                </TableCard.Root> : null}
+                </TableCard.Root>
+                    <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                    </div>
+                ) : null}
             </main>
             <LandingFooter />
 

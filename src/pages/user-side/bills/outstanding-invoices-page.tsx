@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Receipt } from "@untitledui/icons";
 import { Navigate } from "react-router";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
@@ -14,6 +15,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useI18n } from "@/providers/locale-provider";
 import { useClinicRecords } from "@/hooks/use-clinic-records";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { clinicChargeCategoryLabel, getClinicRecordTotals, type ClinicRecord } from "@/utils/clinic-records";
 import type { InvoiceStatus, OutstandingInvoice } from "@/utils/invoices";
 import { formatRm } from "@/utils/prescribed-medicine";
@@ -36,6 +38,7 @@ export const OutstandingInvoicesPage = () => {
             return order === "oldest" ? diff : -diff;
         });
     }, [invoices, status, order]);
+    const page = usePagedList(filtered, `${status}:${order}`);
     const totalDue = filtered.reduce((sum, invoice) => sum + invoice.amountDue, 0);
     const overdue = invoices.some((invoice) => invoice.status === "overdue");
     const filtering = status !== "all";
@@ -131,8 +134,9 @@ export const OutstandingInvoicesPage = () => {
                         <p className="mt-2 text-sm text-tertiary">{filtering ? t.historyNoMatchBody : t.invoicesEmptyBody}</p>
                     </div>
                 ) : !error ? (
+                    <div ref={page.anchorRef} className="scroll-mt-28">
                     <ul className="mt-6 grid gap-3 lg:grid-cols-2">
-                        {filtered.map((invoice) => (
+                        {page.slice.map((invoice) => (
                             <li key={invoice.id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
@@ -162,6 +166,8 @@ export const OutstandingInvoicesPage = () => {
                             </li>
                         ))}
                     </ul>
+                    <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                    </div>
                 ) : null}
             </main>
             {openInvoice ? (

@@ -3,6 +3,7 @@ import { Download01, Receipt } from "@untitledui/icons";
 import { Navigate, useSearchParams } from "react-router";
 import { Dialog, Modal, ModalOverlay } from "@/components/application/modals/modal";
 import { FormStatus } from "@/components/application/form-status";
+import { ListPager } from "@/components/application/list-pager/list-pager";
 import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Select } from "@/components/base/select/select";
@@ -17,10 +18,13 @@ import { useClinicRecords } from "@/hooks/use-clinic-records";
 import { clinicChargeCategoryLabel, getClinicRecordTotals, type ClinicRecord } from "@/utils/clinic-records";
 import { printHtmlDocument } from "@/utils/document-download";
 import { type PaidInvoice } from "@/utils/invoices";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { paymentApi } from "@/services/paymentApi";
 import { invoiceApi } from "@/services/invoiceApi";
 import { type MedicineOrder } from "@/utils/order-history";
 import { formatRm } from "@/utils/prescribed-medicine";
+
+const PAYMENT_PAGE_SIZE = 6;
 
 type PaidOrder = "oldest" | "latest";
 
@@ -85,13 +89,6 @@ export const PaymentHistoryPage = () => {
     const [historyAttempt, setHistoryAttempt] = useState(0);
     const [params] = useSearchParams();
     const requestedOrder = params.get("order");
-    const openedOrder = useRef(false);
-    useEffect(() => {
-        if (openedOrder.current || !requestedOrder) return;
-        if (!medicineOrders.some((item) => item.id === requestedOrder)) return;
-        openedOrder.current = true;
-        setOpenId(requestedOrder);
-    }, [medicineOrders, requestedOrder]);
     useEffect(() => {
         if (!profile?.id || profile.id.startsWith("fam-")) {
             setMedicineOrders([]);
@@ -129,8 +126,28 @@ export const PaymentHistoryPage = () => {
             return order === "oldest" ? diff : -diff;
         });
     }, [clinicPayments, medicineOrders, order]);
+    const page = usePagedList(filtered, `${order}:${requestedOrder ?? ""}`, PAYMENT_PAGE_SIZE);
     const totalPaid = filtered.reduce((sum, entry) => sum + (entry.kind === "clinic" ? entry.invoice.total : entry.order.total), 0);
     const openEntry = filtered.find((entry) => (entry.kind === "clinic" ? entry.invoice.id : entry.order.id) === openId) ?? null;
+    const entryId = (entry: HistoryEntry) => (entry.kind === "clinic" ? entry.invoice.id : entry.order.id);
+    const focusedOrder = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (!requestedOrder || historyLoading) return;
+        const index = filtered.findIndex((entry) => entryId(entry) === requestedOrder);
+        if (index < 0) return;
+        const targetPage = Math.floor(index / PAYMENT_PAGE_SIZE) + 1;
+        const focusKey = `${requestedOrder}:${order}`;
+        if (focusedOrder.current !== focusKey) {
+            focusedOrder.current = focusKey;
+            if (page.page !== targetPage) {
+                page.go(targetPage);
+                return;
+            }
+        }
+        if (page.page !== targetPage) return;
+        document.getElementById(`payment-${requestedOrder}`)?.scrollIntoView({ block: "center" });
+    }, [filtered, historyLoading, order, page.go, page.page, requestedOrder]);
 
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
@@ -197,8 +214,9 @@ export const PaymentHistoryPage = () => {
                         <p className="mt-2 text-sm text-tertiary">{t.paymentsEmptyBody}</p>
                     </div>
                 ) : (
+                    <div ref={page.anchorRef} className="scroll-mt-28">
                     <ul className="mt-6 grid gap-3 lg:grid-cols-2">
-                        {filtered.map((entry) => {
+                        {page.slice.map((entry) => {
                             const id = entry.kind === "clinic" ? entry.invoice.id : entry.order.id;
                             const title = entry.kind === "clinic" ? entry.invoice.doctorName : entry.order.lines.map((line) => line.name).join(", ");
                             const subtitle =
@@ -209,8 +227,9 @@ export const PaymentHistoryPage = () => {
                                       : t.medCartPickup;
                             const method = entry.kind === "clinic" ? entry.invoice.method : entry.order.payment;
                             const total = entry.kind === "clinic" ? entry.invoice.total : entry.order.total;
+                            const highlighted = id === requestedOrder;
                             return (
-                                <li key={id} className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5">
+                                <li key={id} id={`payment-${id}`} className={highlighted ? "scroll-mt-28 rounded-2xl bg-[#eef8fb] p-4 ring-2 ring-[#122b4b] shadow-[0_0_0_4px_rgba(18,43,75,0.18)] sm:p-5 dark:bg-[rgba(118,226,235,0.16)] dark:ring-[#76e2eb] dark:shadow-[0_0_0_4px_rgba(118,226,235,0.35)]" : "scroll-mt-28 rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-5"}>
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
                                             <p className="text-sm font-semibold text-brand-secondary">{id}</p>
@@ -252,6 +271,8 @@ export const PaymentHistoryPage = () => {
                             );
                         })}
                     </ul>
+                    <ListPager page={page.page} pages={page.pages} from={page.from} to={page.to} total={page.total} onPage={page.go} />
+                    </div>
                 )}
             </main>
             {openEntry?.kind === "clinic" ? (

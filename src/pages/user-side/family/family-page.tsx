@@ -56,7 +56,9 @@ const familyRuleMessage = (t: Copy, message: string) => {
     if (message === "No active patient account was found for this email.") return t.familyInviteNotFound;
     if (message === "You cannot invite yourself.") return t.familySelf;
     if (message === "This patient already belongs to a family.") return t.familyDuplicate;
-    if (message === "This patient already has a pending family invitation.") return t.familyDuplicate;
+    if (message === "You've invited them recently. Please wait for them to accept.") return t.familyInviteWait;
+    if (message === "This patient already has a pending family invitation.") return t.familyInviteWait;
+    if (message === "You've invited them too many times. Please wait 24 hours before sending another invitation.") return t.familyInviteLimit;
     if (message === "Only the family owner can invite members.") return t.familyInviteOwnerOnly;
     if (message === "Enter a valid email address.") return t.familyEmailInvalid;
     if (message === "We could not send the invitation email. Please try again later.") return t.familyInviteEmailFailed;
@@ -267,7 +269,7 @@ export const FamilyPage = () => {
                         <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
                             <div>
                                 <h2 className="text-lg font-semibold text-primary">{t.familyMembers}</h2>
-                                <p className="mt-1 text-sm text-tertiary">{t.familyMemberCount.replace("{count}", String(active.length))}</p>
+                                <p className="mt-1 text-sm text-tertiary">{t.familyMemberCount.replace("{count}", String(active.length + pending.length))}</p>
                             </div>
                             {mine?.isOwner ? (
                                 <Button color="primary" size="sm" onClick={() => setAdding(true)}>
@@ -277,22 +279,16 @@ export const FamilyPage = () => {
                         </div>
 
                         <ul className="mt-4 divide-y divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
-                            {active.map((person) => (
-                                <MemberRow key={person.id} person={person} isSelf={person.id === currentPatientId} onOpen={() => setOpenId(person.id)} />
+                            {[...active, ...pending].map((person) => (
+                                <MemberRow
+                                    key={person.id}
+                                    person={person}
+                                    pending={person.status === "pending"}
+                                    isSelf={person.id === currentPatientId}
+                                    onOpen={() => setOpenId(person.id)}
+                                />
                             ))}
                         </ul>
-
-                        {isParent && pending.length > 0 ? (
-                            <>
-                                <h2 className="mt-8 text-lg font-semibold text-primary">{t.familyPending}</h2>
-                                <p className="mt-1 max-w-2xl text-sm text-tertiary">{t.familyPendingHint}</p>
-                                <ul className="mt-4 divide-y divide-secondary rounded-2xl bg-primary ring-1 ring-secondary">
-                                    {pending.map((person) => (
-                                        <MemberRow key={person.id} person={person} pending isSelf={false} onOpen={() => setOpenId(person.id)} />
-                                    ))}
-                                </ul>
-                            </>
-                        ) : null}
                     </>
                 ) : null}
             </main>
@@ -441,7 +437,7 @@ const MemberRow = ({ person, pending = false, isSelf, onOpen }: { person: Family
                     </Badge>
                     {pending ? (
                         <Badge color="warning" size="sm">
-                            {t.familyPending}
+                            {t.familyStatusPending}
                         </Badge>
                     ) : null}
                 </span>

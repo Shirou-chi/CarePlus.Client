@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { Navigate, useLocation, useParams } from "react-router";
 import { FormStatus } from "@/components/application/form-status";
 import { Badge } from "@/components/base/badges/badges";
@@ -16,6 +17,7 @@ import { useI18n } from "@/providers/locale-provider";
 import { useClinicRecords } from "@/hooks/use-clinic-records";
 import { clinicChargeCategoryLabel, getClinicRecordTotals } from "@/utils/clinic-records";
 import { formatRm } from "@/utils/prescribed-medicine";
+import { invoiceApi } from "@/services/invoiceApi";
 import { stripeApi } from "@/services/stripeApi";
 import { writePaymentCheckout } from "@/utils/payment-checkout";
 import { applyPaymentCards, readProfileSettings, writeProfileSettings } from "@/utils/profile-settings";
@@ -26,7 +28,7 @@ export const InvoicePaymentPage = () => {
     const { id } = useParams();
     const location = useLocation();
     const { profile, isReady } = useAuth();
-    const { invoices, ready } = useOutstandingInvoices();
+    const { invoices, ready, reload } = useOutstandingInvoices();
     const { t, locale } = useI18n();
     const { records, loading: recordsLoading } = useClinicRecords();
     const [method, setMethod] = useState<PaymentMethod>("fpx");
@@ -34,7 +36,23 @@ export const InvoicePaymentPage = () => {
     const notice = (location.state as { notice?: string } | null)?.notice ?? null;
     const [error, setError] = useState<string | null>(notice);
     const [busy, setBusy] = useState(false);
+    const [paid, setPaid] = useState(false);
     const [cardTick, setCardTick] = useState(0);
+
+    useEffect(() => {
+        const show = () => {
+            window.setTimeout(() => setBusy(false), 0);
+        };
+        const hide = () => {
+            flushSync(() => setBusy(false));
+        };
+        window.addEventListener("pageshow", show);
+        window.addEventListener("pagehide", hide);
+        return () => {
+            window.removeEventListener("pageshow", show);
+            window.removeEventListener("pagehide", hide);
+        };
+    }, []);
 
     useEffect(() => {
         if (!profile || profile.id.startsWith("fam-")) {
@@ -71,6 +89,7 @@ export const InvoicePaymentPage = () => {
 
     if (!isReady || !ready || recordsLoading) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
+    if (paid) return <Navigate to="/payments" replace />;
     if (!invoice) return <Navigate to="/invoices" replace />;
 
     const record = records.find((item) => item.id === invoice.recordId) ?? null;
@@ -79,12 +98,20 @@ export const InvoicePaymentPage = () => {
 
     const confirm = async () => {
         if (busy) return;
-        // Stripe Checkout collects the card / FPX bank; saved cards are optional labels only.
-        const paidWith =
-            method === "card" && selectedCard ? `${selectedCard.brand} ···· ${selectedCard.last4}` : method === "card" ? t.medCartPayCard : t.medCartPayFpx;
+        if (method === "card" && !selectedCard) {
+            setError(t.invoicesNoCard);
+            return;
+        }
+        const paidWith = method === "card" && selectedCard ? `${selectedCard.brand} ···· ${selectedCard.last4}` : t.medCartPayFpx;
         setBusy(true);
         setError(null);
         try {
+            if (method === "card" && selectedCard) {
+                await invoiceApi.pay(invoice.id, selectedCard.id);
+                setPaid(true);
+                await reload();
+                return;
+            }
             writePaymentCheckout({
                 kind: "invoice",
                 invoiceId: invoice.id,
@@ -100,6 +127,7 @@ export const InvoicePaymentPage = () => {
                 methodLabel: paidWith,
                 cancelPath: `/invoices/${invoice.id}/pay`,
             });
+            flushSync(() => setBusy(false));
             window.location.assign(session.url);
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : t.invoicesPayFailed);
@@ -182,7 +210,7 @@ export const InvoicePaymentPage = () => {
                     <section className="rounded-2xl bg-primary p-4 ring-1 ring-secondary sm:p-6">
                         <h2 className="text-md font-semibold text-primary">{t.medCartPayment}</h2>
                         <RadioGroup value={method} onChange={(value) => setMethod(value as PaymentMethod)} className="mt-4">
-                            <RadioButton value="card" label={t.medCartPayCard} hint={t.medCartPayCardHint} />
+                            <RadioButton value="card" label={t.medCartPayCard} hint={t.invoicesPayCardHint} />
                             <RadioButton value="fpx" label={t.medCartPayFpx} hint={t.medCartPayFpxHint} />
                         </RadioGroup>
 
@@ -199,7 +227,6 @@ export const InvoicePaymentPage = () => {
                                 ) : (
                                     <Select
                                         className="mt-3"
-                                        label={t.medCartPaymentCard}
                                         size="sm"
                                         selectedKey={selectedCard?.id}
                                         onSelectionChange={(key) => key && setCardId(String(key))}
@@ -216,8 +243,15 @@ export const InvoicePaymentPage = () => {
 
                         <FormStatus error={error} className="mt-4" />
                         <div className="mt-6 flex flex-col gap-2">
-                            <Button color="primary" size="md" onClick={() => void confirm()} isLoading={busy} showTextWhileLoading>
-                                {t.paymentSandboxApprove}
+                            <Button
+                                color="primary"
+                                size="md"
+                                onClick={() => void confirm()}
+                                isLoading={busy}
+                                isDisabled={method === "card" && cards.length === 0}
+                                showTextWhileLoading
+                            >
+                                {method === "card" ? t.invoicesPayConfirm : t.paymentSandboxApprove}
                             </Button>
                             <Button color="secondary" size="md" href="/invoices" isDisabled={busy}>
                                 {t.notifCancel}
