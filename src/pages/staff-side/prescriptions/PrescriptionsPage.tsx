@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from '@/components/theme/useTheme'
 import { useAuth } from '@/providers/auth-provider'
-import { prescriptionApi, type PrescriptionItem, type PrescriptionSummary } from '@/services/prescriptionApi'
+import { isClosedPrescriptionStatus, prescriptionApi, type PrescriptionItem, type PrescriptionSummary } from '@/services/prescriptionApi'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { Icon } from '../navbar/StaffIcon'
@@ -98,7 +98,8 @@ export function PrescriptionsPage() {
   }, [notice])
 
   const search = query.trim().toLowerCase()
-  const visibleRows = rows?.filter((row) => [row.patientName, row.patientId, row.doctorName, row.prescriptionId]
+  const activeRows = rows?.filter((row) => !isClosedPrescriptionStatus(row.status)) ?? []
+  const visibleRows = activeRows.filter((row) => [row.patientName, row.patientId, row.doctorName, row.prescriptionId]
     .some((value) => value.toLowerCase().includes(search))) ?? []
 
   return (
@@ -119,7 +120,7 @@ export function PrescriptionsPage() {
         <div className="staff-content">
           <StaffPageEyebrow label="Prescription management" />
           <h1 className="staff-page-title">Prescriptions</h1>
-          <p className="staff-page-title__copy">Review prescriptions and dispensing status for every patient visit.</p>
+          <p className="staff-page-title__copy">Review active prescriptions waiting for pharmacy dispensing.</p>
           <section aria-label="Prescriptions" className="staff-card prescription-list">
             <div className="prescription-list__toolbar">
               <label className="prescription-list__search">
@@ -137,7 +138,7 @@ export function PrescriptionsPage() {
             ) : !rows ? (
               <div className="prescription-feedback" role="status">Loading prescriptions…</div>
             ) : visibleRows.length === 0 ? (
-              <div className="prescription-feedback" role="status">{search ? 'No matching prescriptions.' : 'No prescriptions yet.'}</div>
+              <div className="prescription-feedback" role="status">{search ? 'No matching active prescriptions.' : 'No active prescriptions to dispense.'}</div>
             ) : (
               <div className="prescription-list__table-wrap">
                 <table className="prescription-list__table">

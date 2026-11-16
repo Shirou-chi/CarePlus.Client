@@ -34,7 +34,7 @@ type AuthContextValue = {
     login: (email: string, password: string, rememberMe?: boolean) => Promise<void | { requiresTwoFactor: true; challengeId: string; maskedEmail: string }>;
     completeLoginTwoFactor: (challengeId: string, code: string, rememberMe?: boolean) => Promise<void>;
     resendLoginTwoFactor: (challengeId: string) => Promise<{ challengeId: string; maskedEmail: string; expiresInSeconds: number }>;
-    staffLogin: (identifier: string, password: string) => Promise<void>;
+    staffLogin: (identifier: string, password: string, rememberMe?: boolean) => Promise<void>;
     logout: () => Promise<void>;
     completeTutorial: () => Promise<void>;
     updateProfile: (patch: Partial<Profile>) => void;
@@ -402,9 +402,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
     };
 
-    const staffLogin = async (identifier: string, password: string) => {
-        const { token } = await authApi.staffLogin(identifier.trim(), password);
-        authApi.saveToken(token);
+    const staffLogin = async (identifier: string, password: string, rememberMe = false) => {
+        const { token } = await authApi.staffLogin(identifier.trim(), password, rememberMe);
+        authApi.saveToken(token, rememberMe);
 
         try {
             const apiUser = await authApi.getCurrentUser();

@@ -45,6 +45,11 @@ function statusClass(status: string) {
   return status.replace(/_/g, '-').toLowerCase()
 }
 
+function isCashPayment(payment: string) {
+  const value = payment.trim().toLowerCase()
+  return value === 'cod' || value.includes('cash') || value.includes('货到付款')
+}
+
 function formatPrice(value: number) {
   return new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(value)
 }
@@ -58,8 +63,9 @@ function formatDate(value: string) {
 function nextStatusOptions(order: StaffMedicineOrder) {
   const current = normalizeStatus(order.status)
   const statuses = order.fulfilment === 'pickup' ? pickupStatuses : deliveryStatuses
+  if (current === 'awaiting_payment' && !isCashPayment(order.payment)) return [current]
   const currentRank = statusRanks[current]
-  return statuses.filter((status) => status === current || (status !== 'paid' && statusRanks[status] >= currentRank))
+  return statuses.filter((status) => status === current || (status !== 'paid' && statusRanks[status] === currentRank + 1))
 }
 
 export function MedicineOrdersPage() {
@@ -193,7 +199,7 @@ export function MedicineOrdersPage() {
 
       {selected ? <StaffDialog className="medicine-order-dialog" closeLabel="Close medicine order" closeOnBackdropClick={false} closeDisabled={saving} eyebrow="Medicine order" onClose={closeOrder} title={selected.id} titleId="medicine-order-dialog-title">
         <div className="medicine-order-dialog__summary"><div><span>Patient</span><strong>{selected.patientName || selected.patientId}</strong><small>{selected.patientId}</small></div><div><span>Placed</span><strong>{formatDate(selected.placedAt)}</strong></div><div><span>Total</span><strong>{formatPrice(selected.total)}</strong></div></div>
-        <div className="medicine-order-dialog__status"><label>Update status<select disabled={saving} value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as MedicineOrderStatus)}>{nextStatusOptions(selected).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label><p>Pickup orders finish at <strong>Picked up</strong>. Delivery orders finish at <strong>Delivered</strong>.</p></div>
+        <div className="medicine-order-dialog__status"><label>Update status<select disabled={saving} value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as MedicineOrderStatus)}>{nextStatusOptions(selected).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label><p>{isCashPayment(selected.payment) ? 'Cash orders can be prepared before payment; payment is settled at pickup or delivery.' : statusDraft === 'awaiting_payment' ? 'Online payment is required before this order can be prepared.' : 'Payment is complete. Move the order through the next fulfilment step.'} Pickup orders finish at <strong>Picked up</strong>. Delivery orders finish at <strong>Delivered</strong>.</p></div>
         <div className="medicine-order-dialog__items"><h3>Order items</h3><ul>{selected.lines.map((line) => <li key={line.id}><span><strong>{line.name}</strong><small>{line.detail}</small></span><span>{line.qty} × {formatPrice(line.unitPrice)}</span></li>)}</ul></div>
         {selected.address ? <div className="medicine-order-dialog__address"><span>Delivery address</span><strong>{selected.address}</strong></div> : null}
         <div className="medicine-order-dialog__actions"><button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={closeOrder}>Close</button><button className="staff-button staff-button--primary" disabled={saving || statusDraft === normalizeStatus(selected.status)} type="button" onClick={() => void saveStatus()}>{saving ? 'Saving…' : 'Save status'}</button></div>

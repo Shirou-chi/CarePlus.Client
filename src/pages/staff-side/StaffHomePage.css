@@ -1887,6 +1887,129 @@ body:has(.staff-page) .site-back-to-top {
   }
 }
 
+/* Shared phone layout for every authenticated staff page. Keep dense data in
+   scrollable regions, while making headings, filters, forms, and actions fit
+   the available viewport. */
+@media (max-width: 640px) {
+  .staff-main,
+  .staff-content,
+  .staff-content > *,
+  .staff-page-heading > *,
+  .staff-card,
+  .staff-card__header,
+  .staff-card__header > * {
+    min-width: 0;
+  }
+
+  .staff-content > *,
+  .staff-page :is(input, select, textarea) {
+    max-width: 100%;
+  }
+
+  .staff-page-heading,
+  .staff-card__header {
+    align-items: flex-start;
+  }
+
+  .staff-page-heading > :first-child,
+  .staff-card__header > :first-child {
+    flex: 1 1 220px;
+  }
+
+  .staff-card__header h2,
+  .staff-page-title,
+  .staff-page-title__copy,
+  .staff-page :is(h1, h2, h3, p, span, strong) {
+    overflow-wrap: anywhere;
+  }
+
+  .staff-page .staff-button {
+    max-width: 100%;
+  }
+
+  .staff-page [class*='form-grid'] {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-page [class*='table-wrap'],
+  .staff-page [class*='table-container'] {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .staff-page [class*='toolbar'] {
+    min-width: 0;
+  }
+
+  .staff-page [class*='toolbar'] > input,
+  .staff-page [class*='toolbar'] > select,
+  .staff-page [class*='toolbar'] > label,
+  .staff-page [class*='toolbar'] > .staff-list-sort,
+  .staff-page [class*='toolbar'] > .staff-list-reset {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .staff-page [class*='dialog-actions'],
+  .staff-page [class*='dialog__actions'] {
+    gap: 8px;
+  }
+
+  .staff-page [class*='dialog-actions'] .staff-button,
+  .staff-page [class*='dialog__actions'] .staff-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .staff-topbar {
+    gap: 8px;
+  }
+
+  .staff-topbar__left {
+    flex: 0 0 auto;
+  }
+
+  .staff-topbar__actions {
+    flex: 1 1 auto;
+    gap: 3px;
+    justify-content: flex-end;
+  }
+
+  .staff-text-size-toggle__option {
+    min-width: 34px;
+    padding: 0 6px;
+  }
+
+  .staff-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .staff-page-title {
+    font-size: 1.7rem;
+  }
+
+  .staff-page-title__copy {
+    font-size: 0.78rem;
+  }
+
+  .staff-card__header {
+    flex-direction: column;
+  }
+
+  .staff-card__header > :last-child {
+    align-self: stretch;
+  }
+
+  .staff-card__header > :last-child.staff-button,
+  .staff-card__header > :last-child .staff-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .staff-sidebar,
   .staff-button {

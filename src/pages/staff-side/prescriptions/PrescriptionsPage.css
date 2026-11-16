@@ -126,3 +126,48 @@
 }
 
 .prescription-medicines__instructions { grid-column: 1 / -1; }
+
+@media (max-width: 640px) {
+  .prescription-list__toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .prescription-list__search {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .prescription-list__search input {
+    min-height: 42px;
+    font-size: 0.78rem;
+  }
+
+  .prescription-list__toolbar > span {
+    align-self: flex-start;
+  }
+
+  .prescription-list__table th,
+  .prescription-list__table td {
+    padding: 11px 12px;
+  }
+
+  .prescription-list__table {
+    min-width: 570px;
+  }
+
+  .prescription-list__table .staff-button {
+    min-height: 40px;
+  }
+
+  .prescription-medicines__list dl {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .prescription-medicines__instructions {
+    grid-column: auto;
+  }
+}

@@ -40,15 +40,6 @@
 .staff-settings-profile-status { width: fit-content; padding: 4px 8px; border-radius: 999px; }
 .staff-settings-profile-status--active { background: rgba(45, 154, 83, 0.12); color: #2d9a53 !important; }
 .staff-settings-profile-status--inactive, .staff-settings-profile-status--suspended { background: rgba(229, 165, 75, 0.14); color: var(--staff-amber) !important; }
-.staff-profile-crop-dialog { width: min(480px, 100%); }
-.staff-profile-crop-description { margin: -6px 0 18px; color: var(--staff-muted); font-size: 0.7rem; line-height: 1.55; }
-.staff-profile-crop-preview { position: relative; width: min(100%, 360px); aspect-ratio: 1; margin: 0 auto; overflow: hidden; border: 1px solid var(--staff-line); border-radius: 16px; background: var(--staff-subtle); }
-.staff-profile-crop-preview img { display: block; width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
-.staff-profile-crop-frame { position: absolute; inset: 0; border: 2px solid var(--staff-teal); border-radius: 16px; box-shadow: 0 0 0 999px rgba(5, 18, 28, 0.08); pointer-events: none; }
-.staff-profile-crop-zoom { display: grid; gap: 8px; margin-top: 18px; color: var(--staff-ink); font-size: 0.68rem; font-weight: 700; }
-.staff-profile-crop-zoom input { width: 100%; accent-color: var(--staff-brand); cursor: pointer; }
-.staff-profile-crop-error { margin: 13px 0 0; color: #c74b56; font-size: 0.68rem; line-height: 1.4; }
-.staff-profile-crop-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .staff-settings-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .staff-settings-card { padding: 24px; border-radius: 13px; box-shadow: none; }
 .staff-settings-card--wide { grid-column: auto; }
@@ -97,6 +88,4 @@
   .staff-settings-theme-grid { grid-template-columns: 1fr; }
   .staff-settings-radio-option { min-height: 52px; }
   .staff-settings-group .staff-button { min-height: 44px; }
-  .staff-profile-crop-actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .staff-profile-crop-actions .staff-button { width: 100%; }
 }

@@ -421,6 +421,47 @@
   gap: 12px;
 }
 
+.staff-management-photo-field {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--staff-line);
+  border-radius: 8px;
+  background: var(--staff-subtle);
+}
+
+.staff-management-photo-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.staff-management-photo-heading > span:last-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.staff-management-photo-heading strong {
+  color: var(--staff-ink);
+  font-size: 0.72rem;
+}
+
+.staff-management-photo-heading small,
+.staff-management-photo-hint {
+  color: var(--staff-muted);
+  font-size: 0.61rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.staff-management-photo-field input[type='file'] {
+  min-height: 42px;
+  padding: 8px 10px;
+  background: var(--staff-card);
+  font-size: 0.66rem;
+}
+
 .staff-management-related-fields {
   display: grid;
   gap: 12px;

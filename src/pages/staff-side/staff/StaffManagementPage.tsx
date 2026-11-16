@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
 import { resolveProfilePictureUrl } from '@/services/profileApi'
@@ -10,6 +10,7 @@ import { getStaffRole, StaffSidebar, type StaffRole } from '../navbar/StaffSideb
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffListReset } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
+import { getProfilePhotoFileName, StaffPhotoCropDialog } from '../components/StaffPhotoCropDialog'
 import '../StaffHomePage.css'
 import './StaffManagementPage.css'
 
@@ -25,13 +26,12 @@ type StaffForm = {
   phone: string
   role: StaffRole
   status: 'Active' | 'Inactive' | 'Suspended'
-  accessLevel: number
-  department: string
   licenseNumber: string
   specialization: string
   qualification: string
   certification: string
   yearsOfExperience: number | ''
+  profilePictureFile: File | null
 }
 
 const roleFilters: StaffRoleFilter[] = ['All roles', 'Admin', 'Doctor', 'Pharmacist']
@@ -45,13 +45,12 @@ const emptyForm: StaffForm = {
   phone: '',
   role: 'Doctor',
   status: 'Active',
-  accessLevel: 1,
-  department: '',
   licenseNumber: '',
   specialization: '',
   qualification: '',
   certification: '',
   yearsOfExperience: '',
+  profilePictureFile: null,
 }
 
 function getInitials(name: string) {
@@ -63,6 +62,9 @@ function getInitials(name: string) {
     .slice(0, 2)
     .toUpperCase()
 }
+
+const doctorPhotoTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
+const doctorPhotoMaxBytes = 5 * 1024 * 1024
 
 function roleTone(role: string) {
   if (role === 'Doctor') return 'blue'
@@ -120,6 +122,7 @@ export function StaffManagementPage() {
   const [viewingStaff, setViewingStaff] = useState<StaffRecord | null>(null)
   const [form, setForm] = useState<StaffForm>(emptyForm)
   const [isSaving, setIsSaving] = useState(false)
+  const [photoToCrop, setPhotoToCrop] = useState<File | null>(null)
 
   const announce = (message: string) => {
     setNotice(message)
@@ -177,6 +180,7 @@ export function StaffManagementPage() {
   const openCreate = () => {
     setEditingStaff(null)
     setForm(emptyForm)
+    setPhotoToCrop(null)
     setError('')
     setModalMode('create')
   }
@@ -192,14 +196,14 @@ export function StaffManagementPage() {
       phone: member.phone,
       role: member.role as StaffRole,
       status: member.status as StaffForm['status'],
-      accessLevel: member.accessLevel ?? 1,
-      department: member.department ?? '',
       licenseNumber: member.licenseNumber ?? '',
       specialization: member.specialization ?? '',
       qualification: member.qualification ?? '',
       certification: member.certification ?? '',
       yearsOfExperience: member.yearsOfExperience ?? '',
+      profilePictureFile: null,
     })
+    setPhotoToCrop(null)
     setError('')
     setModalMode('edit')
   }
@@ -212,12 +216,28 @@ export function StaffManagementPage() {
   const closeModal = () => {
     if (!isSaving) {
       setModalMode(null)
+      setPhotoToCrop(null)
       setError('')
     }
   }
 
   const updateField = <K extends keyof StaffForm>(field: K, value: StaffForm[K]) => {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const handlePhotoSelection = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null
+    event.target.value = ''
+
+    if (!selectedFile) return
+
+    if (!doctorPhotoTypes.has(selectedFile.type) || selectedFile.size > doctorPhotoMaxBytes) {
+      setError('Use a JPG, PNG, or WebP photo under 5 MB.')
+      return
+    }
+
+    setError('')
+    setPhotoToCrop(selectedFile)
   }
 
   const submitForm = async (event: FormEvent<HTMLFormElement>) => {
@@ -227,16 +247,12 @@ export function StaffManagementPage() {
 
     try {
       if (modalMode === 'create') {
-        await staffApi.register({
+        const createdStaff = await staffApi.register({
           username: form.username.trim(),
           name: form.name.trim(),
           email: form.email.trim(),
           password: form.password,
           role: form.role,
-          ...(form.role === 'Admin' ? {
-            accessLevel: form.accessLevel,
-            department: form.department,
-          } : {}),
           ...(form.role === 'Doctor' ? {
             licenseNumber: form.licenseNumber.trim(),
             specialization: form.specialization.trim(),
@@ -250,7 +266,10 @@ export function StaffManagementPage() {
             yearsOfExperience: Number(form.yearsOfExperience),
           } : {}),
         })
-        announce('Staff account created.')
+        if (form.role === 'Doctor' && form.profilePictureFile) {
+          await staffApi.uploadDoctorPhoto(createdStaff.staffId, form.profilePictureFile)
+        }
+        announce(form.role === 'Doctor' && form.profilePictureFile ? 'Doctor account and profile picture created.' : 'Staff account created.')
       } else if (editingStaff) {
         await staffApi.update({
           staffId: editingStaff.staffId,
@@ -259,11 +278,15 @@ export function StaffManagementPage() {
           role: form.role,
           status: form.status,
         })
+        const isDoctorPhotoUpdate = editingStaff.role === 'Doctor' && form.role === 'Doctor' && Boolean(form.profilePictureFile)
+        if (isDoctorPhotoUpdate && form.profilePictureFile) {
+          await staffApi.uploadDoctorPhoto(editingStaff.staffId, form.profilePictureFile)
+        }
         if (currentRole === 'Admin' && form.password) {
           await staffApi.updatePassword({ staffId: editingStaff.staffId, newPassword: form.password })
-          announce('Staff account and password updated.')
+          announce(isDoctorPhotoUpdate ? 'Staff account, password, and profile picture updated.' : 'Staff account and password updated.')
         } else {
-          announce('Staff account updated.')
+          announce(isDoctorPhotoUpdate ? 'Staff account and profile picture updated.' : 'Staff account updated.')
         }
       }
 
@@ -275,6 +298,8 @@ export function StaffManagementPage() {
       setIsSaving(false)
     }
   }
+
+  const canEditDoctorPhoto = form.role === 'Doctor' && (modalMode === 'create' || editingStaff?.role === 'Doctor')
 
   return (
     <div className="staff-page staff-management-page">
@@ -372,10 +397,6 @@ export function StaffManagementPage() {
               <div><dt>Phone</dt><dd>{viewingStaff.phone || 'No phone number'}</dd></div>
               <div><dt>Role</dt><dd>{viewingStaff.role}</dd></div>
               <div><dt>Status</dt><dd>{viewingStaff.status}</dd></div>
-              {viewingStaff.role === 'Admin' ? <>
-                <div><dt>Access level</dt><dd>{viewingStaff.accessLevel ?? 'Not provided'}</dd></div>
-                <div><dt>Department</dt><dd>{viewingStaff.department || 'Not provided'}</dd></div>
-              </> : null}
               {viewingStaff.role === 'Doctor' ? <>
                 <div><dt>License number</dt><dd>{viewingStaff.licenseNumber || 'Not provided'}</dd></div>
                 <div><dt>Specialization</dt><dd>{viewingStaff.specialization || 'Not provided'}</dd></div>
@@ -418,12 +439,16 @@ export function StaffManagementPage() {
                 <label>Role<select value={form.role} onChange={(event) => updateField('role', event.target.value as StaffRole)}><option>Admin</option><option>Doctor</option><option>Pharmacist</option></select></label>
                 {modalMode === 'edit' ? <label>Status<select value={form.status} onChange={(event) => updateField('status', event.target.value as StaffForm['status'])}><option>Active</option><option>Inactive</option><option>Suspended</option></select></label> : null}
               </div>
-              {modalMode === 'create' ? <section className="staff-management-related-fields" aria-label={`${form.role} details`}>
+              {canEditDoctorPhoto ? <div className="staff-management-photo-field">
+                <div className="staff-management-photo-heading">
+                  {modalMode === 'edit' && editingStaff ? <StaffAvatar member={editingStaff} /> : <span className="staff-management-avatar staff-management-avatar--blue">{getInitials(form.name || 'Doctor')}</span>}
+                  <span><strong>Doctor profile picture</strong><small>{form.profilePictureFile ? `Selected: ${form.profilePictureFile.name}` : editingStaff?.profilePicture ? 'Choose a new image to replace the current picture.' : 'Add a profile picture for this doctor.'}</small></span>
+                </div>
+                <input accept="image/jpeg,image/png,image/webp" type="file" onChange={handlePhotoSelection} />
+                <small className="staff-management-photo-hint">JPG, PNG, or WebP up to 5 MB.</small>
+              </div> : null}
+              {modalMode === 'create' && form.role !== 'Admin' ? <section className="staff-management-related-fields" aria-label={`${form.role} details`}>
                 <p className="staff-management-related-fields__title">{form.role} details</p>
-                {form.role === 'Admin' ? <div className="staff-management-form-grid">
-                  <label>Access level<input max={3} min={1} required type="number" value={form.accessLevel} onChange={(event) => updateField('accessLevel', Number(event.target.value))} /></label>
-                  <label>Department<select required value={form.department} onChange={(event) => updateField('department', event.target.value)}><option value="">Select department</option><option>Human Resources</option><option>Clinic Operations</option><option>IT</option><option>Administration</option></select></label>
-                </div> : null}
                 {form.role === 'Doctor' ? <>
                   <div className="staff-management-form-grid"><label>License number<input required value={form.licenseNumber} onChange={(event) => updateField('licenseNumber', event.target.value)} /></label><label>Specialization<input required value={form.specialization} onChange={(event) => updateField('specialization', event.target.value)} /></label></div>
                   <div className="staff-management-form-grid"><label>Qualification<input required value={form.qualification} onChange={(event) => updateField('qualification', event.target.value)} /></label><label>Years of experience<input max={80} min={0} required type="number" value={form.yearsOfExperience} onChange={(event) => updateField('yearsOfExperience', event.target.value === '' ? '' : Number(event.target.value))} /></label></div>
@@ -438,6 +463,21 @@ export function StaffManagementPage() {
             </form>
         </StaffDialog>
       ) : null}
+
+      {photoToCrop ? <StaffPhotoCropDialog
+        file={photoToCrop}
+        onCancel={() => setPhotoToCrop(null)}
+        onComplete={(croppedFile) => {
+          updateField('profilePictureFile', croppedFile)
+          setPhotoToCrop(null)
+          setError('')
+        }}
+        onError={(message) => {
+          setPhotoToCrop(null)
+          setError(message)
+        }}
+        outputFileName={getProfilePhotoFileName('doctor', form.username || editingStaff?.username || 'profile')}
+      /> : null}
 
       {notice ? <div aria-live="polite" className="staff-toast"><span><Icon name="check" size={17} /></span>{notice}</div> : null}
     </div>
