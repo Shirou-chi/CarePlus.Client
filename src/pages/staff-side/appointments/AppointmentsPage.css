@@ -814,6 +814,17 @@
   color: var(--staff-ink);
 }
 
+.appointments-time-picker__hint {
+  margin: 10px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--staff-brand) 32%, var(--staff-line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--staff-brand) 7%, var(--staff-card));
+  color: var(--staff-muted);
+  font-size: 0.6rem;
+  line-height: 1.45;
+}
+
 .appointments-shift-options button:disabled,
 .appointments-time-options button:disabled {
   cursor: not-allowed;

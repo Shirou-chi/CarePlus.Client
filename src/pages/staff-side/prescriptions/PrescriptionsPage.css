@@ -91,6 +91,7 @@
 }
 
 .prescription-dialog { width: min(620px, 100%); }
+.prescription-dialog__actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
 .prescription-medicines { margin-top: 20px; }
 .prescription-medicines h3 { margin: 0 0 10px; font-size: 0.85rem; }
 

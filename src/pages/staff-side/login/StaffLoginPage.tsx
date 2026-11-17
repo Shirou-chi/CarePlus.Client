@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useAuth } from '@/providers/auth-provider'
@@ -14,11 +14,23 @@ export function StaffLoginPage() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [error, setError] = useState('')
   const signedOut = searchParams.get('expired') === '1'
   const passwordChanged = searchParams.get('password') === '1'
+  const [sessionNotice] = useState<'expired' | 'password' | null>(() =>
+    searchParams.get('password') === '1' ? 'password' : searchParams.get('expired') === '1' ? 'expired' : null,
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!signedOut && !passwordChanged) return
+
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('expired')
+    nextParams.delete('password')
+    setSearchParams(nextParams, { replace: true })
+  }, [passwordChanged, searchParams, setSearchParams, signedOut])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -104,16 +116,11 @@ export function StaffLoginPage() {
 
           <label className="staff-login-card__remember">
             <input checked={rememberMe} type="checkbox" onChange={(event) => setRememberMe(event.target.checked)} />
-            <span>Remember for 30 days</span>
+            <span>Remember me</span>
           </label>
 
-          <label className="staff-login-card__remember">
-            <input checked={rememberMe} type="checkbox" onChange={(event) => setRememberMe(event.target.checked)} />
-            <span>Remember for 30 days</span>
-          </label>
-
-          {passwordChanged && !error ? <p className="staff-login-card__copy" role="status">Your password was changed on another device, so you were signed out.</p> : null}
-          {signedOut && !passwordChanged && !error ? <p className="staff-login-card__copy" role="status">You were inactive for too long, so you were signed out. Sign in again.</p> : null}
+          {sessionNotice === 'password' && !error ? <p className="staff-login-card__copy" role="status">Your password was changed on another device, so you were signed out.</p> : null}
+          {sessionNotice === 'expired' && !error ? <p className="staff-login-card__copy" role="status">You were inactive for too long, so you were signed out. Sign in again.</p> : null}
           {error ? <p className="staff-login-card__error" role="alert">{error}</p> : null}
 
           <button className="staff-login-card__submit" disabled={isSubmitting} type="submit">

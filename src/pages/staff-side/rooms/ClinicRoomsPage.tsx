@@ -10,7 +10,7 @@ import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import '../StaffHomePage.css'
 import './ClinicRoomsPage.css'
 
-const roomStatuses: ClinicRoomStatus[] = ['Available', 'Occupied', 'Maintenance', 'Inactive']
+const roomStatuses: ClinicRoomStatus[] = ['Available', 'Maintenance', 'Inactive']
 
 function statusClass(status: string) {
   return status.toLowerCase().replace(/\s+/g, '-')
@@ -60,7 +60,6 @@ export function ClinicRoomsPage() {
   const counts = useMemo(() => ({
     total: rooms.length,
     available: rooms.filter((room) => normalizeStatus(room.status) === 'Available').length,
-    occupied: rooms.filter((room) => normalizeStatus(room.status) === 'Occupied').length,
     maintenance: rooms.filter((room) => normalizeStatus(room.status) === 'Maintenance').length,
   }), [rooms])
 
@@ -130,12 +129,11 @@ export function ClinicRoomsPage() {
           <section aria-label="Room summary" className="clinic-rooms-summary">
             <article className="clinic-room-summary-card clinic-room-summary-card--teal"><span><Icon name="activity" size={18} /></span><small>Total rooms</small><strong>{counts.total}</strong><em>Clinic spaces</em></article>
             <article className="clinic-room-summary-card clinic-room-summary-card--blue"><span><Icon name="check" size={18} /></span><small>Available</small><strong>{counts.available}</strong><em>Ready for use</em></article>
-            <article className="clinic-room-summary-card clinic-room-summary-card--amber"><span><Icon name="clock" size={18} /></span><small>Occupied</small><strong>{counts.occupied}</strong><em>In use now</em></article>
             <article className="clinic-room-summary-card clinic-room-summary-card--violet"><span><Icon name="shield" size={18} /></span><small>Maintenance</small><strong>{counts.maintenance}</strong><em>Need attention</em></article>
           </section>
 
           <section className="staff-card clinic-rooms-list-card">
-            <div className="staff-card__header"><div><p className="staff-card__eyebrow">Room directory</p><h2>Clinic rooms</h2><span className="clinic-rooms-description">Update room status when spaces become available, occupied, or unavailable.</span></div><span className="clinic-rooms-count">{rooms.length} rooms</span></div>
+            <div className="staff-card__header"><div><p className="staff-card__eyebrow">Room directory</p><h2>Clinic rooms</h2><span className="clinic-rooms-description">Update room status when spaces are available or unavailable.</span></div><span className="clinic-rooms-count">{rooms.length} rooms</span></div>
             {error ? <div className="clinic-rooms-error" role="alert"><strong>Unable to load clinic rooms</strong><span>{error}</span><button type="button" onClick={() => void loadRooms()}>Try again</button></div> : null}
             {loading ? <div className="clinic-rooms-empty"><Icon name="activity" size={25} /><strong>Loading rooms</strong><span>Getting room records from the clinic API.</span></div> : null}
             {!loading && !error && rooms.length ? <div className="clinic-rooms-grid">{rooms.map((room) => { const status = normalizeStatus(room.status); return <article className="clinic-room-card" key={room.roomId}><div className="clinic-room-card__top"><span className="clinic-room-icon"><Icon name="activity" size={19} /></span><span className={`clinic-room-status clinic-room-status--${statusClass(status)}`}><i />{status}</span></div><h3>{room.roomName}</h3><p>{room.roomId}</p><button className="clinic-room-edit" type="button" onClick={() => openEdit(room)}><Icon name="edit" size={14} /> Edit room</button></article> })}</div> : null}

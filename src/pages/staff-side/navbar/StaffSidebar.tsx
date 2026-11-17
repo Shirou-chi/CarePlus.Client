@@ -14,7 +14,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Workspace',
     items: [
       { label: 'Overview', icon: 'grid', roles: ['Admin', 'Doctor', 'Pharmacist'] },
-      { label: 'Appointments', icon: 'calendar', roles: ['Admin', 'Doctor', 'Pharmacist'] },
+      { label: 'Appointments', icon: 'calendar', roles: ['Admin', 'Doctor'] },
       { label: 'Queue', icon: 'clock', roles: ['Admin', 'Doctor'] },
       { label: 'Patients', icon: 'users', roles: ['Admin'] },
     ],

@@ -14,11 +14,25 @@ const clinicDateTime = new Intl.DateTimeFormat('en-MY', {
   timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'medium', timeStyle: 'short',
 })
 
-function PrescriptionDetails({ prescription, onClose }: { prescription: PrescriptionSummary; onClose: () => void }) {
+function PrescriptionDetails({ prescription, canComplete, onClose, onCompleted }: { prescription: PrescriptionSummary; canComplete: boolean; onClose: () => void; onCompleted: () => void }) {
   const { prescriptionId } = prescription
   const [items, setItems] = useState<PrescriptionItem[]>()
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
+  const [saving, setSaving] = useState(false)
+
+  const completeDispensing = async () => {
+    setError('')
+    setSaving(true)
+    try {
+      await prescriptionApi.complete(prescriptionId)
+      onCompleted()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to complete prescription dispensing.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -65,6 +79,12 @@ function PrescriptionDetails({ prescription, onClose }: { prescription: Prescrip
           </ul>
         )}
       </section>
+      {canComplete && !isClosedPrescriptionStatus(prescription.status) ? (
+        <div className="prescription-dialog__actions">
+          <button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={onClose}>Close</button>
+          <button className="staff-button staff-button--primary" disabled={saving} type="button" onClick={() => void completeDispensing()}>{saving ? 'Completing…' : 'Complete dispensing'}</button>
+        </div>
+      ) : null}
     </StaffDialog>
   )
 }
@@ -166,7 +186,7 @@ export function PrescriptionsPage() {
           </section>
         </div>
       </main>
-      {selected ? <PrescriptionDetails key={selected.prescriptionId} prescription={selected} onClose={() => setSelected(undefined)} /> : null}
+      {selected ? <PrescriptionDetails key={selected.prescriptionId} canComplete={user?.role === 'Pharmacist'} prescription={selected} onClose={() => setSelected(undefined)} onCompleted={() => { setSelected(undefined); setNotice('Prescription dispensing completed.'); setAttempt((value) => value + 1) }} /> : null}
       {notice ? <div className="staff-toast" role="status">{notice}</div> : null}
     </div>
   )

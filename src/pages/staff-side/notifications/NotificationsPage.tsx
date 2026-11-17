@@ -10,7 +10,8 @@ import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './NotificationsPage.css'
 
-type NotificationCategory = 'Appointments' | 'Inventory' | 'Leave' | 'Security' | 'System'
+type NotificationCategory = 'Announcements' | 'Schedules' | 'Appointments' | 'Medicine' | 'Leave' | 'Billing' | 'Queue' | 'Medical records' | 'Family' | 'Security' | 'System'
+type NotificationKind = 'Announcement' | 'Notification'
 type NotificationItem = {
   id: string
   title: string
@@ -19,18 +20,44 @@ type NotificationItem = {
   initials: string
   time: string
   category: NotificationCategory
+  kind: NotificationKind
   unread: boolean
 }
 
 const categoryForType = (type: string): NotificationCategory => {
-  if (type === 'staff_appointment' || type === 'schedule_update') return 'Appointments'
-  if (type === 'medicine_update') return 'Inventory'
-  if (type === 'leave_review' || type === 'leave_update') return 'Leave'
-  if (type === 'security') return 'Security'
-  return 'System'
+  switch (type) {
+    case 'announcement':
+      return 'Announcements'
+    case 'schedule_update':
+      return 'Schedules'
+    case 'staff_appointment':
+    case 'appointment_reminder':
+    case 'appointment_cancelled':
+      return 'Appointments'
+    case 'medicine_update':
+      return 'Medicine'
+    case 'leave_review':
+    case 'leave_update':
+      return 'Leave'
+    case 'payment_reminder':
+      return 'Billing'
+    case 'check_in_reminder':
+    case 'queue_update':
+      return 'Queue'
+    case 'medical_record':
+      return 'Medical records'
+    case 'family_invitation':
+    case 'family_invitation_declined':
+    case 'family_access_request':
+      return 'Family'
+    case 'security':
+      return 'Security'
+    default:
+      return 'System'
+  }
 }
 
-const categoryFilters = ['All categories', 'Appointments', 'Inventory', 'Leave', 'Security', 'System'] as const
+const notificationFilters = ['All', 'Announcements', 'Notifications'] as const
 
 const relativeNotificationTime = (createdAt: string) => {
   const minutes = Math.max(0, Math.round((Date.now() - Date.parse(createdAt)) / 60_000))
@@ -50,6 +77,7 @@ const mapStaffNotification = (item: ApiNotification): NotificationItem => ({
   initials: item.initials,
   time: relativeNotificationTime(item.createdAt),
   category: categoryForType(item.type),
+  kind: item.type === 'announcement' ? 'Announcement' : 'Notification',
   unread: item.unread,
 })
 
@@ -62,7 +90,7 @@ export function NotificationsPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'unread'>('all')
-  const [categoryFilter, setCategoryFilter] = useState<(typeof categoryFilters)[number]>('All categories')
+  const [notificationFilter, setNotificationFilter] = useState<(typeof notificationFilters)[number]>('All')
   const [notificationItems, setNotificationItems] = useState<NotificationItem[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(true)
@@ -103,18 +131,19 @@ export function NotificationsPage() {
     const query = searchTerm.trim().toLowerCase()
     const rows = notificationItems.filter((item) => {
       const matchesTab = activeTab === 'all' || item.unread
-      const matchesCategory = categoryFilter === 'All categories' || item.category === categoryFilter
+      const matchesType = notificationFilter === 'All'
+        || (notificationFilter === 'Announcements' ? item.kind === 'Announcement' : item.kind === 'Notification')
       const matchesSearch = !query || `${item.title} ${item.message} ${item.category}`.toLowerCase().includes(query)
-      return matchesTab && matchesCategory && matchesSearch
+      return matchesTab && matchesType && matchesSearch
     })
 
     return rows
-  }, [activeTab, categoryFilter, notificationItems, searchTerm])
+  }, [activeTab, notificationFilter, notificationItems, searchTerm])
 
   const resetListControls = () => {
     setSearchTerm('')
     setActiveTab('all')
-    setCategoryFilter('All categories')
+    setNotificationFilter('All')
   }
 
   const selectableNotifications = filteredNotifications.filter((item) => item.unread)
@@ -197,7 +226,7 @@ export function NotificationsPage() {
                 <span className="notifications-unread-count">{unreadCount} unread</span>
               </div>
               <div className="notifications-tabs"><button aria-pressed={activeTab === 'all'} className={activeTab === 'all' ? 'is-selected' : ''} type="button" onClick={() => setActiveTab('all')}>All <span>{notificationItems.length}</span></button><button aria-pressed={activeTab === 'unread'} className={activeTab === 'unread' ? 'is-selected' : ''} type="button" onClick={() => setActiveTab('unread')}>Unread <span>{unreadCount}</span></button></div>
-              <div className="notifications-toolbar"><label className="notifications-search"><Icon name="search" size={15} /><span className="sr-only">Search notifications</span><input placeholder="Search notifications" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label><label className="notifications-select"><span className="sr-only">Filter by category</span><select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value as (typeof categoryFilters)[number])}>{categoryFilters.map((category) => <option key={category} value={category}>{category}</option>)}</select><Icon name="chevronDown" size={13} /></label><StaffListReset onClick={resetListControls} /></div>
+              <div className="notifications-toolbar"><label className="notifications-search"><Icon name="search" size={15} /><span className="sr-only">Search notifications</span><input placeholder="Search notifications" type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></label><label className="notifications-select"><span className="sr-only">Filter by notification type</span><select value={notificationFilter} onChange={(event) => setNotificationFilter(event.target.value as (typeof notificationFilters)[number])}>{notificationFilters.map((filter) => <option key={filter} value={filter}>{filter}</option>)}</select><Icon name="chevronDown" size={13} /></label><StaffListReset onClick={resetListControls} /></div>
               <div className="notifications-actions"><button className="notifications-mark-button" type="button" onClick={() => void (selectedIds.length ? markSelectedRead() : markAllRead())} disabled={notificationActionLoading || !unreadCount}><Icon name="check" size={15} />{selectedIds.length ? 'Mark selected as read' : 'Mark all as read'}</button></div>
               {notificationsError ? <div className="notifications-error"><strong>Unable to load notifications</strong><span>{notificationsError}</span><button type="button" onClick={() => void loadNotifications()}>Try again</button></div> : null}
               <div className="notifications-table-wrap">

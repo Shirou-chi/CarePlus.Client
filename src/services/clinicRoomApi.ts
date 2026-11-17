@@ -1,6 +1,6 @@
 import { formatApiErrorDetails, request, type ApiResponse } from './api'
 
-export type ClinicRoomStatus = 'Available' | 'Occupied' | 'Maintenance' | 'Inactive'
+export type ClinicRoomStatus = 'Available' | 'Maintenance' | 'Inactive'
 
 export type ClinicRoomRecord = {
   roomId: string

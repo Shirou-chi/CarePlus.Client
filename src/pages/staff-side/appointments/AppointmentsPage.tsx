@@ -22,6 +22,7 @@ type Appointment = {
   dateKey: string
   time: string
   meridiem: string
+  patientId: string
   patient: string
   patientUsername: string
   initials: string
@@ -80,18 +81,24 @@ const appointmentShiftRanges: Record<AppointmentShift, string> = {
 }
 
 function appointmentTimeLabel(value: string) {
-  return Object.values(appointmentTimeSlots)
+  const label = Object.values(appointmentTimeSlots)
     .flat()
     .find((slot) => slot.value === value)?.label ?? ''
+
+  return label
 }
 
 function dateKey(value: Date) {
   return [value.getFullYear(), String(value.getMonth() + 1).padStart(2, '0'), String(value.getDate()).padStart(2, '0')].join('-')
 }
 
+function bookingDateKey(date: string) {
+  return date
+}
+
 function isBookingSlotInPast(date: string, time: string) {
   if (!date) return true
-  return new Date(`${date}T${time}:00`).getTime() <= Date.now()
+  return new Date(`${bookingDateKey(date)}T${time}:00+08:00`).getTime() <= Date.now()
 }
 
 function startOfWeek(value: Date) {
@@ -124,6 +131,7 @@ function mapAppointment(record: StaffAppointmentRecord): Appointment {
     dateKey: dateKey(start),
     time: start.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true }).replace(/\s?[AP]M$/, ''),
     meridiem: start.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true }).slice(-2),
+    patientId: record.patientId,
     patient: record.patientName,
     patientUsername: record.patientUsername,
     initials: initials(record.patientName),
@@ -164,6 +172,10 @@ function shiftForTime(value: string): AppointmentShift {
   return hour >= 6 && hour < 18 ? 'morning' : 'night'
 }
 
+function shiftDateKeyForAppointment(value: string) {
+  return dateKey(new Date(value))
+}
+
 type AppointmentTimePickerProps = {
   date: string
   dateSelected: boolean
@@ -193,6 +205,11 @@ function AppointmentTimePicker({ date, dateSelected, shift, value, onChange, onS
           </button>
         ))}
       </div>
+      <p className="appointments-time-picker__hint" role="note">
+        {shift === 'night'
+          ? 'Night shift: 06:00 PM to 05:30 AM.'
+          : 'Morning shift: 06:00 AM to 05:30 PM on the selected date.'}
+      </p>
       <div aria-label={`${shift} booking times`} className="appointments-time-options" role="group">
         {appointmentTimeSlots[shift].map((slot) => (
           <button
@@ -250,6 +267,7 @@ export function AppointmentsPage() {
   const [visitTypeDialogOpen, setVisitTypeDialogOpen] = useState(false)
   const [appointmentNotes, setAppointmentNotes] = useState('')
   const [savingAppointment, setSavingAppointment] = useState(false)
+  const [appointmentFormError, setAppointmentFormError] = useState('')
   const [providerAvailabilityLoading, setProviderAvailabilityLoading] = useState(false)
   const [providerAvailabilityError, setProviderAvailabilityError] = useState('')
   const [notice, setNotice] = useState('')
@@ -385,7 +403,7 @@ export function AppointmentsPage() {
 
     const loadAvailableDoctors = async () => {
       try {
-        const doctors = await appointmentApi.retrieveAvailableDoctors(appointmentDate, appointmentTime)
+        const doctors = await appointmentApi.retrieveAvailableDoctors(bookingDateKey(appointmentDate), appointmentTime)
         if (!cancelled) setAvailableDoctors(doctors)
       } catch (loadError) {
         if (!cancelled) {
@@ -402,7 +420,7 @@ export function AppointmentsPage() {
     return () => {
       cancelled = true
     }
-  }, [appointmentDate, appointmentTime, canCreate, dialogOpen])
+  }, [appointmentDate, appointmentTime, appointmentShift, canCreate, dialogOpen])
 
   useEffect(() => {
     if (!canCreate) return
@@ -459,7 +477,7 @@ export function AppointmentsPage() {
 
   const openReschedule = (appointment: Appointment) => {
     setRescheduleTarget(appointment)
-    setRescheduleDate(appointment.dateKey)
+    setRescheduleDate(shiftDateKeyForAppointment(appointment.startAt))
     setRescheduleTime(timeKey(appointment.startAt))
     setRescheduleShift(shiftForTime(appointment.startAt))
     setAppointmentActionError('')
@@ -476,7 +494,7 @@ export function AppointmentsPage() {
     setAppointmentActionError('')
     try {
       await appointmentApi.rescheduleForStaff(rescheduleTarget.id, {
-        startAt: `${rescheduleDate}T${rescheduleTime}:00+08:00`,
+        startAt: `${bookingDateKey(rescheduleDate)}T${rescheduleTime}:00+08:00`,
       })
       await refreshAppointments()
       setRescheduleTarget(null)
@@ -519,18 +537,19 @@ export function AppointmentsPage() {
 
   const submitAppointment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setAppointmentFormError('')
     if (!appointmentDate || !appointmentTime) {
-      announce('Choose an appointment date and time before saving.')
+      setAppointmentFormError('Choose an appointment date and time before saving.')
       return
     }
 
     if (!selectedPatientId) {
-      announce('Choose a patient from the matching names before saving.')
+      setAppointmentFormError('Choose a patient from the matching names before saving.')
       return
     }
 
     if (!selectedProviderId) {
-      announce('Choose an available doctor before saving.')
+      setAppointmentFormError('Choose an available doctor before saving.')
       return
     }
 
@@ -539,7 +558,7 @@ export function AppointmentsPage() {
       await appointmentApi.createForStaff({
         patientId: selectedPatientId,
         doctorId: selectedProviderId,
-        startAt: `${appointmentDate}T${appointmentTime}:00+08:00`,
+        startAt: `${bookingDateKey(appointmentDate)}T${appointmentTime}:00+08:00`,
         type: appointmentVisitType,
         notes: appointmentNotes.trim() || null,
       })
@@ -550,7 +569,7 @@ export function AppointmentsPage() {
       setBookingTimeDialogOpen(false)
       announce('Appointment created successfully.')
     } catch (saveError) {
-      announce(saveError instanceof Error ? saveError.message : 'Unable to create appointment.')
+      setAppointmentFormError(saveError instanceof Error ? saveError.message : 'Unable to create appointment.')
     } finally {
       setSavingAppointment(false)
     }
@@ -585,7 +604,7 @@ export function AppointmentsPage() {
               <h1>Appointments</h1>
               <p className="appointments-hero__copy">Manage bookings, check-ins, and daily appointment availability.</p>
             </div>
-            {canCreate ? <button className="staff-button staff-button--primary" type="button" onClick={() => { setPatientSearch(''); setSelectedPatientId(''); setPatientDropdownOpen(false); setAppointmentDate(''); setAppointmentTime(''); setAppointmentShift('morning'); setBookingTimeDialogOpen(false); setAppointmentVisitType('General consultation'); setAppointmentNotes(''); setAvailableDoctors([]); setProviderAvailabilityError(''); setSelectedProviderId(''); setDialogOpen(true) }}><Icon name="plus" size={17} /> New appointment</button> : <span className="appointments-role-note"><Icon name="shield" size={15} /> {currentRole} view</span>}
+            {canCreate ? <button className="staff-button staff-button--primary" type="button" onClick={() => { setPatientSearch(''); setSelectedPatientId(''); setPatientDropdownOpen(false); setAppointmentDate(''); setAppointmentTime(''); setAppointmentShift('morning'); setBookingTimeDialogOpen(false); setAppointmentVisitType('General consultation'); setAppointmentNotes(''); setAppointmentFormError(''); setAvailableDoctors([]); setProviderAvailabilityError(''); setSelectedProviderId(''); setDialogOpen(true) }}><Icon name="plus" size={17} /> New appointment</button> : <span className="appointments-role-note"><Icon name="shield" size={15} /> {currentRole} view</span>}
            </section>
 
           <section aria-label="Appointment summary" className="appointments-summary">
@@ -637,7 +656,7 @@ export function AppointmentsPage() {
           title="New appointment"
           titleId="new-appointment-title"
         >
-          <form onSubmit={submitAppointment}><label className="appointments-combobox-field">Patient<div className="appointments-combobox">{selectedPatient ? <div className="appointments-selected-person"><strong>{selectedPatient.name}</strong><small>@{selectedPatient.username} · {selectedPatient.patientId}</small><button type="button" onClick={() => { setSelectedPatientId(''); setPatientSearch(selectedPatient.name); setPatientDropdownOpen(true) }}>Change</button></div> : <input aria-autocomplete="list" aria-controls="appointment-patient-options" aria-expanded={patientMatches.length > 0} autoComplete="off" placeholder="Type patient name, username, or ID" required role="combobox" value={patientSearch} onChange={(event) => { setPatientSearch(event.target.value); setSelectedPatientId(''); setPatientDropdownOpen(true) }} />}{patientMatches.length > 0 ? <div className="appointments-combobox__options" id="appointment-patient-options" role="listbox">{patientMatches.map((patient) => <button key={patient.id} role="option" type="button" onClick={() => { setPatientSearch(patient.name); setSelectedPatientId(patient.id); setPatientDropdownOpen(false) }}><strong>{patient.name}</strong><small>@{patient.username} · {patient.id}</small></button>)}</div> : null}</div></label><div className="appointments-form-grid"><label className="appointments-date-picker-field">Date<StaffDateFilter emptyLabel="Select date" label="Appointment date" minDate={dateKey(new Date())} selectionMode="single" value={{ start: appointmentDate || null, end: null }} onChange={(value) => { setAppointmentDate(value.start ?? ''); setAppointmentTime(''); setBookingTimeDialogOpen(false); setSelectedProviderId('') }} /></label><label className="appointments-time-field">Booking time<button aria-expanded={bookingTimeDialogOpen} aria-haspopup="dialog" className="appointments-time-trigger" disabled={!appointmentDate} type="button" onClick={() => setBookingTimeDialogOpen(true)}><span>{appointmentTime ? `${appointmentShift === 'morning' ? 'Morning' : 'Night'} · ${appointmentTimeLabel(appointmentTime)}` : 'Select a booking time'}</span><Icon name="chevronDown" size={15} /></button></label></div><div className="appointments-form-grid"><label className="appointments-combobox-field">Doctor<div className="appointments-combobox">{selectedProvider ? <div className="appointments-selected-person"><strong>{selectedProvider.name}</strong><small>Doctor · {selectedProvider.id}</small><button type="button" onClick={() => setSelectedProviderId('')}>Change</button></div> : <select aria-label="Select doctor" disabled={!appointmentDate || !appointmentTime || providerAvailabilityLoading || providerAvailabilityError !== '' || providerDirectory.length === 0} required value={selectedProviderId} onChange={(event) => setSelectedProviderId(event.target.value)}><option value="">{providerAvailabilityLoading ? 'Loading available doctors…' : providerAvailabilityError ? 'Could not load doctors' : (!appointmentDate || !appointmentTime ? 'Choose date and time first' : (providerDirectory.length === 0 ? 'No doctors available' : 'Select an available doctor'))}</option>{providerDirectory.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select>}</div></label><label className="appointments-visit-type-field">Visit type<button aria-expanded={visitTypeDialogOpen} aria-haspopup="dialog" className="appointments-time-trigger" type="button" onClick={() => setVisitTypeDialogOpen(true)}><span>{appointmentVisitType || 'Select visit type'}</span><Icon name="chevronDown" size={15} /></button></label></div><label>Notes<textarea placeholder="Add a short note for the care team" rows={3} value={appointmentNotes} onChange={(event) => setAppointmentNotes(event.target.value)} /></label><div className="appointments-dialog__actions"><button className="staff-button staff-button--secondary" disabled={savingAppointment} type="button" onClick={() => setDialogOpen(false)}>Cancel</button><button className="staff-button staff-button--primary" disabled={savingAppointment} type="submit">{savingAppointment ? 'Saving…' : 'Save appointment'}</button></div></form>
+          <form onSubmit={submitAppointment}><label className="appointments-combobox-field">Patient<div className="appointments-combobox">{selectedPatient ? <div className="appointments-selected-person"><strong>{selectedPatient.name}</strong><small>@{selectedPatient.username} · {selectedPatient.patientId}</small><button type="button" onClick={() => { setAppointmentFormError(''); setSelectedPatientId(''); setPatientSearch(selectedPatient.name); setPatientDropdownOpen(true) }}>Change</button></div> : <input aria-autocomplete="list" aria-controls="appointment-patient-options" aria-expanded={patientMatches.length > 0} autoComplete="off" placeholder="Type patient name, username, or ID" required role="combobox" value={patientSearch} onChange={(event) => { setAppointmentFormError(''); setPatientSearch(event.target.value); setSelectedPatientId(''); setPatientDropdownOpen(true) }} />}{patientMatches.length > 0 ? <div className="appointments-combobox__options" id="appointment-patient-options" role="listbox">{patientMatches.map((patient) => <button key={patient.id} role="option" type="button" onClick={() => { setAppointmentFormError(''); setPatientSearch(patient.name); setSelectedPatientId(patient.id); setPatientDropdownOpen(false) }}><strong>{patient.name}</strong><small>@{patient.username} · {patient.id}</small></button>)}</div> : null}</div></label><div className="appointments-form-grid"><label className="appointments-date-picker-field">Shift date<StaffDateFilter emptyLabel="Select shift date" label="Appointment shift date" minDate={dateKey(new Date())} selectionMode="single" value={{ start: appointmentDate || null, end: null }} onChange={(value) => { setAppointmentFormError(''); setAppointmentDate(value.start ?? ''); setAppointmentTime(''); setBookingTimeDialogOpen(false); setSelectedProviderId('') }} /></label><label className="appointments-time-field">Booking time<button aria-expanded={bookingTimeDialogOpen} aria-haspopup="dialog" className="appointments-time-trigger" disabled={!appointmentDate} type="button" onClick={() => setBookingTimeDialogOpen(true)}><span>{appointmentTime ? `${appointmentShift === 'morning' ? 'Morning' : 'Night'} · ${appointmentTimeLabel(appointmentTime)}` : 'Select a booking time'}</span><Icon name="chevronDown" size={15} /></button></label></div><div className="appointments-form-grid"><label className="appointments-combobox-field">Doctor<div className="appointments-combobox">{selectedProvider ? <div className="appointments-selected-person"><strong>{selectedProvider.name}</strong><small>Doctor · {selectedProvider.id}</small><button type="button" onClick={() => { setAppointmentFormError(''); setSelectedProviderId('') }}>Change</button></div> : <select aria-label="Select doctor" disabled={!appointmentDate || !appointmentTime || providerAvailabilityLoading || providerAvailabilityError !== '' || providerDirectory.length === 0} required value={selectedProviderId} onChange={(event) => { setAppointmentFormError(''); setSelectedProviderId(event.target.value) }}><option value="">{providerAvailabilityLoading ? 'Loading available doctors…' : providerAvailabilityError ? 'Could not load doctors' : (!appointmentDate || !appointmentTime ? 'Choose shift date and time first' : (providerDirectory.length === 0 ? 'No doctors available' : 'Select an available doctor'))}</option>{providerDirectory.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select>}</div></label><label className="appointments-visit-type-field">Visit type<button aria-expanded={visitTypeDialogOpen} aria-haspopup="dialog" className="appointments-time-trigger" type="button" onClick={() => setVisitTypeDialogOpen(true)}><span>{appointmentVisitType || 'Select visit type'}</span><Icon name="chevronDown" size={15} /></button></label></div><label>Notes<textarea placeholder="Add a short note for the care team" rows={3} value={appointmentNotes} onChange={(event) => { setAppointmentFormError(''); setAppointmentNotes(event.target.value) }} /></label>{appointmentFormError ? <p className="appointments-action-error appointments-form-error" role="alert">{appointmentFormError}</p> : null}<div className="appointments-dialog__actions"><button className="staff-button staff-button--secondary" disabled={savingAppointment} type="button" onClick={() => setDialogOpen(false)}>Cancel</button><button className="staff-button staff-button--primary" disabled={savingAppointment} type="submit">{savingAppointment ? 'Saving…' : 'Save appointment'}</button></div></form>
         </StaffDialog>
       ) : null}
       {visitTypeDialogOpen ? (

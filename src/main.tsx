@@ -283,7 +283,9 @@ const AppRoutes = () => {
                     <Route path="/staff/login" element={<StaffLoginRoute />} />
                     <Route element={<StaffRouteGuard />}>
                         <Route path="/staff" element={<StaffHomePage />} />
-                        <Route path="/staff/appointments" element={<StaffAppointmentsPage />} />
+                        <Route element={<StaffRouteGuard roles={["Admin", "Doctor"]} />}>
+                            <Route path="/staff/appointments" element={<StaffAppointmentsPage />} />
+                        </Route>
                         <Route element={<StaffRouteGuard roles={["Admin", "Doctor"]} />}>
                             <Route path="/staff/queue" element={<StaffQueuePage />} />
                             <Route path="/staff/queue/:queueId/consultation" element={<ConsultationPage />} />

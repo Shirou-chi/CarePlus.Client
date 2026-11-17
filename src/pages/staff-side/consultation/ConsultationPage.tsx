@@ -10,12 +10,17 @@ import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
+import { StaffDialog } from '../components/StaffDialog'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import '../queue/StaffQueuePage.css'
 import './ConsultationPage.css'
 
 type PrescriptionDraft = Omit<QueuePrescriptionItem, 'quantity'> & { id: number; quantity: string }
+
+type ConsultationRecordDetail =
+  | { type: 'medical'; record: MedicalRecord }
+  | { type: 'personal'; record: PersonalRecord }
 
 type ConsultationMedicinePickerProps = {
   medicines: MedicineRecord[]
@@ -85,21 +90,15 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 function formatPersonalRecord(record: PersonalRecord) {
-  if (record.type === 'bp' && record.systolic != null && record.diastolic != null) {
-    return `${record.systolic}/${record.diastolic} mmHg`
-  }
+  if (record.type === 'bp' && record.systolic != null && record.diastolic != null) return `${record.systolic}/${record.diastolic} mmHg`
   return record.label || record.notes || 'No details recorded'
 }
 
 function personalRecordLabel(record: PersonalRecord) {
-  return record.type === 'bp'
-    ? 'Blood pressure'
-    : record.type === 'allergy'
-      ? 'Allergy'
-      : record.type === 'condition'
-        ? 'Health condition'
-        : record.type === 'history'
-          ? 'Medical history'
+  return record.type === 'bp' ? 'Blood pressure'
+    : record.type === 'allergy' ? 'Allergy'
+      : record.type === 'condition' ? 'Health condition'
+        : record.type === 'history' ? 'Medical history'
           : 'Uploaded health document'
 }
 
@@ -115,10 +114,14 @@ export function ConsultationPage() {
   const [appointment, setAppointment] = useState<StaffAppointmentRecord>()
   const [previousRecords, setPreviousRecords] = useState<MedicalRecord[]>([])
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([])
+  const [selectedRecordDetail, setSelectedRecordDetail] = useState<ConsultationRecordDetail>()
+  const [openingDocumentId, setOpeningDocumentId] = useState('')
+  const [documentError, setDocumentError] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [historyError, setHistoryError] = useState('')
   const [appointmentError, setAppointmentError] = useState('')
+  const [historyError, setHistoryError] = useState('')
+  const [personalHistoryError, setPersonalHistoryError] = useState('')
   const [diagnosis, setDiagnosis] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<PrescriptionDraft[]>([])
@@ -136,8 +139,11 @@ export function ConsultationPage() {
     async function loadContext() {
       setLoading(true)
       setLoadError('')
-      setHistoryError('')
       setAppointmentError('')
+      setHistoryError('')
+      setPersonalHistoryError('')
+      setPreviousRecords([])
+      setPersonalRecords([])
 
       try {
         const queueRows = await queueApi.staffList()
@@ -155,26 +161,41 @@ export function ConsultationPage() {
           }
         }
 
-        const patientId = currentEntry.patientId || currentAppointment?.patientId
-        const [medicalResult, personalResult] = patientId
-          ? await Promise.allSettled([
-            medicalRecordApi.retrieveForPatient(patientId),
-            personalHealthRecordApi.listForPatient(patientId),
-          ])
-          : []
+        const patientId = [currentEntry.patientId, currentAppointment?.patientId]
+          .map((value) => value?.trim())
+          .find((value): value is string => Boolean(value))
+
+        if (!patientId) {
+          if (cancelled) return
+          setEntry(currentEntry)
+          setAppointment(currentAppointment)
+          setHistoryError('This consultation does not contain a patient ID, so previous medical records cannot be loaded.')
+          setPersonalHistoryError('This consultation does not contain a patient ID, so personal health records cannot be loaded.')
+          return
+        }
+
+        const [medicalResult, personalResult] = await Promise.allSettled([
+          (async () => {
+            try {
+              return await medicalRecordApi.retrieveForPatient(patientId)
+            } catch (patientRequestError) {
+              const records = await medicalRecordApi.retrieve()
+              const patientRecords = records.filter((record) => record.patientId === patientId)
+              if (patientRecords.length === 0) throw patientRequestError
+              return patientRecords
+            }
+          })(),
+          personalHealthRecordApi.listForPatient(patientId),
+        ])
 
         if (cancelled) return
 
         setEntry(currentEntry)
         setAppointment(currentAppointment)
-        if (medicalResult && medicalResult.status === 'fulfilled') setPreviousRecords(medicalResult.value)
-        if (personalResult && personalResult.status === 'fulfilled') setPersonalRecords(personalResult.value)
-        if (medicalResult && medicalResult.status === 'rejected') {
-          setHistoryError(medicalResult.reason instanceof Error ? medicalResult.reason.message : 'Unable to load previous medical records.')
-        }
-        if (personalResult && personalResult.status === 'rejected') {
-          setHistoryError((current) => current || (personalResult.reason instanceof Error ? personalResult.reason.message : 'Unable to load personal health records.'))
-        }
+        if (medicalResult.status === 'fulfilled') setPreviousRecords(medicalResult.value)
+        else setHistoryError(medicalResult.reason instanceof Error ? medicalResult.reason.message : 'Unable to load previous medical records.')
+        if (personalResult.status === 'fulfilled') setPersonalRecords(personalResult.value)
+        else setPersonalHistoryError(personalResult.reason instanceof Error ? personalResult.reason.message : 'Unable to load personal health records.')
       } catch (error) {
         if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Unable to load the consultation.')
       } finally {
@@ -185,6 +206,27 @@ export function ConsultationPage() {
     void loadContext()
     return () => { cancelled = true }
   }, [queueId])
+
+  async function openHealthDocument(record: PersonalRecord) {
+    if (!record.pdfFileName) return
+
+    setOpeningDocumentId(record.id)
+    setDocumentError('')
+    try {
+      const documentUrl = await personalHealthRecordApi.viewPdf(record.id)
+      const openedWindow = window.open(documentUrl, '_blank', 'noopener,noreferrer')
+      if (!openedWindow) {
+        URL.revokeObjectURL(documentUrl)
+        setDocumentError('Allow pop-ups to open the uploaded health document.')
+        return
+      }
+      window.setTimeout(() => URL.revokeObjectURL(documentUrl), 60_000)
+    } catch (error) {
+      setDocumentError(error instanceof Error ? error.message : 'Unable to open the uploaded health document.')
+    } finally {
+      setOpeningDocumentId('')
+    }
+  }
 
   function goBack() {
     if (!saving && (diagnosis.trim() || notes.trim() || items.length > 0)
@@ -330,7 +372,7 @@ export function ConsultationPage() {
               <aside className="consultation-context">
                 <section className="staff-card consultation-context-card">
                   <div className="consultation-card-heading"><div><p className="staff-card__eyebrow">Visit context</p><h2>{appointment ? 'Appointment details' : 'Walk-in consultation'}</h2></div><Icon name="calendar" size={18} /></div>
-                  {appointment ? <dl className="consultation-detail-list"><div><dt>Date and time</dt><dd>{formatDateTime(appointment.startAt)}</dd></div><div><dt>Visit type</dt><dd>{appointment.visitType}</dd></div><div><dt>Doctor</dt><dd>{appointment.doctorName}</dd></div><div><dt>Status</dt><dd>{appointment.status} · {appointment.checkInStatus}</dd></div>{appointment.notes ? <div><dt>Appointment notes</dt><dd>{appointment.notes}</dd></div> : null}</dl> : <p className="consultation-muted-copy">No appointment details are attached to this visit. Continue with the walk-in consultation using the patient records below.</p>}
+                  {appointment ? <dl className="consultation-detail-list"><div><dt>Date and time</dt><dd>{formatDateTime(appointment.startAt)}</dd></div><div><dt>Visit type</dt><dd>{appointment.visitType}</dd></div><div><dt>Doctor</dt><dd>{appointment.doctorName}</dd></div><div><dt>Status</dt><dd>{appointment.status} · {appointment.checkInStatus}</dd></div>{appointment.notes ? <div><dt>Appointment notes</dt><dd>{appointment.notes}</dd></div> : null}</dl> : <p className="consultation-muted-copy">No appointment details are attached to this visit. Continue with the walk-in consultation.</p>}
                   {appointmentError ? <p className="consultation-inline-error">{appointmentError}</p> : null}
                 </section>
 
@@ -338,13 +380,27 @@ export function ConsultationPage() {
                   <div className="consultation-card-heading"><div><p className="staff-card__eyebrow">Clinical history</p><h2>Previous medical records</h2></div><Icon name="file" size={18} /></div>
                   {historyError ? <p className="consultation-inline-error">{historyError}</p> : null}
                   {!historyError && !previousRecords.length ? <p className="consultation-muted-copy">No previous medical records were found for this patient.</p> : null}
-                  <div className="consultation-history-list">{previousRecords.map((record) => <article className="consultation-history-item" key={record.medicalRecordId}><div><strong>{record.diagnosis}</strong><span>{formatDateTime(record.consultationDate)} · {record.doctorName}</span></div><p>{record.notes || 'No clinical notes recorded.'}</p></article>)}</div>
+                  <div className="consultation-history-list">
+                    {previousRecords.map((record) => <button className="consultation-history-item" key={record.medicalRecordId} type="button" onClick={() => setSelectedRecordDetail({ type: 'medical', record })}>
+                      <div><strong>{record.diagnosis}</strong><span>{formatDateTime(record.consultationDate)} · {record.doctorName}</span></div>
+                      <p>{record.notes || 'No clinical notes recorded.'}</p>
+                      <small>Click to view details</small>
+                    </button>)}
+                  </div>
                 </section>
 
                 <section className="staff-card consultation-context-card">
                   <div className="consultation-card-heading"><div><p className="staff-card__eyebrow">Patient-provided information</p><h2>Personal health record</h2></div><Icon name="heart" size={18} /></div>
-                  {!personalRecords.length ? <p className="consultation-muted-copy">No personal health records were provided by this patient.</p> : null}
-                  <div className="consultation-personal-list">{personalRecords.map((record) => <article className="consultation-personal-item" key={record.id}><div><strong>{personalRecordLabel(record)}</strong><span>{formatDateTime(record.recordedAt)}</span></div><p>{formatPersonalRecord(record)}</p>{record.notes && record.label ? <small>{record.notes}</small> : null}</article>)}</div>
+                  {personalHistoryError ? <p className="consultation-inline-error">{personalHistoryError}</p> : null}
+                  {!personalHistoryError && !personalRecords.length ? <p className="consultation-muted-copy">No personal health records were provided by this patient.</p> : null}
+                  <div className="consultation-personal-list">
+                    {personalRecords.map((record) => <button className="consultation-personal-item" key={record.id} type="button" onClick={() => setSelectedRecordDetail({ type: 'personal', record })}>
+                      <div><strong>{personalRecordLabel(record)}</strong><span>{formatDateTime(record.recordedAt)}</span></div>
+                      <p>{formatPersonalRecord(record)}</p>
+                      {record.notes && record.label ? <small>{record.notes}</small> : null}
+                      <small>Click to view details</small>
+                    </button>)}
+                  </div>
                 </section>
               </aside>
 
@@ -379,6 +435,31 @@ export function ConsultationPage() {
               </section>
             </div>
           </> : null}
+
+          {selectedRecordDetail ? <StaffDialog
+            className="consultation-record-detail-dialog"
+            eyebrow={selectedRecordDetail.type === 'medical' ? 'Medical record' : 'Personal health record'}
+            onClose={() => { setSelectedRecordDetail(undefined); setDocumentError('') }}
+            title={selectedRecordDetail.type === 'medical' ? selectedRecordDetail.record.diagnosis : personalRecordLabel(selectedRecordDetail.record)}
+            titleId="consultation-record-detail-title"
+          >
+            {selectedRecordDetail.type === 'medical' ? <dl className="consultation-record-detail-list">
+              <div><dt>Diagnosis</dt><dd>{selectedRecordDetail.record.diagnosis}</dd></div>
+              <div><dt>Consultation date</dt><dd>{formatDateTime(selectedRecordDetail.record.consultationDate)}</dd></div>
+              <div><dt>Doctor</dt><dd>{selectedRecordDetail.record.doctorName}</dd></div>
+              <div><dt>Patient</dt><dd>{selectedRecordDetail.record.patientName} · {selectedRecordDetail.record.patientUsername}</dd></div>
+              <div><dt>Clinical notes</dt><dd>{selectedRecordDetail.record.notes || 'No clinical notes recorded.'}</dd></div>
+            </dl> : <dl className="consultation-record-detail-list">
+              <div><dt>Record type</dt><dd>{personalRecordLabel(selectedRecordDetail.record)}</dd></div>
+              <div><dt>Recorded at</dt><dd>{formatDateTime(selectedRecordDetail.record.recordedAt)}</dd></div>
+              <div><dt>Details</dt><dd>{formatPersonalRecord(selectedRecordDetail.record)}</dd></div>
+              {selectedRecordDetail.record.label ? <div><dt>Label</dt><dd>{selectedRecordDetail.record.label}</dd></div> : null}
+              {selectedRecordDetail.record.notes ? <div><dt>Notes</dt><dd>{selectedRecordDetail.record.notes}</dd></div> : null}
+              {selectedRecordDetail.record.pdfFileName ? <div><dt>Uploaded file</dt><dd className="consultation-record-detail-file"><span>{selectedRecordDetail.record.pdfFileName}</span><button className="staff-button staff-button--secondary" disabled={openingDocumentId === selectedRecordDetail.record.id} type="button" onClick={() => void openHealthDocument(selectedRecordDetail.record)}>{openingDocumentId === selectedRecordDetail.record.id ? 'Opening…' : 'View document'}</button></dd></div> : null}
+            </dl>}
+            {documentError ? <p className="consultation-inline-error">{documentError}</p> : null}
+            <div className="consultation-record-detail-actions"><button className="staff-button staff-button--secondary" type="button" onClick={() => { setSelectedRecordDetail(undefined); setDocumentError('') }}>Close</button></div>
+          </StaffDialog> : null}
         </div>
       </main>
     </div>

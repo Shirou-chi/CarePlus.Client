@@ -28,7 +28,7 @@
 
 .clinic-rooms-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 13px;
   margin-bottom: 17px;
 }
@@ -54,7 +54,6 @@
 
 .clinic-room-summary-card--teal > span { background: rgba(49, 184, 173, 0.14); color: var(--staff-teal); }
 .clinic-room-summary-card--blue > span { background: rgba(73, 130, 216, 0.14); color: var(--staff-blue); }
-.clinic-room-summary-card--amber > span { background: rgba(229, 165, 75, 0.14); color: var(--staff-amber); }
 .clinic-room-summary-card--violet > span { background: rgba(126, 103, 235, 0.14); color: var(--staff-violet); }
 
 .clinic-room-summary-card small,
@@ -141,7 +140,6 @@
 }
 
 .clinic-room-status--available { background: rgba(59, 193, 125, 0.13); color: #3bc17d; }
-.clinic-room-status--occupied { background: rgba(229, 165, 75, 0.14); color: #c48724; }
 .clinic-room-status--maintenance { background: rgba(211, 107, 114, 0.13); color: #d36b72; }
 .clinic-room-status--inactive { background: rgba(144, 160, 176, 0.14); color: var(--staff-muted); }
 

@@ -35,4 +35,17 @@ export const prescriptionApi = {
     retrieve<PrescriptionSummary[]>('/api/Prescription/Retrieve', 'Unable to load prescriptions.', signal),
   items: (prescriptionId: string, signal?: AbortSignal) =>
     retrieve<PrescriptionItem[]>(`/api/Prescription/${encodeURIComponent(prescriptionId)}/Items`, 'Unable to load prescription items.', signal),
+  complete: async (prescriptionId: string): Promise<PrescriptionSummary> => {
+    const result = await request<ApiResponse<PrescriptionSummary>>(`/api/Prescription/${encodeURIComponent(prescriptionId)}/Complete`, {
+      method: 'PATCH',
+    }, true)
+    return retrieveResult(result, 'Unable to complete prescription dispensing.')
+  },
+}
+
+function retrieveResult<T>(result: ApiResponse<T>, fallback: string): T {
+  if (!result.isSuccess || result.data == null) {
+    throw new Error(result.respMessage || fallback)
+  }
+  return result.data
 }

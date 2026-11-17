@@ -267,7 +267,7 @@ export async function request<T>(
   const expired = token !== null && (response.status === 401 || (body?.isSuccess === false && body.respCode === 401))
   const signOut = expired ? idleSignOutAction(token) : null
   if (signOut === 'idle' || signOut === 'quiet') {
-    redirectExpiredSession(token)
+    redirectExpiredSession(token ?? '')
   }
 
   if (!response.ok || expired) {

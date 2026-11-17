@@ -22,12 +22,22 @@
 .consultation-muted-copy { margin: 0; color: var(--staff-muted); font-size: 0.74rem; line-height: 1.55; }
 .consultation-inline-error { margin: 10px 0 0; padding: 9px 11px; border: 1px solid rgba(225, 91, 91, 0.45); border-radius: 8px; background: rgba(225, 91, 91, 0.08); color: #e88a8a; font-size: 0.72rem; }
 .consultation-history-list, .consultation-personal-list { display: grid; gap: 9px; }
-.consultation-history-item, .consultation-personal-item { padding: 11px 12px; border: 1px solid var(--staff-line); border-radius: 9px; background: var(--staff-subtle); }
-.consultation-history-item > div, .consultation-personal-item > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.consultation-history-item, .consultation-personal-item { width: 100%; padding: 11px 12px; border: 1px solid var(--staff-line); border-radius: 9px; background: var(--staff-subtle); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.consultation-history-item:hover, .consultation-personal-item:hover, .consultation-history-item:focus-visible, .consultation-personal-item:focus-visible { border-color: color-mix(in srgb, var(--staff-brand) 48%, var(--staff-line)); background: color-mix(in srgb, var(--staff-brand) 7%, var(--staff-subtle)); outline: 0; transform: translateY(-1px); }
+.consultation-history-item > div, .consultation-personal-item > div { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .consultation-history-item strong, .consultation-personal-item strong { color: var(--staff-ink); font-size: 0.75rem; }
-.consultation-history-item span, .consultation-personal-item span { color: var(--staff-muted); font-size: 0.65rem; text-align: right; }
-.consultation-history-item p, .consultation-personal-item p { margin: 6px 0 0; color: var(--staff-muted); font-size: 0.7rem; line-height: 1.45; }
-.consultation-personal-item small { display: block; margin-top: 5px; color: var(--staff-muted); font-size: 0.66rem; }
+.consultation-history-item span, .consultation-personal-item span { flex: 0 0 auto; color: var(--staff-muted); font-size: 0.64rem; text-align: right; }
+.consultation-history-item p, .consultation-personal-item p { margin: 7px 0 0; color: var(--staff-muted); font-size: 0.7rem; line-height: 1.45; }
+.consultation-history-item small, .consultation-personal-item small { display: block; margin-top: 7px; color: var(--staff-brand); font-size: 0.62rem; }
+.consultation-record-detail-dialog { width: min(620px, 100%); }
+.consultation-record-detail-list { display: grid; gap: 11px; margin: 0; }
+.consultation-record-detail-list div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--staff-line); }
+.consultation-record-detail-list div:last-child { padding-bottom: 0; border-bottom: 0; }
+.consultation-record-detail-list dt { color: var(--staff-muted); font-size: 0.7rem; }
+.consultation-record-detail-list dd { min-width: 0; margin: 0; color: var(--staff-ink); font-size: 0.75rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.consultation-record-detail-file { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.consultation-record-detail-file .staff-button { flex: 0 0 auto; }
+.consultation-record-detail-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
 .consultation-form-card { position: sticky; top: 20px; }
 .consultation-form { display: grid; gap: 14px; }
 .consultation-form > fieldset, .consultation-medicine { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 14px; border: 1px solid var(--staff-line); border-radius: 10px; }
@@ -75,5 +85,5 @@
 .consultation-state span { max-width: 440px; font-size: 0.74rem; }
 .consultation-state--error { border-color: rgba(225, 91, 91, 0.4); }
 @media (max-width: 980px) { .consultation-layout { grid-template-columns: 1fr; } .consultation-form-card { position: static; } }
-@media (max-width: 640px) { .consultation-page__topbar, .consultation-patient-banner { align-items: stretch; flex-direction: column; } .consultation-page__topbar .staff-button { align-self: flex-start; } .consultation-patient-banner { padding: 15px; } .consultation-detail-list div { grid-template-columns: 1fr; gap: 3px; } .consultation-medicine__fields { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .consultation-page__topbar, .consultation-patient-banner { align-items: stretch; flex-direction: column; } .consultation-page__topbar .staff-button { align-self: flex-start; } .consultation-patient-banner { padding: 15px; } .consultation-detail-list div, .consultation-record-detail-list div { grid-template-columns: 1fr; gap: 3px; } .consultation-history-item > div, .consultation-personal-item > div { display: grid; gap: 4px; } .consultation-history-item span, .consultation-personal-item span { text-align: left; } .consultation-record-detail-file { align-items: flex-start; flex-direction: column; } .consultation-medicine__fields { grid-template-columns: 1fr; } }
 @media (max-width: 420px) { .consultation-form__actions { justify-content: stretch; } .consultation-form__actions .staff-button { flex: 1; } }
