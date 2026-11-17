@@ -20,18 +20,16 @@ import { useI18n, type Copy, type Locale } from "@/providers/locale-provider";
 import { copyText } from "@/utils/document-download";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { orderApi } from "@/services/orderApi";
+import { prescriptionApi, type DispensedPrescription } from "@/services/prescriptionApi";
 import { isCompletedOrder, orderStatusColor, orderStatusLabel, showsPaymentHistory, trackingLabels, type MedicineOrder } from "@/utils/order-history";
 import { CLINIC_POINT, locateAddress, mapEmbedSrc, type MapPoint } from "@/utils/order-map";
 import { formatRm, isMedicineId, medicineName, type Medicine } from "@/utils/prescribed-medicine";
 import { cx } from "@/utils/cx";
 
 type SortKey = "newest" | "oldest" | "total_high" | "total_low";
-type OrderScope = "active" | "completed";
+export const OrderHistoryPage = () => <MedicineOrdersPage />;
 
-export const OrderHistoryPage = () => <MedicineOrdersPage scope="active" />;
-export const DispensingHistoryPage = () => <MedicineOrdersPage scope="completed" />;
-
-const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
+const MedicineOrdersPage = () => {
     const { profile, isReady } = useAuth();
     const { t, locale } = useI18n();
     const placedId = (useLocation().state as { placedId?: string } | null)?.placedId ?? null;
@@ -39,15 +37,14 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
     const { medicines: catalog } = useMedicineCatalog();
     const [query, setQuery] = useState("");
     const [sort, setSort] = useState<SortKey>("newest");
-    const [expanded, setExpanded] = useState<string | null>(scope === "active" ? placedId : null);
+    const [expanded, setExpanded] = useState<string | null>(placedId);
     const [tracking, setTracking] = useState<MedicineOrder | null>(null);
     const [shot, setShot] = useState<Medicine | null>(null);
-    const [notice, setNotice] = useState<string | null>(scope === "active" && placedId ? t.checkoutPlaced.replace("{id}", placedId) : null);
-    const completed = scope === "completed";
-    const title = completed ? t.dispensingTitle : t.ordersTitle;
-    const emptyTitle = completed ? t.dispensingEmptyTitle : t.ordersEmptyTitle;
-    const emptyBody = completed ? t.dispensingEmptyBody : t.ordersEmptyBody;
-    const EmptyIcon = completed ? Package : Truck01;
+    const [notice, setNotice] = useState<string | null>(placedId ? t.checkoutPlaced.replace("{id}", placedId) : null);
+    const title = t.ordersTitle;
+    const emptyTitle = t.ordersEmptyTitle;
+    const emptyBody = t.ordersEmptyBody;
+    const EmptyIcon = Truck01;
 
     useEffect(() => {
         if (!profile?.id || profile.id.startsWith("fam-")) {
@@ -68,9 +65,14 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
         };
     }, [locale, profile?.id]);
 
+    const inProgress = useMemo(
+        () => orders.filter((order) => !isCompletedOrder(order.status)),
+        [orders],
+    );
+
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        let list = orders.filter((order) => (completed ? isCompletedOrder(order.status) : !isCompletedOrder(order.status)));
+        let list = orders.filter((order) => isCompletedOrder(order.status));
         list = list.filter(
             (order) =>
                 !q ||
@@ -84,8 +86,8 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
             return new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime();
         });
         return list;
-    }, [completed, orders, query, sort]);
-    const page = usePagedList(filtered, `${completed}:${query}:${sort}`);
+    }, [orders, query, sort]);
+    const page = usePagedList(filtered, `${query}:${sort}`);
 
     const formatDate = (iso: string) =>
         new Date(iso).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
@@ -111,23 +113,15 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <div>
                         <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{title}</h1>
-                        <p className="mt-2 max-w-xl text-sm text-tertiary">{completed ? t.dispensingBody : t.ordersHint}</p>
+                        <p className="mt-2 max-w-xl text-sm text-tertiary">{t.ordersHint}</p>
                         <div className="mt-3 flex flex-wrap gap-3">
-                            {completed ? (
-                                <Button color="link-color" size="sm" href="/orders">
-                                    {t.ordersTrack}
-                                </Button>
-                            ) : (
-                                <Button color="link-color" size="sm" href="/dispensing-history">
-                                    {t.dispensingTitle}
-                                </Button>
-                            )}
+                            <Button color="link-color" size="sm" href="/dispensing-history">
+                                {t.dispensingTitle}
+                            </Button>
                         </div>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-                        {!completed ? (
-                            <Input placeholder={t.search} icon={SearchLg} value={query} onChange={setQuery} className="w-full sm:w-64" />
-                        ) : null}
+                        <Input placeholder={t.search} icon={SearchLg} value={query} onChange={setQuery} className="w-full sm:w-64" />
                         <Select selectedKey={sort} onSelectionChange={(key) => setSort(String(key) as SortKey)} className="w-full sm:w-44" items={[
                             { id: "newest", label: t.ordersSortNewest },
                             { id: "oldest", label: t.ordersSortOldest },
@@ -140,6 +134,23 @@ const MedicineOrdersPage = ({ scope }: { scope: OrderScope }) => {
                 </div>
 
                 <FormStatus success={notice} className="mt-4" />
+
+                {inProgress.length > 0 ? (
+                    <section className="mt-8">
+                        <h2 className="text-lg font-semibold text-primary">{locale === "zh" ? "进行中" : "In progress"}</h2>
+                        <ul className="mt-3 space-y-2">
+                            {inProgress.map((order) => (
+                                <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-primary px-4 py-3 ring-1 ring-secondary" key={order.id}>
+                                    <span>
+                                        <span className="block text-sm font-semibold text-primary">{order.id}</span>
+                                        <span className="text-sm text-tertiary">{orderStatusLabel(locale, order.status)}</span>
+                                    </span>
+                                    <Button color="secondary" size="sm" onClick={() => setTracking(order)}>{t.ordersTrack}</Button>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
 
                 {filtered.length === 0 ? (
                     <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
@@ -505,5 +516,86 @@ const MedicinePreview = ({ medicine, onClose }: { medicine: Medicine; onClose: (
                 </Dialog>
             </Modal>
         </ModalOverlay>
+    );
+};
+
+export const DispensingHistoryPage = () => {
+    const { profile, isReady } = useAuth();
+    const { t, locale } = useI18n();
+    const [rows, setRows] = useState<DispensedPrescription[]>([]);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        if (!profile?.id || profile.id.startsWith("fam-")) {
+            setRows([]);
+            return;
+        }
+        let cancel = false;
+        prescriptionApi
+            .dispensed()
+            .then((next) => {
+                if (!cancel) setRows(next);
+            })
+            .catch(() => {
+                if (!cancel) setError(true);
+            });
+        return () => {
+            cancel = true;
+        };
+    }, [profile?.id]);
+
+    const formatDate = (iso: string) =>
+        new Date(iso).toLocaleDateString(locale === "zh" ? "zh-MY" : "en-MY", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "Asia/Kuala_Lumpur",
+        });
+
+    if (!isReady) return <div className="careplus-landing min-h-dvh" />;
+    if (!profile) return <Navigate to="/login" replace />;
+
+    return (
+        <div className="careplus-landing flex min-h-dvh flex-col pt-[4.5rem] md:pt-22">
+            <LandingHeader />
+            <PageBreadcrumb />
+            <main className="mx-auto w-full max-w-container flex-1 px-4 py-8 md:px-8 md:py-10">
+                <h1 className="text-display-xs font-semibold text-primary [font-family:var(--font-display)] md:text-display-sm">{t.dispensingTitle}</h1>
+                <p className="mt-2 max-w-xl text-sm text-tertiary">{t.dispensingBody}</p>
+                <Button className="mt-3" color="link-color" href="/orders" size="sm">{t.ordersTitle}</Button>
+
+                {error ? <p className="mt-6 text-sm text-error-primary" role="alert">{locale === "zh" ? "暂时无法加载发药记录。" : "We could not load dispensing history."}</p> : null}
+                {!error && rows.length === 0 ? (
+                    <div className="mx-auto mt-10 flex max-w-md flex-col items-center rounded-2xl bg-primary px-6 py-10 text-center ring-1 ring-secondary">
+                        <FeaturedIcon color="gray" icon={Package} size="lg" theme="light" />
+                        <h2 className="mt-4 text-lg font-semibold text-primary">{t.dispensingEmptyTitle}</h2>
+                        <p className="mt-2 text-sm text-tertiary">{t.dispensingEmptyBody}</p>
+                    </div>
+                ) : null}
+                <ul className="mt-8 space-y-4">
+                    {rows.map((row) => (
+                        <li className="rounded-2xl bg-primary p-4 shadow-xs ring-1 ring-secondary md:p-5" key={row.prescriptionId}>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-md font-semibold text-primary">{row.prescriptionId}</p>
+                                    <p className="mt-1 text-sm text-tertiary">{formatDate(row.dispensedAt)}</p>
+                                </div>
+                                <Badge color="success" size="sm">{locale === "zh" ? "已完成" : "Completed"}</Badge>
+                            </div>
+                            <ul className="mt-4 space-y-3">
+                                {row.items.map((item) => (
+                                    <li key={item.prescriptionItemId}>
+                                        <p className="text-sm font-semibold text-primary">{item.medicineName}</p>
+                                        <p className="text-sm text-tertiary">{item.dosage} · ×{item.quantity}</p>
+                                        {item.instructions ? <p className="text-sm text-tertiary">{item.instructions}</p> : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        </li>
+                    ))}
+                </ul>
+            </main>
+            <LandingFooter />
+        </div>
     );
 };

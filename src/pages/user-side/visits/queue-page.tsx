@@ -102,7 +102,9 @@ export const QueuePage = () => {
         if (value === "InConsultation") return "看诊中";
         return value;
     };
-    const active = overview?.activeQueue;
+    const active = overview?.activeQueue && !["Completed", "Skipped", "Cancelled"].includes(overview.activeQueue.status)
+        ? overview.activeQueue
+        : null;
     const checkIn = overview?.checkIn;
 
     const confirmCheckIn = async () => {
@@ -136,7 +138,7 @@ export const QueuePage = () => {
                         <Button className="mt-3" color="secondary" size="sm" onClick={() => void load()}>{copy.retry}</Button>
                     </div>
                 ) : null}
-                {notice ? <p className="mt-6 rounded-2xl bg-success-secondary px-4 py-3 text-sm font-semibold text-success-primary" role="status">{notice}</p> : null}
+                {notice ? <p className="mt-6 rounded-2xl bg-[#dcfce7] px-4 py-3 text-sm font-semibold text-[#14532d] dark:bg-[#14532d] dark:text-white" role="status">{notice}</p> : null}
 
                 {loading ? (
                     <div className="mt-8 rounded-2xl bg-primary p-10 text-center text-sm text-tertiary ring-1 ring-secondary">{copy.loading}</div>

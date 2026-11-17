@@ -107,7 +107,10 @@ export const RegisterPage = () => {
             emailVerificationSuccess={emailVerificationSuccess}
             emailVerificationLoading={emailVerificationLoading}
             fieldErrors={fieldErrors}
-            onFieldChange={clearFieldError}
+            onFieldChange={(field) => {
+                clearFieldError(field);
+                if (field === "emailCode") setEmailVerificationError(null);
+            }}
             onUsernameChange={(username) => {
                 setError(null);
                 setUsernameDraft(username);
