@@ -582,12 +582,17 @@ export const DispensingHistoryPage = () => {
                                 </div>
                                 <Badge color="success" size="sm">{locale === "zh" ? "已完成" : "Completed"}</Badge>
                             </div>
-                            <ul className="mt-4 space-y-3">
+                            <ul className="mt-4 w-full min-w-0 divide-y divide-secondary">
                                 {row.items.map((item) => (
-                                    <li key={item.prescriptionItemId}>
-                                        <p className="text-sm font-semibold text-primary">{item.medicineName}</p>
-                                        <p className="text-sm text-tertiary">{item.dosage} · ×{item.quantity}</p>
-                                        {item.instructions ? <p className="text-sm text-tertiary">{item.instructions}</p> : null}
+                                    <li className="min-w-0 py-3 first:pt-0 last:pb-0" key={item.prescriptionItemId}>
+                                        <p className="break-words text-sm font-semibold text-primary">{item.medicineName}</p>
+                                        <p className="mt-1 break-words text-sm text-tertiary">
+                                            {locale === "zh" ? `用法：${item.dosage}` : `Dosage: ${item.dosage}`}
+                                        </p>
+                                        <p className="break-words text-sm text-tertiary">
+                                            {locale === "zh" ? `数量：${item.quantity}` : `Quantity: ${item.quantity}`}
+                                        </p>
+                                        {item.instructions ? <p className="break-words text-sm text-tertiary">{item.instructions}</p> : null}
                                     </li>
                                 ))}
                             </ul>
