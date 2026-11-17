@@ -117,13 +117,17 @@ export const ChatPage = () => {
     }, []);
 
     const sendDraft = async () => {
-        if (await send(draft)) {
-            setDraft("");
+        const text = draft;
+        if (!text.trim() || isSending) return;
+        setDraft("");
+        if (await send(text)) {
             // Dismiss the keyboard so the layout can snap back.
             (document.activeElement as HTMLElement | null)?.blur?.();
             window.setTimeout(resetChatViewport, 50);
             window.setTimeout(resetChatViewport, 300);
+            return;
         }
+        setDraft(text);
     };
 
     const composerError =
