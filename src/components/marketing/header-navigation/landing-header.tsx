@@ -71,6 +71,7 @@ const useServiceGroups = (): ServiceGroup[] => {
     const invoicesHref = href("/invoices");
     const paymentsHref = href("/payments");
     const ordersHref = href("/orders");
+    const dispensingHref = href("/dispensing-history");
     const familyHref = href("/family");
     const recordsHref = href("/clinic-records");
     const healthRecordsHref = href("/records");
@@ -109,6 +110,7 @@ const useServiceGroups = (): ServiceGroup[] => {
                 { title: t.medTitle, subtitle: t.medSearch, href: medicineHref },
                 { title: t.cart, subtitle: t.medCartEmptyHint, href: cartHref },
                 { title: t.ordersTitle, subtitle: t.ordersHint, href: ordersHref },
+                { title: t.dispensingTitle, subtitle: t.dispensingBody, href: dispensingHref },
             ],
         },
         {
@@ -134,7 +136,7 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.announcementsHint,
             Icon: Bell01,
             links: [
-                { title: t.announcements, subtitle: t.announcementsHint, href: href("/announcements") },
+                { title: t.announcements, subtitle: t.announcementsHint, href: overdueSafeHref("/announcements", overdue) },
                 { title: t.notifications, subtitle: profile ? t.notifEmptyHint : t.notifGuestHint, href: notificationsHref },
             ],
         },

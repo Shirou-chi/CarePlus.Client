@@ -24,7 +24,7 @@ const statusLabels: Record<string, string> = {
   Skipped: 'Missed',
   Cancelled: 'Cancelled',
 }
-const statusOptions = ['All statuses', ...Object.values(statusLabels)]
+const statusOptions = ['In queue', ...Object.values(statusLabels)]
 
 const metrics: { status: string; icon: IconName; tone: string }[] = [
   { status: 'Waiting', icon: 'clock', tone: 'amber' },
@@ -48,7 +48,7 @@ export function StaffQueuePage() {
   const canConsult = user?.role === 'Doctor' || user?.role === 'Admin'
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('All statuses')
+  const [statusFilter, setStatusFilter] = useState('In queue')
   const [searchTerm, setSearchTerm] = useState('')
   const [current, setCurrent] = useState<QueueResult>()
   const [reload, setReload] = useState(0)
@@ -95,7 +95,8 @@ export function StaffQueuePage() {
   const query = searchTerm.trim().toLowerCase()
   const visibleRows = rows.filter((row) => {
     const label = statusLabels[row.status] ?? row.status
-    return (statusFilter === 'All statuses' || statusFilter === label)
+    const stillInQueue = row.status === 'Waiting' || row.status === 'Called' || row.status === 'InConsultation'
+    return (statusFilter === 'In queue' ? stillInQueue : statusFilter === label)
       && (!query || [row.queueNumber, row.patientName, row.doctorName, row.appointmentId].some((value) => value.toLowerCase().includes(query)))
   })
 
@@ -226,8 +227,8 @@ export function StaffQueuePage() {
             ) : !current.error ? (
               <div className="staff-queue__empty" role="status">
                 <Icon name="clock" size={25} />
-                <strong>{rows.length ? 'No matching queue entries' : 'No patients checked in'}</strong>
-                <span>{rows.length ? 'Try a different search or status.' : 'Patients appear here once they check in for an appointment.'}</span>
+                <strong>{rows.length ? (!query && statusFilter === 'In queue' ? 'No one left in the queue' : 'No matching queue entries') : 'No patients checked in'}</strong>
+                <span>{rows.length ? (!query && statusFilter === 'In queue' ? 'Finished visits leave the queue. Use the status filter to review them.' : 'Try a different search or status.') : 'Patients appear here once they check in for an appointment.'}</span>
               </div>
             ) : null}
           </section>

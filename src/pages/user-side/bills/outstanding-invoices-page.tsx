@@ -143,6 +143,7 @@ export const OutstandingInvoicesPage = () => {
                                         <p className="text-sm font-semibold text-brand-secondary">{invoice.id}</p>
                                         <p className="mt-1 truncate text-md font-semibold text-primary">{invoice.doctorName}</p>
                                         <p className="truncate text-sm text-tertiary">{invoice.visitType}</p>
+                                        {invoice.billedForName ? <p className="truncate text-sm font-medium text-primary">{t.invoicesFamilyMember.replace("{name}", invoice.billedForName)}</p> : null}
                                     </div>
                                     <Badge color={invoice.status === "overdue" ? "error" : "warning"} size="sm">
                                         {invoice.status === "overdue" ? t.invoicesOverdue : t.invoicesDue}
@@ -215,6 +216,7 @@ const InvoiceDetail = ({
                         <p className="mt-1 text-sm text-tertiary">
                             {invoice.doctorName} · {invoice.visitType}
                         </p>
+                        {invoice.billedForName ? <p className="mt-1 text-sm font-medium text-primary">{t.invoicesFamilyMember.replace("{name}", invoice.billedForName)}</p> : null}
                         <p className="mt-1 text-sm text-tertiary">
                             {t.invoicesIssued} {formatDate(invoice.issuedAt)} · {t.invoicesDueOn.replace("{date}", formatDate(invoice.dueAt))}
                         </p>

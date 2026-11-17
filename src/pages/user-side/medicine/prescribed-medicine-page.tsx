@@ -12,6 +12,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n } from "@/providers/locale-provider";
+import { isUnderTwelve } from "@/utils/age";
 import { cx } from "@/utils/cx";
 import {
     formatRm,
@@ -80,8 +81,10 @@ export const PrescribedMedicinePage = () => {
         { label: t.medMethod, value: medicine.method },
     ];
 
+    const childAccount = isUnderTwelve(profile.dateOfBirth);
+
     const addToCart = () => {
-        if (clinicOnly) return;
+        if (childAccount || clinicOnly) return;
         if (!canAdd) {
             setSuccess(null);
             setError(stock === 0 ? t.medOutOfStock : t.medQtyMax);
@@ -223,7 +226,7 @@ export const PrescribedMedicinePage = () => {
 
                         <FormStatus error={error} success={success} />
 
-                        {clinicOnly ? null : (
+                        {childAccount ? <p className="mt-5 text-sm text-tertiary">{t.medChildBlocked}</p> : clinicOnly ? null : (
                             <Button color="primary" size="lg" className="careplus-ink mt-5 w-full" isDisabled={!canAdd} onPress={addToCart}>
                                 {t.medAddCart}
                             </Button>

@@ -226,6 +226,7 @@ export const SignupCardCombined = ({
                         {emailVerificationStatus !== "idle" ? (
                             <Input
                                 isRequired
+                                validationBehavior="aria"
                                 label={t.emailVerificationCode}
                                 name="emailVerificationCode"
                                 value={emailCode}

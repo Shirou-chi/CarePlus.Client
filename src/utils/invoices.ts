@@ -51,6 +51,7 @@ export type OutstandingInvoice = {
     doctorId: string;
     doctorName: string;
     visitType: string;
+    billedForName?: string | null;
     total: number;
     daysOverdue: number;
     lateFee: number;
@@ -66,6 +67,7 @@ export type PaidInvoice = {
     doctorId: string;
     doctorName: string;
     visitType: string;
+    billedForName?: string | null;
     bill: number;
     lateFee: number;
     daysOverdue: number;

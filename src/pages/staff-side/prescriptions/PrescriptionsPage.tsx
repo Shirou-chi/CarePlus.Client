@@ -25,22 +25,42 @@ function isCompletedPrescriptionStatus(status: string) {
 }
 
 function displayPrescriptionStatus(status: string) {
-  return isCompletedPrescriptionStatus(status) ? 'Completed' : status
+  const normalized = normalizedPrescriptionStatus(status)
+  if (isCompletedPrescriptionStatus(status)) return 'Completed'
+  if (normalized === 'preparing') return 'Preparing'
+  return status
 }
 
-function PrescriptionDetails({ prescription, canComplete, onClose, onCompleted }: { prescription: PrescriptionSummary; canComplete: boolean; onClose: () => void; onCompleted: () => void }) {
+function isPreparingStatus(status: string) {
+  return normalizedPrescriptionStatus(status) === 'preparing'
+}
+
+function PrescriptionDetails({ prescription, canDispense, onClose, onChanged }: { prescription: PrescriptionSummary; canDispense: boolean; onClose: () => void; onChanged: (message: string) => void }) {
   const { prescriptionId } = prescription
   const [items, setItems] = useState<PrescriptionItem[]>()
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [saving, setSaving] = useState(false)
 
+  const markPreparing = async () => {
+    setError('')
+    setSaving(true)
+    try {
+      await prescriptionApi.prepare(prescriptionId)
+      onChanged('Prescription marked as preparing.')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to mark this prescription as preparing.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const completeDispensing = async () => {
     setError('')
     setSaving(true)
     try {
       await prescriptionApi.complete(prescriptionId)
-      onCompleted()
+      onChanged('Prescription dispensing completed.')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to complete prescription dispensing.')
     } finally {
@@ -93,10 +113,14 @@ function PrescriptionDetails({ prescription, canComplete, onClose, onCompleted }
           </ul>
         )}
       </section>
-      {canComplete && !isClosedPrescriptionStatus(prescription.status) ? (
+      {canDispense && !isClosedPrescriptionStatus(prescription.status) ? (
         <div className="prescription-dialog__actions">
           <button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={onClose}>Close</button>
-          <button className="staff-button staff-button--primary" disabled={saving} type="button" onClick={() => void completeDispensing()}>{saving ? 'Completing…' : 'Complete dispensing'}</button>
+          {isPreparingStatus(prescription.status) ? (
+            <button className="staff-button staff-button--primary" disabled={saving} type="button" onClick={() => void completeDispensing()}>{saving ? 'Completing…' : 'Complete dispensing'}</button>
+          ) : (
+            <button className="staff-button staff-button--primary" disabled={saving} type="button" onClick={() => void markPreparing()}>{saving ? 'Saving…' : 'Mark preparing'}</button>
+          )}
         </div>
       ) : null}
     </StaffDialog>
@@ -133,7 +157,7 @@ export function PrescriptionsPage() {
   }, [notice])
 
   const search = query.trim().toLowerCase()
-  const pendingRows = rows?.filter((row) => normalizedPrescriptionStatus(row.status) === 'pending') ?? []
+  const pendingRows = rows?.filter((row) => !isCompletedPrescriptionStatus(row.status) && normalizedPrescriptionStatus(row.status) !== 'cancelled') ?? []
   const completedRows = rows?.filter((row) => isCompletedPrescriptionStatus(row.status)) ?? []
   const filterRows = recordFilter === 'all' ? rows ?? [] : recordFilter === 'completed' ? completedRows : pendingRows
   const filterLabel = recordFilter === 'all' ? 'prescriptions' : recordFilter === 'completed' ? 'completed prescriptions' : 'pending prescriptions'
@@ -213,7 +237,7 @@ export function PrescriptionsPage() {
           </section>
         </div>
       </main>
-      {selected ? <PrescriptionDetails key={selected.prescriptionId} canComplete={user?.role === 'Pharmacist'} prescription={selected} onClose={() => setSelected(undefined)} onCompleted={() => { setSelected(undefined); setNotice('Prescription dispensing completed.'); setAttempt((value) => value + 1) }} /> : null}
+      {selected ? <PrescriptionDetails key={selected.prescriptionId} canDispense={user?.role === 'Pharmacist' || user?.role === 'Admin'} prescription={selected} onClose={() => setSelected(undefined)} onChanged={(message) => { setSelected(undefined); setNotice(message); setAttempt((value) => value + 1) }} /> : null}
       {notice ? <div className="staff-toast" role="status">{notice}</div> : null}
     </div>
   )

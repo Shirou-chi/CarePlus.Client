@@ -13,6 +13,7 @@ import { useAuth } from "@/providers/auth-provider";
 import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useI18n, type Copy } from "@/providers/locale-provider";
+import { isUnderTwelve } from "@/utils/age";
 import {
     buyableUnits,
     getClinicPharmacy,
@@ -53,8 +54,10 @@ export const PrescribedMedicineBrowsePage = () => {
         return <Navigate to="/login" replace />;
     }
 
+    const childAccount = isUnderTwelve(profile.dateOfBirth);
+
     const addOne = (medicine: Medicine, source: HTMLElement) => {
-        if (medicine.requiresPrescription) return;
+        if (childAccount || medicine.requiresPrescription) return;
         const remaining = buyableUnits(remainingFor(medicine.id), medicine.stock);
         if (remaining <= 0) {
             return;
@@ -116,6 +119,8 @@ export const PrescribedMedicineBrowsePage = () => {
                     </div>
                 </div>
 
+                {childAccount ? <p className="mt-4 rounded-xl bg-primary px-4 py-3 text-sm text-tertiary ring-1 ring-secondary">{t.medChildBlocked}</p> : null}
+
                 {!ready ? null : error ? (
                     <div className="mt-6">
                         <FormStatus error={t.medLoadFailed} />
@@ -136,7 +141,7 @@ export const PrescribedMedicineBrowsePage = () => {
                 ) : (
                     <ul className={view === "grid" ? "mt-5 grid grid-cols-2 gap-4 lg:grid-cols-3" : "mt-5 flex flex-col gap-3"}>
                         {results.map((medicine) => {
-                            const remaining = buyableUnits(remainingFor(medicine.id), medicine.stock);
+                            const remaining = childAccount ? 0 : buyableUnits(remainingFor(medicine.id), medicine.stock);
                             return (
                                 <li key={medicine.id}>
                                     <MedicineCard
@@ -145,7 +150,7 @@ export const PrescribedMedicineBrowsePage = () => {
                                         layout={view}
                                         kindLabel={kindLabel(medicine.kind, t)}
                                         inStockLabel={t.medInStock}
-                                        atLimitLabel={medicine.stock === 0 ? t.medOutOfStock : t.medCartLimit}
+                                        atLimitLabel={childAccount ? t.medChildBlocked : medicine.stock === 0 ? t.medOutOfStock : t.medCartLimit}
                                         clinicOnlyLabel={t.medClinicOnly}
                                         viewMoreLabel={t.medViewMore}
                                         addLabel={t.medAddCart}

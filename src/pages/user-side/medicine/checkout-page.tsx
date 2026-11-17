@@ -18,6 +18,7 @@ import { writePaymentCheckout } from "@/utils/payment-checkout";
 import { trackingLabels } from "@/utils/order-history";
 import { PROFILE_ADDRESS_ID } from "@/utils/delivery-address";
 import { formatRm, getClinicPharmacy, medicineName } from "@/utils/prescribed-medicine";
+import { isUnderTwelve } from "@/utils/age";
 
 export const CheckoutPage = () => {
     const navigate = useNavigate();
@@ -61,8 +62,10 @@ export const CheckoutPage = () => {
     const subtotal = draft.lines.reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
     const total = subtotal + draft.deliveryFee;
 
+    const childAccount = isUnderTwelve(profile.dateOfBirth);
+
     const placeOrder = async () => {
-        if (placing) return;
+        if (placing || childAccount) return;
         setPlacing(true);
         setPlaceError(null);
         if (!getAuthToken() || profile.id.startsWith("fam-")) {
@@ -105,7 +108,14 @@ export const CheckoutPage = () => {
             }
 
             placedId = orderId;
-            if (method === "card" || method === "fpx") {
+            if (method === "card") {
+                if (!draft.cardId) {
+                    setPlaceError(t.medCartNoPaymentCard);
+                    setPlacing(false);
+                    return;
+                }
+                await orderApi.payWithCard(orderId, draft.cardId, labels);
+            } else if (method === "fpx") {
                 writePaymentCheckout({
                     kind: "medicine",
                     orderId,
@@ -130,7 +140,8 @@ export const CheckoutPage = () => {
             const message = error instanceof Error ? error.message : "";
             const monthLimit = message.includes("one month");
             const noStock = message.toLowerCase().includes("stock");
-            setPlaceError(monthLimit ? t.medQtyMax : noStock ? t.checkoutNoStock : message || t.checkoutPlaceFailed);
+            const childBlocked = message.includes("under 12");
+            setPlaceError(childBlocked ? t.medChildBlocked : monthLimit ? t.medQtyMax : noStock ? t.checkoutNoStock : message || t.checkoutPlaceFailed);
             setPlacing(false);
             return;
         }
@@ -197,8 +208,9 @@ export const CheckoutPage = () => {
                                 <dd className="text-lg font-semibold text-primary">{formatRm(total)}</dd>
                             </div>
                         </dl>
+                        {childAccount ? <p className="mt-4 text-sm text-tertiary">{t.medChildBlocked}</p> : null}
                         {placeError ? <p className="mt-4 text-sm font-medium text-fg-error-primary">{placeError}</p> : null}
-                        <Button color="primary" size="lg" className="careplus-ink mt-6 w-full" isDisabled={placing} isLoading={placing} onClick={() => void placeOrder()}>
+                        <Button color="primary" size="lg" className="careplus-ink mt-6 w-full" isDisabled={placing || childAccount} isLoading={placing} onClick={() => void placeOrder()}>
                             {t.checkoutPlace}
                         </Button>
                         <Button color="secondary" size="md" className="mt-3 w-full" href="/cart">

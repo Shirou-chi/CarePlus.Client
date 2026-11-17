@@ -154,6 +154,7 @@ export const InvoicePaymentPage = () => {
                         <p className="mt-1 text-sm text-tertiary">
                             {invoice.doctorName} · {invoice.visitType}
                         </p>
+                        {invoice.billedForName ? <p className="mt-1 text-sm font-medium text-primary">{t.invoicesFamilyMember.replace("{name}", invoice.billedForName)}</p> : null}
                         <p className="mt-1 text-sm text-tertiary">{t.invoicesDueOn.replace("{date}", formatDate(invoice.dueAt))}</p>
 
                         {record ? (

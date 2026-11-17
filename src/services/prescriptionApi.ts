@@ -17,6 +17,13 @@ export type PrescriptionItem = {
   instructions: string
 }
 
+export type DispensedPrescription = {
+  prescriptionId: string
+  dispensedAt: string
+  status: string
+  items: PrescriptionItem[]
+}
+
 export function isClosedPrescriptionStatus(status: string) {
   const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, '_')
   return ['completed', 'dispensed', 'picked_up', 'cancelled'].includes(normalized)
@@ -41,6 +48,14 @@ export const prescriptionApi = {
     }, true)
     return retrieveResult(result, 'Unable to complete prescription dispensing.')
   },
+  prepare: async (prescriptionId: string): Promise<PrescriptionSummary> => {
+    const result = await request<ApiResponse<PrescriptionSummary>>(`/api/Prescription/${encodeURIComponent(prescriptionId)}/Preparing`, {
+      method: 'PATCH',
+    }, true)
+    return retrieveResult(result, 'Unable to mark this prescription as preparing.')
+  },
+  dispensed: (signal?: AbortSignal) =>
+    retrieve<DispensedPrescription[]>('/api/Prescription/Dispensed', 'Unable to load dispensing history.', signal),
 }
 
 function retrieveResult<T>(result: ApiResponse<T>, fallback: string): T {
