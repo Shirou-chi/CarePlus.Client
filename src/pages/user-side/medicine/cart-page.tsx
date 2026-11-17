@@ -39,6 +39,7 @@ import {
 } from "@/utils/prescribed-medicine";
 import { applyPaymentCards, readProfileSettings, writeProfileSettings } from "@/utils/profile-settings";
 import { writeCheckoutDraft } from "@/utils/checkout-draft";
+import { isUnderTwelve } from "@/utils/age";
 
 type FulfilmentMethod = "pickup" | "delivery";
 type PaymentMethod = "cod" | "card" | "fpx";
@@ -176,9 +177,15 @@ export const CartPage = () => {
         setPendingRemove(null);
     };
 
+    const childAccount = isUnderTwelve(profile?.dateOfBirth);
+
     const checkout = () => {
         setCheckoutError(null);
         if (!profile) {
+            return;
+        }
+        if (childAccount) {
+            setCheckoutError(t.medChildBlocked);
             return;
         }
         if (selectedLines.length === 0) {
@@ -199,6 +206,7 @@ export const CartPage = () => {
             fulfilment,
             paymentLabel: paymentMethod === "card" && card ? `${card.brand} ···· ${card.last4}` : paymentMethod === "fpx" ? t.medCartPayFpx : t.medCartPayCod,
             paymentKind: paymentMethod,
+            cardId: paymentMethod === "card" ? card?.id : undefined,
             addressId: fulfilment === "delivery" ? activeAddress?.id : undefined,
             address: fulfilment === "delivery" && activeAddress ? `${deliveryOptionLabel(activeAddress, t)} · ${formatDeliveryLine(activeAddress)}` : undefined,
             deliveryFee,
@@ -403,12 +411,12 @@ export const CartPage = () => {
                                 size="lg"
                                 className="careplus-ink mt-6 w-full"
                                 iconTrailing={ArrowRight}
-                                isDisabled={selectedLines.length === 0}
+                                isDisabled={childAccount || selectedLines.length === 0}
                                 onClick={checkout}
                             >
                                 {t.medCartCheckout}
                             </Button>
-                            <p className="mt-2 text-xs text-tertiary">{t.medCartCheckoutHint}</p>
+                            <p className="mt-2 text-xs text-tertiary">{childAccount ? t.medChildBlocked : t.medCartCheckoutHint}</p>
                         </aside>
                     </div>
                 )}

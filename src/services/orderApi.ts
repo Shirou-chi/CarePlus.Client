@@ -69,6 +69,18 @@ export const orderApi = {
         return toOrder(result.data, labels);
     },
 
+    async payWithCard(orderId: string, cardId: string, labels: TrackingLabels): Promise<MedicineOrder> {
+        const result = await request<ApiResponse<MedicineOrderResponse>>(
+            `/api/MedicineOrder/${encodeURIComponent(orderId)}/pay`,
+            { method: "POST", body: JSON.stringify({ cardId: Number(cardId) }) },
+            true,
+        );
+        if (!result.isSuccess || !result.data) {
+            throw new Error(result.respMessage || "Unable to charge the saved card.");
+        }
+        return toOrder(result.data, labels);
+    },
+
     async pay(orderId: string, stripeSessionId: string, labels: TrackingLabels): Promise<MedicineOrder> {
         const result = await request<ApiResponse<MedicineOrderResponse>>(
             `/api/MedicineOrder/${encodeURIComponent(orderId)}/pay`,

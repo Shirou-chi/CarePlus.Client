@@ -235,6 +235,7 @@ export const PaymentHistoryPage = () => {
                                             <p className="text-sm font-semibold text-brand-secondary">{id}</p>
                                             <p className="mt-1 truncate text-md font-semibold text-primary">{title}</p>
                                             <p className="truncate text-sm text-tertiary">{subtitle}</p>
+                                            {entry.kind === "clinic" && entry.invoice.billedForName ? <p className="truncate text-sm font-medium text-primary">{t.invoicesFamilyMember.replace("{name}", entry.invoice.billedForName)}</p> : null}
                                         </div>
                                         <Badge color="success" size="sm">
                                             {t.paymentsPaid}
@@ -317,6 +318,7 @@ const PaymentDetail = ({
                         <p className="mt-1 text-sm text-tertiary">
                             {payment.doctorName} · {payment.visitType}
                         </p>
+                        {payment.billedForName ? <p className="mt-1 text-sm font-medium text-primary">{t.invoicesFamilyMember.replace("{name}", payment.billedForName)}</p> : null}
                         <p className="mt-1 text-sm text-tertiary">
                             {t.paymentsPaidOn.replace("{date}", formatDate(payment.paidAt))} · {t.paymentsMethod} {payment.method}
                         </p>

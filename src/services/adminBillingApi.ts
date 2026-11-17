@@ -9,6 +9,7 @@ export type AdminBillingRecord = {
   recordId: string
   doctorName: string
   visitType: string
+  billedForName?: string | null
   issuedAt: string
   dueAt: string | null
   status: 'Paid' | 'Pending' | 'Overdue' | string

@@ -181,7 +181,7 @@ export function BillingPage() {
                     <tr role="row" key={record.invoiceId}>
                       <td role="cell" data-row-title><span className="billing-invoice"><strong>{record.invoiceId}</strong><small>{record.recordId || 'No linked record'}</small></span></td>
                       <td role="cell" data-label="Patient"><span className="billing-patient"><span aria-hidden="true">{getInitials(record.patientName, record.patientUsername)}</span><span><strong>{record.patientName}</strong><small>{record.patientUsername ? `@${record.patientUsername}` : record.patientId}</small></span></span></td>
-                      <td role="cell" data-label="Service"><span className="billing-service"><strong>{record.source}</strong><small>{record.visitType || record.doctorName || 'Clinic billing'}</small></span></td>
+                      <td role="cell" data-label="Service"><span className="billing-service"><strong>{record.source}</strong><small>{record.visitType || record.doctorName || 'Clinic billing'}{record.billedForName ? ` · ${record.billedForName}` : ''}</small></span></td>
                       <td role="cell" data-label="Issued"><span className="billing-date">{formatDate(record.issuedAt)}</span></td>
                       <td role="cell" data-label="Amount"><span className="billing-amount"><strong>{formatCurrency(record.total)}</strong>{record.status === 'Overdue' ? <small>+ {formatCurrency(record.lateFee)} late fee</small> : null}</span></td>
                       <td role="cell" data-label="Status"><span className={`billing-status billing-status--${statusClass(record.status)}`}>{record.status}</span></td>
@@ -202,6 +202,7 @@ export function BillingPage() {
           <dl className="billing-detail-list">
             <div><dt>Patient</dt><dd>{selectedRecord.patientName}<small>{selectedRecord.patientUsername ? `@${selectedRecord.patientUsername}` : selectedRecord.patientId}</small></dd></div>
             <div><dt>Billing source</dt><dd>{selectedRecord.source}<small>{selectedRecord.visitType || 'Clinic charge'}</small></dd></div>
+            {selectedRecord.billedForName ? <div><dt>Family member</dt><dd>{selectedRecord.billedForName}</dd></div> : null}
             <div><dt>Issued</dt><dd>{formatDateTime(selectedRecord.issuedAt)}</dd></div>
             <div><dt>Due</dt><dd>{formatDate(selectedRecord.dueAt)}</dd></div>
             <div><dt>Base amount</dt><dd>{formatCurrency(selectedRecord.total)}</dd></div>
