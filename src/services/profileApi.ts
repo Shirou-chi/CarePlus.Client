@@ -3,6 +3,7 @@ import type { ApiResponse } from "./api";
 import type { CurrentUserResponse } from "./authApi";
 
 export type ProfileUpdateRequest = {
+    username?: string;
     name?: string;
     email?: string;
     phone?: string;

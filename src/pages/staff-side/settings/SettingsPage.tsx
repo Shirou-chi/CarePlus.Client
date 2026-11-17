@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { TextSizeSwitch } from '@/components/application/text-size-switch'
 import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '@/providers/theme-provider'
-import { resolveProfilePictureUrl } from '@/services/profileApi'
+import { profileApi, resolveProfilePictureUrl } from '@/services/profileApi'
 import { staffApi, type StaffRecord } from '@/services/staffApi'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
@@ -168,16 +168,18 @@ export function SettingsPage() {
     setProfileError('')
 
     try {
-      if (editingField === 'username') {
-        await staffApi.update({ staffId: user.staffId, username: value })
-        updateStaffProfile({ username: value })
-      } else if (editingField === 'name') {
-        await staffApi.update({ staffId: user.staffId, name: value })
-        updateStaffProfile({ name: value })
-      } else {
-        await staffApi.update({ staffId: user.staffId, phone: phoneValue })
-        updateStaffProfile({ phone: phoneValue })
-      }
+      const updatedUser = await profileApi.updateProfile(
+        editingField === 'username'
+          ? { username: value }
+          : editingField === 'name'
+            ? { name: value }
+            : { phone: phoneValue },
+      )
+      updateStaffProfile({
+        username: updatedUser.username,
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+      })
       setEditingField(null)
       setProfileDraft('')
       announce(`${editingField === 'username' ? 'Username' : editingField === 'name' ? 'Full name' : 'Phone number'} saved successfully.`)
