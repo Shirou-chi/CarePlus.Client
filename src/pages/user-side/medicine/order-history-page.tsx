@@ -592,7 +592,11 @@ export const DispensingHistoryPage = () => {
                                         <p className="break-words text-sm text-tertiary">
                                             {locale === "zh" ? `数量：${item.quantity}` : `Quantity: ${item.quantity}`}
                                         </p>
-                                        {item.instructions ? <p className="break-words text-sm text-tertiary">{item.instructions}</p> : null}
+                                        {item.instructions ? (
+                                            <p className="break-words text-sm text-tertiary">
+                                                {locale === "zh" ? `备注：${item.instructions}` : `Note: ${item.instructions}`}
+                                            </p>
+                                        ) : null}
                                     </li>
                                 ))}
                             </ul>
