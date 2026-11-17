@@ -318,8 +318,8 @@ export const ServiceNav = ({ items, allItems }: { items: ServiceNavItem[]; allIt
                                 {allItems.map((item, index) => (
                                     <li
                                         key={item.label}
-                                        className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300"
-                                        style={{ animationDelay: `${Math.min(index, 12) * 35}ms` }}
+                                        className={tourStep === null ? "animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-300" : undefined}
+                                        style={tourStep === null ? { animationDelay: `${Math.min(index, 12) * 35}ms` } : undefined}
                                     >
                                         <a
                                             href={item.href}

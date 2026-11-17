@@ -126,11 +126,24 @@ export const HomeTour = ({ label, hint, step, total, targets, onSkip, onBack, on
             const needsVScroll = Math.abs(vDelta) > 1;
 
             if (reduce || (!needsHScroll && !needsVScroll && !needsMenuScroll)) {
-                animating.current = false;
                 if (scroller) scroller.scrollLeft = desired;
                 if (menuScroller) menuScroller.scrollTop = menuDesired;
                 if (needsVScroll) window.scrollBy({ top: vDelta, behavior: "auto" });
-                remember(readBox(target));
+                // The All-services dialog zooms in for 300ms. Keep the hole on the tile until that settles.
+                const followUntil = performance.now() + (reduce ? 0 : 360);
+                animating.current = !reduce;
+                const follow = () => {
+                    if (cancelled) return;
+                    const liveTarget = resolveTourTarget(step, targets) ?? target;
+                    remember(readBox(liveTarget));
+                    if (performance.now() < followUntil) {
+                        frameRef.current = requestAnimationFrame(follow);
+                        return;
+                    }
+                    animating.current = false;
+                    frameRef.current = null;
+                };
+                follow();
                 return;
             }
 
