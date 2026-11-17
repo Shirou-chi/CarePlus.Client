@@ -8,7 +8,7 @@ import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
-import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffListReset, StaffListSort, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { MedicineImage } from './MedicineImage'
 import '../StaffHomePage.css'
@@ -132,6 +132,7 @@ export function MedicinePage() {
       }
     })
   }, [medicines, searchTerm, sortOption, statusFilter])
+  const medicinePagination = useStaffPagination(filteredMedicines)
 
   const availableCount = medicines.filter((medicine) => normalizeStatus(medicine.status) === 'Available').length
   const unavailableCount = medicines.filter((medicine) => normalizeStatus(medicine.status) === 'Unavailable').length
@@ -349,7 +350,7 @@ export function MedicinePage() {
               {!loading && !error && filteredMedicines.length ? (
                     <table role="table" className="medicine-table staff-responsive-table">
                   <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Medicine</th><th role="columnheader" scope="col">Details</th><th role="columnheader" scope="col">Price</th><th role="columnheader" scope="col">Purchase access</th><th role="columnheader" scope="col">Status</th><th role="columnheader" scope="col"><span className="sr-only">Actions</span></th></tr></thead>
-                  <tbody role="rowgroup">{filteredMedicines.map((medicine) => {
+                  <tbody role="rowgroup">{medicinePagination.pageItems.map((medicine) => {
                     const status = normalizeStatus(medicine.status)
                     return <tr role="row" key={medicine.medicineId}>
                       <td role="cell" data-row-title><span className="medicine-avatar"><MedicineImage medicineId={medicine.medicineId} imagePath={medicine.imagePath} alt={`${medicine.medicineName} image`} /></span><span><strong>{medicine.medicineName}</strong><small>{medicine.medicineId}</small></span></td>
@@ -364,7 +365,7 @@ export function MedicinePage() {
               ) : null}
               {!loading && !error && !filteredMedicines.length ? <div className="medicine-empty"><Icon name="box" size={25} /><strong>{medicines.length ? 'No medicines found' : 'No medicine records available'}</strong><span>{medicines.length ? 'Try another search or status filter.' : 'Add a medicine to start the pharmacy catalogue.'}</span>{medicines.length ? <button type="button" onClick={resetListControls}>Clear filters</button> : null}</div> : null}
             </div>
-            {!loading && !error && medicines.length ? <div className="medicine-pagination"><span>Showing {filteredMedicines.length} of {medicines.length} medicine records</span></div> : null}
+            {!loading && !error && filteredMedicines.length ? <StaffPagination currentPage={medicinePagination.page} pageSize={medicinePagination.pageSize} pageCount={medicinePagination.pageCount} totalItems={medicinePagination.totalItems} onPageChange={medicinePagination.setPage} onPageSizeChange={medicinePagination.setPageSize} /> : null}
           </section>
         </div>
       </main>

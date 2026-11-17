@@ -115,6 +115,8 @@
 }
 
 .prescription-status[data-status='pending'] { --prescription-status-accent: var(--staff-amber); }
+.prescription-status[data-status='preparing'] { --prescription-status-accent: var(--staff-blue); }
+.prescription-status[data-status='ready_for_pickup'] { --prescription-status-accent: var(--staff-teal); }
 .prescription-status[data-status='dispensed'] { --prescription-status-accent: var(--staff-teal); }
 .prescription-status[data-status='completed'] { --prescription-status-accent: var(--staff-teal); }
 
@@ -130,7 +132,16 @@
 }
 
 .prescription-dialog { width: min(620px, 100%); }
-.prescription-dialog__actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.prescription-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.prescription-dialog__note, .prescription-dialog__error { margin: 14px 0 0; font-size: 0.75rem; line-height: 1.5; }
+.prescription-dialog__note { color: var(--staff-muted); }
+.prescription-dialog__error {
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, #df6d76 45%, var(--staff-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, #df6d76 10%, var(--staff-card));
+  color: var(--staff-ink);
+}
 .prescription-medicines { margin-top: 20px; }
 .prescription-medicines h3 { margin: 0 0 10px; font-size: 0.85rem; }
 

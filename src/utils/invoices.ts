@@ -73,3 +73,4 @@ export type PaidInvoice = {
     daysOverdue: number;
     total: number;
 };
+

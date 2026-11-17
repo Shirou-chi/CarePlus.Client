@@ -4,6 +4,7 @@ import { medicalRecordApi, type MedicalRecord } from '@/services/medicalRecordAp
 import { useTheme } from '../../../components/theme/useTheme'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
+import { StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { StaffSidebar, getStaffRole } from '../navbar/StaffSidebar'
@@ -83,6 +84,7 @@ export function MedicalRecordsPage() {
       record.notes,
     ].join(' ').toLowerCase().includes(normalized))
   }, [query, records])
+  const recordPagination = useStaffPagination(filteredRecords)
 
   const canEditRecord = (record: MedicalRecord) =>
     currentRole === 'Admin' || (currentRole === 'Doctor' && record.doctorId === user?.staffId)
@@ -177,7 +179,7 @@ export function MedicalRecordsPage() {
             {error ? <div className="medical-records-error" role="alert"><strong>Unable to load medical records</strong><span>{error}</span><button type="button" onClick={() => void loadData()}>Try again</button></div> : null}
             {loading ? <div className="medical-records-empty"><Icon name="activity" size={25} /><strong>Loading medical records</strong><span>Getting your patient records from the clinic API.</span></div> : null}
 
-            {!loading && !error && filteredRecords.length ? <div className="medical-records-table-wrap"><table role="table" className="medical-records-table staff-responsive-table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Patient</th><th role="columnheader">Consultation</th><th role="columnheader">Diagnosis</th><th role="columnheader">Record ID</th><th role="columnheader"><span className="sr-only">Actions</span></th></tr></thead><tbody role="rowgroup">{filteredRecords.map((record) => <tr role="row" key={record.medicalRecordId}><td role="cell" data-row-title><span className="medical-records-patient"><span className="medical-records-avatar">{initials(record.patientName)}</span><span><strong>{record.patientName || '-'}</strong><small>@{record.patientUsername || record.patientId}</small></span></span></td><td role="cell" data-label="Consultation">{formatDateTime(record.consultationDate)}</td><td role="cell" data-label="Diagnosis"><strong>{record.diagnosis}</strong><small className="medical-records-notes">{record.notes || 'No additional notes'}</small></td><td role="cell" data-label="Record ID"><span className="medical-records-id">{record.medicalRecordId}</span></td><td role="cell" data-row-actions><button className="medical-records-view" type="button" onClick={() => openView(record)}><Icon name="eye" size={15} /> View</button></td></tr>)}</tbody></table></div> : null}
+            {!loading && !error && filteredRecords.length ? <><div className="medical-records-table-wrap"><table role="table" className="medical-records-table staff-responsive-table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Patient</th><th role="columnheader">Consultation</th><th role="columnheader">Diagnosis</th><th role="columnheader">Record ID</th><th role="columnheader"><span className="sr-only">Actions</span></th></tr></thead><tbody role="rowgroup">{recordPagination.pageItems.map((record) => <tr role="row" key={record.medicalRecordId}><td role="cell" data-row-title><span className="medical-records-patient"><span className="medical-records-avatar">{initials(record.patientName)}</span><span><strong>{record.patientName || '-'}</strong><small>@{record.patientUsername || record.patientId}</small></span></span></td><td role="cell" data-label="Consultation">{formatDateTime(record.consultationDate)}</td><td role="cell" data-label="Diagnosis"><strong>{record.diagnosis}</strong><small className="medical-records-notes">{record.notes || 'No additional notes'}</small></td><td role="cell" data-label="Record ID"><span className="medical-records-id">{record.medicalRecordId}</span></td><td role="cell" data-row-actions><button className="medical-records-view" type="button" onClick={() => openView(record)}><Icon name="eye" size={15} /> View</button></td></tr>)}</tbody></table></div><StaffPagination currentPage={recordPagination.page} pageSize={recordPagination.pageSize} pageCount={recordPagination.pageCount} totalItems={recordPagination.totalItems} onPageChange={recordPagination.setPage} onPageSizeChange={recordPagination.setPageSize} /></> : null}
             {!loading && !error && !filteredRecords.length ? <div className="medical-records-empty"><Icon name="activity" size={25} /><strong>{query ? 'No matching records' : 'No medical records yet'}</strong><span>{query ? 'Try another patient or diagnosis.' : 'Records are created after completing a consultation from Appointments or Queue.'}</span></div> : null}
           </section>
         </div>

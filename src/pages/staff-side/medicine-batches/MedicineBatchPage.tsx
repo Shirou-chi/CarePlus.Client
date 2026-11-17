@@ -8,7 +8,7 @@ import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
-import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffListReset, StaffListSort, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { getBatchStatus, LOW_STOCK_THRESHOLD } from './batch-status'
 import '../StaffHomePage.css'
@@ -175,6 +175,7 @@ export function MedicineBatchPage() {
       }
     })
   }, [batches, medicineIdFilter, searchTerm, sortOption, statusFilter])
+  const batchPagination = useStaffPagination(filteredBatches)
 
   const inStockCount = batches.filter((batch) => getBatchStatus(batch) === 'In stock').length
   const lowStockCount = batches.filter((batch) => getBatchStatus(batch) === 'Low stock').length
@@ -293,7 +294,7 @@ export function MedicineBatchPage() {
               {!loading && !error && filteredBatches.length ? (
                 <table role="table" className="medicine-batch-table staff-responsive-table">
                   <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Batch</th><th role="columnheader" scope="col">Medicine</th><th role="columnheader" scope="col">Stock</th><th role="columnheader" scope="col">Expiry date</th><th role="columnheader" scope="col">Status</th><th role="columnheader" scope="col"><span className="sr-only">Actions</span></th></tr></thead>
-                  <tbody role="rowgroup">{filteredBatches.map((batch) => {
+                  <tbody role="rowgroup">{batchPagination.pageItems.map((batch) => {
                     const status = getBatchStatus(batch)
                     return <tr role="row" key={batch.batchId}>
                       <td role="cell" data-row-title><span className="medicine-batch-avatar"><Icon name="box" size={16} /></span><span><strong>{batch.batchId}</strong><small>{batch.medicineId}</small></span></td>
@@ -308,7 +309,7 @@ export function MedicineBatchPage() {
               ) : null}
               {!loading && !error && !filteredBatches.length ? <div className="medicine-batch-empty"><Icon name="box" size={25} /><strong>{batches.length ? 'No medicine batches found' : 'No medicine batches available'}</strong><span>{batches.length ? 'Try another search or status filter.' : 'Add a batch to start tracking pharmacy stock.'}</span>{batches.length ? <button type="button" onClick={resetListControls}>Clear filters</button> : null}</div> : null}
             </div>
-            {!loading && !error && batches.length ? <div className="medicine-batch-pagination"><span>Showing {filteredBatches.length} of {batches.length} medicine batches</span></div> : null}
+            {!loading && !error && filteredBatches.length ? <StaffPagination currentPage={batchPagination.page} pageSize={batchPagination.pageSize} pageCount={batchPagination.pageCount} totalItems={batchPagination.totalItems} onPageChange={batchPagination.setPage} onPageSizeChange={batchPagination.setPageSize} /> : null}
           </section>
         </div>
       </main>

@@ -5,7 +5,7 @@ import { useTheme } from '../../../components/theme/useTheme'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
-import { StaffListReset } from '../components/StaffListControls'
+import { StaffListReset, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './NotificationsPage.css'
@@ -139,6 +139,7 @@ export function NotificationsPage() {
 
     return rows
   }, [activeTab, notificationFilter, notificationItems, searchTerm])
+  const notificationPagination = useStaffPagination(filteredNotifications)
 
   const resetListControls = () => {
     setSearchTerm('')
@@ -261,7 +262,7 @@ export function NotificationsPage() {
                       </tr>
                     </thead>
                     <tbody role="rowgroup">
-                      {filteredNotifications.map((item) => (
+                      {notificationPagination.pageItems.map((item) => (
                         <tr role="row" className={`notification-row${item.unread ? ' is-unread' : ''}`} key={item.id}>
                           <td role="cell" data-row-select>
                             <label className="notification-checkbox">
@@ -316,7 +317,7 @@ export function NotificationsPage() {
                   </div>
                 ) : null}
               </div>
-              <div className="notifications-footer"><span>Showing <strong>{filteredNotifications.length}</strong> notifications</span></div>
+              {!notificationsLoading && filteredNotifications.length ? <StaffPagination currentPage={notificationPagination.page} pageSize={notificationPagination.pageSize} pageCount={notificationPagination.pageCount} totalItems={notificationPagination.totalItems} onPageChange={notificationPagination.setPage} onPageSizeChange={notificationPagination.setPageSize} /> : null}
             </div>
           </section>
         </div>

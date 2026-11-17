@@ -24,9 +24,22 @@ export type DispensedPrescription = {
   items: PrescriptionItem[]
 }
 
+export function normalizePrescriptionStatus(status: string) {
+  return status.trim().replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase().replace(/[\s-]+/g, '_')
+}
+
+export function isCompletedPrescriptionStatus(status: string) {
+  return ['completed', 'dispensed', 'picked_up'].includes(normalizePrescriptionStatus(status))
+}
+
 export function isClosedPrescriptionStatus(status: string) {
-  const normalized = status.trim().toLowerCase().replace(/[\s-]+/g, '_')
-  return ['completed', 'dispensed', 'picked_up', 'cancelled'].includes(normalized)
+  return isCompletedPrescriptionStatus(status) || normalizePrescriptionStatus(status) === 'cancelled'
+}
+
+export function displayPrescriptionStatus(status: string) {
+  if (isCompletedPrescriptionStatus(status)) return 'Completed'
+  if (normalizePrescriptionStatus(status) === 'ready_for_pickup') return 'Ready for pickup'
+  return status
 }
 
 async function retrieve<T>(path: string, fallback: string, signal?: AbortSignal): Promise<T> {
@@ -53,6 +66,12 @@ export const prescriptionApi = {
       method: 'PATCH',
     }, true)
     return retrieveResult(result, 'Unable to mark this prescription as preparing.')
+  },
+  readyForPickup: async (prescriptionId: string): Promise<PrescriptionSummary> => {
+    const result = await request<ApiResponse<PrescriptionSummary>>(`/api/Prescription/${encodeURIComponent(prescriptionId)}/ReadyForPickup`, {
+      method: 'PATCH',
+    }, true)
+    return retrieveResult(result, 'Unable to mark this prescription as ready for pickup.')
   },
   dispensed: (signal?: AbortSignal) =>
     retrieve<DispensedPrescription[]>('/api/Prescription/Dispensed', 'Unable to load dispensing history.', signal),
