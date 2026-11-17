@@ -28,6 +28,7 @@ import { TextSizeSwitch } from "@/components/application/text-size-switch";
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n } from "@/providers/locale-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
+import { isUnderTwelve } from "@/utils/age";
 import { useTheme } from "@/providers/theme-provider";
 import { cx } from "@/utils/cx";
 
@@ -123,7 +124,7 @@ const SheetBody = ({ close }: { close: () => void }) => {
                     </>
                 )}
                 <TileGroup title={t.sheetBills}>
-                    <Tile label={t.sheetInvoices} Icon={Receipt} onPress={() => go("/invoices")} />
+                    {isUnderTwelve(profile.dateOfBirth) ? null : <Tile label={t.sheetInvoices} Icon={Receipt} onPress={() => go("/invoices")} />}
                     {overdue ? null : <Tile label={t.sheetPayments} Icon={CreditCard01} onPress={() => go("/payments")} />}
                     {overdue ? null : <Tile label={t.sheetOrders} Icon={Truck01} onPress={() => go("/orders")} />}
                     {overdue ? null : <Tile label={t.sheetDispensing} Icon={Package} onPress={() => go("/dispensing-history")} />}

@@ -29,9 +29,16 @@ const kindForType = (type: string): NoticeKind => {
 };
 
 const mapNotice = (item: ApiNotification, locale: "en" | "zh"): ClinicNotice => {
-    // ponytail: API medicine drafts already point at /orders; keep completed traffic on dispensing history if href is missing
-    const href =
-        item.type === "medicine_update" && (!item.href || item.href === "/notifications")
+    // Ready-for-pickup is only a reminder. There is no pickup page to open.
+    const pickupReminder =
+        item.id.startsWith("prescription-ready:pickup:")
+        || item.message.toLowerCase().includes("ready for pickup")
+        || item.message.toLowerCase().includes("ready to collect")
+        || (item.messageZh ?? "").includes("已准备好领取")
+        || (item.messageZh ?? "").includes("药物已备好");
+    const href = pickupReminder
+        ? ""
+        : item.type === "medicine_update" && (!item.href || item.href === "/notifications")
             ? "/orders"
             : item.href;
     return {

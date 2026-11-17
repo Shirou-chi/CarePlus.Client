@@ -2,6 +2,7 @@ import { useEffect, useState, type AnimationEvent, type ReactNode } from "react"
 import { useLocation, type Location } from "react-router";
 import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
+import { isUnderTwelve } from "@/utils/age";
 import { isOverdueLockedPath } from "@/utils/invoices";
 
 type PatientPageTransitionProps = {
@@ -19,7 +20,7 @@ export const PatientPageTransition = ({ enabled, children }: PatientPageTransiti
     const { overdue, ready: invoicesReady } = useOutstandingInvoices();
     const [rendered, setRendered] = useState(location);
     const [phase, setPhase] = useState<"enter" | "exit" | "auth">("enter");
-    const skipLockedEnter = Boolean(profile && invoicesReady && overdue && isOverdueLockedPath(location.pathname));
+    const skipLockedEnter = Boolean(profile && !isUnderTwelve(profile.dateOfBirth) && invoicesReady && overdue && isOverdueLockedPath(location.pathname));
 
     useEffect(() => {
         if (!enabled) {

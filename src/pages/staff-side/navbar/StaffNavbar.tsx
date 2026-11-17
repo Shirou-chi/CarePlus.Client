@@ -65,7 +65,7 @@ export function StaffNavbar({ activeNav, notificationsOpen, onOpenSidebar, onTog
               {!notificationsLoading ? unread.slice(0, 3).map((item) => {
                 const tone = item.kind === 'medicine' ? 'amber' : 'teal'
                 return (
-                  <button className="staff-notification" key={item.id} type="button" onClick={() => { markRead(item.id); startTransition(() => navigate(item.href || '/staff/notifications')); onToggleNotifications() }}>
+                  <button className="staff-notification" key={item.id} type="button" onClick={() => { markRead(item.id); if (item.href) startTransition(() => navigate(item.href)); onToggleNotifications() }}>
                     <span className={`staff-notification__bullet staff-notification__bullet--${tone}`} />
                     <span className="staff-notification__body">
                       <span className="staff-notification__top">

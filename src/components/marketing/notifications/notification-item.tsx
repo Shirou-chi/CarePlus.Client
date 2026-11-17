@@ -28,17 +28,28 @@ type NotificationItemProps = {
     onOpen: () => void;
 };
 
-export const NotificationItem = ({ actor, initials, message, meta, unread, href, onOpen }: NotificationItemProps) => (
-    <a
-        href={href}
-        onClick={onOpen}
-        className="flex w-full items-start gap-3 rounded-xl px-2 py-2.5 outline-focus-ring hover:bg-primary_hover focus-visible:outline-2"
-    >
+export const NotificationItem = ({ actor, initials, message, meta, unread, href, onOpen }: NotificationItemProps) => {
+    const className = "flex w-full cursor-pointer items-start gap-3 rounded-xl px-2 py-2.5 text-left outline-focus-ring hover:bg-primary_hover focus-visible:outline-2";
+    const body = (
+        <>
         <Avatar size="md" initials={initials} alt={actor} />
         <span className="min-w-0 flex-1">
             <span className={cx("block text-sm text-primary", unread ? "font-semibold" : "font-medium")}>{message}</span>
             <span className="mt-0.5 block text-xs text-tertiary">{meta}</span>
         </span>
         {unread ? <span aria-hidden="true" className="mt-2 size-2 shrink-0 rounded-full bg-[#0b1f38] dark:bg-brand-300" /> : <span className="mt-2 size-2 shrink-0" />}
-    </a>
-);
+        </>
+    );
+    if (!href) {
+        return (
+            <button type="button" onClick={onOpen} className={className}>
+                {body}
+            </button>
+        );
+    }
+    return (
+        <a href={href} onClick={onOpen} className={className}>
+            {body}
+        </a>
+    );
+};

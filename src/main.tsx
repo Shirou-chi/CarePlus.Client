@@ -8,6 +8,7 @@ import { NotificationToasts } from "@/components/marketing/notifications/notific
 import { HomePage } from "@/pages/user-side/home-page";
 import { LandingPage } from "@/pages/user-side/landing-page";
 import { AuthProvider } from "@/providers/auth-provider";
+import { isUnderTwelve } from "@/utils/age";
 import { isOverdueLockedPath } from "@/utils/invoices";
 
 // Every other page is its own chunk, so the first visit only downloads Landing/Home.
@@ -195,7 +196,8 @@ const AppRoutes = () => {
     const bookStickyBar = location.pathname === "/book";
     const isStaffRoute = location.pathname.toLowerCase().startsWith("/staff");
     const showMobileBottomNav = Boolean(profile) && !isStaffRoute && !shouldHideMobileBottomNav(location.pathname);
-    const overdueLock = Boolean(profile && invoicesReady && overdue && isOverdueLockedPath(location.pathname));
+    const childAccount = isUnderTwelve(profile?.dateOfBirth);
+    const overdueLock = Boolean(profile && !childAccount && invoicesReady && overdue && isOverdueLockedPath(location.pathname));
 
     useLayoutEffect(() => {
         if (!overdueLock) return;
@@ -224,7 +226,10 @@ const AppRoutes = () => {
 
     // The saved profile is already in localStorage. Redirect before the token
     // check finishes, or "/" paints the landing page first.
-    if (profile && location.pathname === "/") return <Navigate to={invoicesReady && overdue ? "/invoices" : "/home"} replace />;
+    if (profile && childAccount && (location.pathname === "/invoices" || location.pathname.startsWith("/invoices/"))) {
+        return <Navigate to="/home" replace />;
+    }
+    if (profile && location.pathname === "/") return <Navigate to={!childAccount && invoicesReady && overdue ? "/invoices" : "/home"} replace />;
     if (!isReady && getAuthToken() && location.pathname === "/") {
         return (
             <div className="flex min-h-dvh items-center justify-center bg-primary" role="status">

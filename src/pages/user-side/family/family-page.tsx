@@ -14,6 +14,7 @@ import { PageBreadcrumb } from "@/components/marketing/header-navigation/page-br
 import { useAuth } from "@/providers/auth-provider";
 import { useI18n, type Copy } from "@/providers/locale-provider";
 import { familyApi, type FamilyMember, type FamilyOverview, type FamilyPermission, type FamilyRelation } from "@/services/familyApi";
+import { isUnderTwelve } from "@/utils/age";
 import { containsDangerousMarkup } from "@/utils/plain-text";
 
 const relations: FamilyRelation[] = ["parent", "child"];
@@ -148,7 +149,10 @@ export const FamilyPage = () => {
     if (!isReady) return <div className="careplus-landing min-h-dvh" />;
     if (!profile) return <Navigate to="/login" replace />;
 
+    const childAccount = isUnderTwelve(profile.dateOfBirth);
+
     const startCreateFamily = () => {
+        if (childAccount) return;
         setLoadError(null);
         if (invites.length > 0) {
             setConfirmCreateDecline(true);
@@ -228,17 +232,21 @@ export const FamilyPage = () => {
                 {!family && invites.length === 0 ? (
                     <div className="mt-6 rounded-2xl bg-primary px-5 py-8 ring-1 ring-secondary">
                         <h2 className="text-lg font-semibold text-primary">{t.familyNone}</h2>
-                        <p className="mt-2 max-w-xl text-sm text-tertiary">{t.familyNoneBody}</p>
-                        <Button color="primary" size="sm" className="mt-4" onClick={startCreateFamily}>
-                            {t.familyCreate}
-                        </Button>
+                        <p className="mt-2 max-w-xl text-sm text-tertiary">{childAccount ? t.familyChildBlocked : t.familyNoneBody}</p>
+                        {childAccount ? null : (
+                            <Button color="primary" size="sm" className="mt-4" onClick={startCreateFamily}>
+                                {t.familyCreate}
+                            </Button>
+                        )}
                     </div>
                 ) : !family && invites.length > 0 ? (
                     <div className="mt-6 rounded-2xl bg-primary px-5 py-6 ring-1 ring-secondary">
-                        <p className="text-sm text-tertiary">{t.familyPendingCreateHint}</p>
-                        <Button color="secondary" size="sm" className="mt-3" onClick={startCreateFamily}>
-                            {t.familyCreate}
-                        </Button>
+                        <p className="max-w-xl text-sm text-tertiary">{childAccount ? t.familyChildBlocked : t.familyPendingCreateHint}</p>
+                        {childAccount ? null : (
+                            <Button color="secondary" size="sm" className="mt-3" onClick={startCreateFamily}>
+                                {t.familyCreate}
+                            </Button>
+                        )}
                     </div>
                 ) : family ? (
                     <>

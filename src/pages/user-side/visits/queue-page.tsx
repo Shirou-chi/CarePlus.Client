@@ -41,6 +41,7 @@ export const QueuePage = () => {
         upcoming: zh ? "即将到来的预约" : "Upcoming appointment",
         appointment: zh ? "预约时间" : "Appointment",
         doctor: zh ? "医生" : "Doctor",
+        forPatient: zh ? "就诊人" : "For",
         visitType: zh ? "就诊类型" : "Visit type",
         room: zh ? "诊室" : "Room",
         roomPending: zh ? "尚未分配" : "To be assigned",
@@ -155,6 +156,7 @@ export const QueuePage = () => {
                             <QueueMetric icon={CheckCircle} label={copy.checkedAt} value={formatDateTime(active.checkedInAt)} />
                         </div>
                         <dl className="grid gap-5 border-t border-secondary px-5 py-6 sm:grid-cols-2 sm:px-8 lg:grid-cols-4">
+                            {active.forName ? <QueueDetail label={copy.forPatient} value={active.forName} /> : null}
                             <QueueDetail label={copy.doctor} value={active.doctorName} />
                             <QueueDetail label={copy.appointment} value={formatDateTime(active.appointmentAt)} />
                             <QueueDetail label={copy.visitType} value={typeLabel(active.visitType)} />
@@ -175,6 +177,7 @@ export const QueuePage = () => {
                             <Button color="primary" size="lg" isDisabled={!checkIn.canCheckIn} onClick={() => setConfirming(true)}>{copy.checkIn}</Button>
                         </div>
                         <dl className="mt-6 grid gap-4 rounded-2xl bg-secondary p-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {checkIn.forName ? <QueueDetail label={copy.forPatient} value={checkIn.forName} /> : null}
                             <QueueDetail label={copy.doctor} value={checkIn.doctorName} />
                             <QueueDetail label={copy.appointment} value={formatDateTime(checkIn.appointmentAt)} />
                             <QueueDetail label={copy.visitType} value={typeLabel(checkIn.visitType)} />

@@ -9,6 +9,7 @@ export type QueueStatus = {
     appointmentAt: string;
     doctorName: string;
     visitType: string;
+    forName: string;
     roomId: string | null;
     roomName: string | null;
     peopleAhead: number;
@@ -20,6 +21,7 @@ export type QueueCheckIn = {
     appointmentAt: string;
     doctorName: string;
     visitType: string;
+    forName: string;
     checkInOpensAt: string;
     checkInClosesAt: string;
     canCheckIn: boolean;

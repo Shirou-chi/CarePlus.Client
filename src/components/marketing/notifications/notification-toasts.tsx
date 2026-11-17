@@ -203,7 +203,8 @@ const ToastCard = ({ toast, onDismiss, onRead }: { toast: Toast; onDismiss: (id:
         }
         if (notice) onRead(notice.id);
         beginLeave();
-        navigate(notice?.href || "/notifications");
+        if (notice?.href) navigate(notice.href);
+        else if (!notice) navigate("/notifications");
     };
 
     const title = welcomeName

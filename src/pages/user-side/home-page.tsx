@@ -26,6 +26,7 @@ import { useI18n } from "@/providers/locale-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { announcementApi, type ApiAnnouncement } from "@/services/announcementApi";
 import { appointmentApi, type Appointment } from "@/services/appointmentApi";
+import { isUnderTwelve } from "@/utils/age";
 import { formatRm } from "@/utils/prescribed-medicine";
 
 export const HomePage = () => {
@@ -43,6 +44,7 @@ export const HomePage = () => {
     const medicineHref = profile ? "/medicine" : "/login";
     const ordersHref = profile ? "/orders" : "/login";
     const dispensingHref = profile ? "/dispensing-history" : "/login";
+    const childAccount = isUnderTwelve(profile?.dateOfBirth);
     const invoicesHref = profile ? "/invoices" : "/login";
     const familyHref = profile ? "/family" : "/login";
 
@@ -91,7 +93,7 @@ export const HomePage = () => {
         { label: t.homeNavQueue, hint: t.tourQueue, href: queueHref, Icon: Clock, tone: "bg-[#e0f2fe] text-[#0369a1]" },
         { label: t.homeNavMedicine, hint: t.tourMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
         { label: t.homeNavFamily, hint: t.tourFamily, href: familyHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },
-        { label: t.homeNavBill, hint: t.tourBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" },
+        ...(childAccount ? [] : [{ label: t.homeNavBill, hint: t.tourBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" }]),
         { label: t.homeNavDoctors, hint: t.tourDoctors, href: "/doctors", Icon: UserSquare, tone: "bg-[#ccfbf1] text-[#0d9488]" },
         { label: t.homeNavContact, hint: t.tourContact, href: "/contact", Icon: Mail01, tone: "bg-[#fef3c7] text-[#b45309]" },
     ];
@@ -102,7 +104,7 @@ export const HomePage = () => {
         { label: t.homeNavQueue, hint: t.tourQueue, href: queueHref, Icon: Clock, tone: "bg-[#e0f2fe] text-[#0369a1]" },
         { label: t.homeNavMedicine, hint: t.tourMedicine, href: medicineHref, Icon: MedicalCross, tone: "bg-[#ffe4d6] text-[#c2410c]" },
         { label: t.homeNavFamily, hint: t.tourFamily, href: familyHref, Icon: Users01, tone: "bg-[#ede9fe] text-[#6d28d9]" },
-        { label: t.homeNavBill, hint: t.tourBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" },
+        ...(childAccount ? [] : [{ label: t.homeNavBill, hint: t.tourBill, href: invoicesHref, Icon: Receipt, tone: "bg-[#fee2e2] text-[#b91c1c]" }]),
         { label: t.homeNavDoctors, hint: t.tourDoctors, href: "/doctors", Icon: UserSquare, tone: "bg-[#ccfbf1] text-[#0d9488]" },
         { label: t.homeNavContact, hint: t.tourContact, href: "/contact", Icon: Mail01, tone: "bg-[#fef3c7] text-[#b45309]" },
         { label: t.visitHistory, hint: t.tourVisit, href: profile ? "/history" : "/login", Icon: Clock, tone: "bg-[#e5e7eb] text-[#374151]" },
@@ -177,7 +179,7 @@ export const HomePage = () => {
                     </Link>
                 </section>
 
-                {profile ? (
+                {profile && !childAccount ? (
                     <section className="mx-auto w-full max-w-container px-4 pb-8 md:px-8 md:pb-10">
                         <div className="flex items-end justify-between gap-3">
                             <div>

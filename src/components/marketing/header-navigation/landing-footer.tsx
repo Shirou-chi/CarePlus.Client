@@ -3,13 +3,15 @@ import { Button } from "@/components/base/buttons/button";
 import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useI18n } from "@/providers/locale-provider";
+import { isUnderTwelve } from "@/utils/age";
 import { overdueSafeHref } from "@/utils/invoices";
 
 export const LandingFooter = () => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
     const { overdue } = useOutstandingInvoices();
-    const hrefFor = (href: string) => overdueSafeHref(href, Boolean(profile && overdue));
+    const hrefFor = (href: string) => overdueSafeHref(href, Boolean(profile && overdue && !isUnderTwelve(profile.dateOfBirth)));
+    const childAccount = isUnderTwelve(profile?.dateOfBirth);
     const columns: { heading: string; links: { label: string; href: string }[] }[] = profile
         ? [
               {
@@ -29,7 +31,7 @@ export const LandingFooter = () => {
                       { label: t.notifications, href: "/notifications" },
                       { label: t.familyProfiles, href: "/family" },
                       { label: t.phrTitle, href: "/records" },
-                      { label: t.invoices, href: "/invoices" },
+                      ...(childAccount ? [] : [{ label: t.invoices, href: "/invoices" }]),
                   ],
               },
               {

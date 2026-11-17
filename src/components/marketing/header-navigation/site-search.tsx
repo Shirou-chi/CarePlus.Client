@@ -8,6 +8,7 @@ import { useMedicineCatalog } from "@/providers/medicine-catalog";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { announcementApi, type ApiAnnouncement } from "@/services/announcementApi";
 import { doctorApi, type DoctorRecord } from "@/services/doctorApi";
+import { isUnderTwelve } from "@/utils/age";
 import { overdueSafeHref } from "@/utils/invoices";
 
 type SearchItem = {
@@ -30,7 +31,7 @@ const readHistory = (key: string): string[] => {
     }
 };
 
-const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] => {
+const pageItems = (t: Copy, signedIn: boolean, overdue: boolean, hideInvoices: boolean): SearchItem[] => {
     const page = (href: string, title: string, description: string, keywords: string): SearchItem => ({
         href, title, description, keywords, category: "page",
     });
@@ -57,8 +58,8 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
         ];
     }
     const account = page("/account", t.viewProfile, t.viewProfile, "account profile settings preferences security card address 账户 个人资料 设置 地址 银行卡");
-    const invoices = page("/invoices", t.invoices, t.invoicesHint, "bill due overdue payment unpaid invoice 账单 逾期 未付款");
-    if (overdue) return [...common.filter((item) => item.href !== "/chat"), account, invoices];
+    const invoices = hideInvoices ? [] : [page("/invoices", t.invoices, t.invoicesHint, "bill due overdue payment unpaid invoice 账单 逾期 未付款")];
+    if (overdue) return [...common.filter((item) => item.href !== "/chat"), account, ...invoices];
     return [
         ...common,
         page("/book", t.bookVisit, t.bookVisitHint, "booking appointment schedule timeslot consultation 预约 挂号 时段"),
@@ -73,7 +74,7 @@ const pageItems = (t: Copy, signedIn: boolean, overdue: boolean): SearchItem[] =
         page("/clinic-records", t.clinicRecordsTitle, t.clinicRecordsNavHint, "clinic records diagnosis prescription consultation 病历 诊断 处方"),
         page("/records", t.phrTitle, t.phrNavHint, "personal health records allergies blood pressure pdf 健康档案 过敏 血压"),
         page("/family", t.familyProfiles, t.familyProfilesHint, "family member invitation parent child 家人 家庭 邀请"),
-        invoices,
+        ...invoices,
         page("/payments", t.payments, t.paymentsHint, "receipt paid bills history 收据 付款记录"),
         page("/notifications", t.notifPageTitle, t.notifications, "reminders alerts invitation notices 通知 提醒 邀请"),
         account,
@@ -95,6 +96,7 @@ export const SiteSearch = () => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
     const { overdue } = useOutstandingInvoices();
+    const billsLocked = Boolean(profile && overdue && !isUnderTwelve(profile.dateOfBirth));
     const { medicines } = useMedicineCatalog();
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
@@ -124,7 +126,7 @@ export const SiteSearch = () => {
         let active = true;
         setLoading(true);
         void Promise.allSettled([
-            profile && overdue ? Promise.resolve([]) : doctorApi.list(),
+            billsLocked ? Promise.resolve([]) : doctorApi.list(),
             announcementApi.list(),
         ]).then(([doctorResult, announcementResult]) => {
             if (!active) return;
@@ -133,11 +135,11 @@ export const SiteSearch = () => {
             setLoading(false);
         });
         return () => { active = false; };
-    }, [isOpen, profile, overdue]);
+    }, [isOpen, billsLocked]);
 
     const results = useMemo(() => {
         if (!query.trim()) return [];
-        const pages = pageItems(t, Boolean(profile), Boolean(profile && overdue));
+        const pages = pageItems(t, Boolean(profile), billsLocked, isUnderTwelve(profile?.dateOfBirth));
         const live: SearchItem[] = [
             ...doctors.map((doctor) => ({
                 title: doctor.name,
@@ -162,13 +164,13 @@ export const SiteSearch = () => {
             })),
         ];
         return [...pages, ...live].filter((item) => matches(item, query)).sort((a, b) => score(a, query) - score(b, query)).slice(0, 12);
-    }, [t, profile, overdue, query, doctors, announcements, medicines, locale]);
+    }, [t, profile, billsLocked, query, doctors, announcements, medicines, locale]);
 
     const openResult = (href: string) => {
         saveSearch(query);
         setIsOpen(false);
         setQuery("");
-        navigate(overdue ? overdueSafeHref(href, true) : href);
+        navigate(billsLocked ? overdueSafeHref(href, true) : href);
     };
     const categoryName = (category: SearchItem["category"], language: Locale) => ({
         page: language === "zh" ? "页面" : "Page",

@@ -6,6 +6,7 @@ import { AccountSheet } from "@/components/marketing/header-navigation/account-s
 import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
 import { useI18n } from "@/providers/locale-provider";
+import { isUnderTwelve } from "@/utils/age";
 import { cx } from "@/utils/cx";
 
 export const shouldHideMobileBottomNav = (pathname: string) =>
@@ -30,7 +31,8 @@ const meInitials = (name: string) =>
 
 export const MobileBottomNav = () => {
     const { profile } = useAuth();
-    const { overdue } = useOutstandingInvoices();
+    const { overdue: hasOverdueBill } = useOutstandingInvoices();
+    const overdue = hasOverdueBill && !isUnderTwelve(profile?.dateOfBirth);
     const { t } = useI18n();
     const { pathname } = useLocation();
 

@@ -393,7 +393,7 @@ export const BookingPage = () => {
     };
 
     const selectDate = (next: DateValue | null) => {
-        if (!next) return;
+        if (!next || (scheduledDateSet.size > 0 && !scheduledDateSet.has(next.toString()))) return;
         setDate(next);
         setSlot(null);
         setSlots(null);

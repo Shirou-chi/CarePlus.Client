@@ -35,6 +35,7 @@ import { requestHomeTour } from "@/components/marketing/home/home-tour";
 import { HeaderNotifications } from "@/components/marketing/notifications/header-notifications";
 import { useAuth } from "@/providers/auth-provider";
 import { useOutstandingInvoices } from "@/providers/outstanding-invoices";
+import { isUnderTwelve } from "@/utils/age";
 import { overdueSafeHref } from "@/utils/invoices";
 import { useCart } from "@/providers/cart-provider";
 import { useMedicineCatalog } from "@/providers/medicine-catalog";
@@ -64,6 +65,7 @@ const useServiceGroups = (): ServiceGroup[] => {
     const { t, locale } = useI18n();
     const { profile } = useAuth();
     const overdue = useOverdueLock();
+    const childAccount = isUnderTwelve(profile?.dateOfBirth);
     const href = (path: string) => overdueSafeHref(profile ? path : "/login", overdue);
     const bookHref = href("/book");
     const visitsHref = href("/visits");
@@ -119,7 +121,7 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.billsHint,
             Icon: Receipt,
             links: [
-                { title: t.invoices, subtitle: t.invoicesHint, href: invoicesHref },
+                ...(childAccount ? [] : [{ title: t.invoices, subtitle: t.invoicesHint, href: invoicesHref }]),
                 { title: t.payments, subtitle: t.paymentsHint, href: paymentsHref },
             ],
         },
@@ -146,7 +148,7 @@ const useServiceGroups = (): ServiceGroup[] => {
 const useOverdueLock = () => {
     const { profile } = useAuth();
     const { overdue } = useOutstandingInvoices();
-    return Boolean(profile && overdue);
+    return Boolean(profile && overdue && !isUnderTwelve(profile.dateOfBirth));
 };
 
 export const LandingHeader = () => {

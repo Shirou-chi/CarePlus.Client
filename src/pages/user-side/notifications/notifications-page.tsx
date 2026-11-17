@@ -410,10 +410,11 @@ const NoticeList = ({ t, locale, rows, tab, selected, unreadCount, onSelectionCh
                                 <Table.Cell onPointerDown={leaveCheckbox}
                                     onPointerUp={leaveCheckbox}>
                                     <a
-                                        href={item.href}
+                                        href={item.href || undefined}
                                         onPointerDown={leaveCheckbox}
                                     onPointerUp={leaveCheckbox}
                                         onClick={(event) => {
+                                            if (!item.href) event.preventDefault();
                                             event.stopPropagation();
                                             onOpen(item.id);
                                         }}
