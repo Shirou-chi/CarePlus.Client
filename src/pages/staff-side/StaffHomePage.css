@@ -1657,11 +1657,25 @@ body:has(.staff-page) .site-back-to-top {
     z-index: 20;
     width: min(286px, calc(100vw - 48px));
     height: 100dvh;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
     padding-top: max(28px, env(safe-area-inset-top));
     padding-bottom: max(18px, env(safe-area-inset-bottom));
     transform: translateX(-102%);
     transition: transform 220ms ease;
     box-shadow: 20px 0 50px rgba(15, 40, 58, 0.18);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .staff-brand,
+  .staff-sidebar__bottom {
+    flex-shrink: 0;
+  }
+
+  .staff-nav-groups {
+    flex: 1 0 auto;
   }
 
   .staff-sidebar.is-open {
@@ -1711,8 +1725,14 @@ body:has(.staff-page) .site-back-to-top {
 
 @media (max-width: 640px) {
   .staff-topbar {
-    min-height: 64px;
-    padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+    min-height: calc(60px + env(safe-area-inset-top));
+    gap: 8px;
+    padding: env(safe-area-inset-top) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
+    background: var(--staff-card);
+  }
+
+  .staff-notification-wrap {
+    position: static;
   }
 
   .staff-topbar__left {
@@ -1761,15 +1781,33 @@ body:has(.staff-page) .site-back-to-top {
     white-space: nowrap;
   }
 
+  .staff-page .staff-content {
+    width: auto;
+    margin-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+    padding-inline: 0;
+  }
+
   .staff-content {
-    width: calc(100% - 32px);
-    padding: 24px 0 calc(42px + env(safe-area-inset-bottom));
+    padding-block: 20px calc(32px + env(safe-area-inset-bottom));
   }
 
   .staff-hero {
     display: grid;
     gap: 16px;
     margin-bottom: 20px;
+  }
+
+  .staff-page :is(
+    .medicine-hero,
+    .medicine-batch-hero,
+    .staff-management-hero,
+    .clinic-rooms-hero,
+    .announcements-admin-hero
+  ) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 12px;
   }
 
   .staff-hero h1 {
@@ -1857,13 +1895,14 @@ body:has(.staff-page) .site-back-to-top {
   }
 
   .staff-notifications {
-    position: fixed;
-    top: calc(64px + env(safe-area-inset-top));
-    right: 12px;
-    left: 12px;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: max(10px, env(safe-area-inset-right));
+    left: max(10px, env(safe-area-inset-left));
     width: auto;
-    max-height: min(70dvh, 480px);
+    max-height: min(65dvh, 480px);
     overflow: auto;
+    overscroll-behavior: contain;
   }
 
   .staff-topbar__avatar .staff-icon {
@@ -1919,7 +1958,7 @@ body:has(.staff-page) .site-back-to-top {
   .staff-card__header h2,
   .staff-page-title,
   .staff-page-title__copy,
-  .staff-page :is(h1, h2, h3, p, span, strong) {
+  .staff-page :is(h1, h2, h3, p) {
     overflow-wrap: anywhere;
   }
 
@@ -1940,6 +1979,23 @@ body:has(.staff-page) .site-back-to-top {
 
   .staff-page [class*='toolbar'] {
     min-width: 0;
+  }
+
+  .staff-page [class*='toolbar'] :is(input[type='search'], select),
+  .staff-page [class*='toolbar'] > .staff-list-reset {
+    min-height: 44px;
+  }
+
+  .staff-page [class*='toolbar'] input[type='search'] {
+    font-size: max(16px, 1rem);
+  }
+
+  .staff-page :is(.staff-dialog, .leave-dialog, .consultation-form-card) :is(
+    input:not([type='checkbox'], [type='radio'], [type='range']),
+    select,
+    textarea
+  ) {
+    font-size: max(16px, 1rem);
   }
 
   .staff-page [class*='toolbar'] > input,
@@ -1999,6 +2055,10 @@ body:has(.staff-page) .site-back-to-top {
     flex-direction: column;
   }
 
+  .staff-card__header > :first-child {
+    flex: 0 1 auto;
+  }
+
   .staff-card__header > :last-child {
     align-self: stretch;
   }
@@ -2007,6 +2067,114 @@ body:has(.staff-page) .site-back-to-top {
   .staff-card__header > :last-child .staff-button {
     width: 100%;
     justify-content: center;
+  }
+}
+
+.staff-mobile-only {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .staff-mobile-only {
+    display: inline;
+  }
+
+  .staff-page .staff-responsive-table {
+    position: relative;
+    display: block;
+    min-width: 0;
+  }
+
+  .staff-responsive-table > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .staff-responsive-table > tbody {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .staff-responsive-table > tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 10px 12px;
+    padding: 12px;
+    border: 1px solid var(--staff-line);
+    border-radius: 10px;
+    background: var(--staff-card);
+  }
+
+  .staff-page .staff-responsive-table > tbody > tr > td {
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .staff-page .staff-responsive-table td :is(strong, small, time) {
+    min-width: 0;
+    font-size: inherit;
+    white-space: normal;
+  }
+
+  .staff-page .staff-responsive-table td small {
+    font-size: 0.72rem;
+  }
+
+  .staff-responsive-table td[data-label]::before {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--staff-muted);
+    content: attr(data-label);
+    font-size: 0.69rem;
+    font-weight: 600;
+  }
+
+  .staff-responsive-table td:is([colspan], [data-row-title], [data-row-actions]) {
+    grid-column: 1 / -1;
+  }
+
+  .staff-responsive-table td[data-row-title] strong {
+    color: var(--staff-ink);
+  }
+
+  .staff-page .staff-responsive-table td[data-row-actions] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-top: 9px;
+    border-top: 1px solid var(--staff-line);
+  }
+
+  .staff-responsive-table td[data-row-actions] > div {
+    flex-wrap: wrap;
+  }
+
+  .staff-page .staff-responsive-table td[data-row-actions] button {
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding-inline: 10px;
+    font-size: 0.75rem;
+  }
+
+  .staff-responsive-table td[data-row-actions] button:has(.staff-mobile-only) {
+    display: inline-flex;
+    width: auto;
+    align-items: center;
+    gap: 6px;
   }
 }
 

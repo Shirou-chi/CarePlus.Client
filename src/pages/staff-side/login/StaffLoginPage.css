@@ -304,8 +304,8 @@ body:has(.staff-login-page) .health-widget {
   .staff-login-page__layout {
     width: min(calc(100% - 32px), 540px);
     grid-template-columns: 1fr;
-    gap: 40px;
-    padding: 40px 0 56px;
+    gap: 22px;
+    padding: 24px 0 calc(32px + env(safe-area-inset-bottom));
   }
 
   .staff-login-page__brand {
@@ -317,6 +317,18 @@ body:has(.staff-login-page) .health-widget {
   }
 
   .staff-login-page__intro h1 {
-    font-size: clamp(2.7rem, 13vw, 4.5rem);
+    font-size: clamp(2rem, 9vw, 3.25rem);
+  }
+
+  .staff-login-card {
+    padding: 20px;
+  }
+
+  .staff-login-card__field input {
+    font-size: max(16px, 1rem);
+  }
+
+  .staff-login-card__remember {
+    min-height: 44px;
   }
 }

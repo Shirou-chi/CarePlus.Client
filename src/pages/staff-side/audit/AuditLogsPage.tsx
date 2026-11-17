@@ -229,15 +229,15 @@ export function AuditLogsPage() {
             <div className="audit-results-bar"><span>Showing <strong>{filteredEntries.length}</strong> of {auditEntries.length} loaded events</span><span>{isLoading ? 'Loading audit logs…' : loadError ? 'Sync failed' : lastSynced ? `Last synced ${lastSynced.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Not synced'} <i /></span></div>
 
             <div className="audit-table-wrap">
-              <table className="audit-table">
-                <thead><tr><th scope="col">Activity</th><th scope="col">Actor</th><th scope="col">Action</th><th scope="col">Date & time</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
-                <tbody>
-                  {isLoading ? <tr><td colSpan={5}><div className="audit-empty"><Icon name="clock" size={25} /><strong>Loading audit events…</strong><span>Retrieving the latest activity from the clinic API.</span></div></td></tr> : null}
-                  {!isLoading && loadError ? <tr><td colSpan={5}><div className="audit-empty"><Icon name="close" size={25} /><strong>Unable to load audit events</strong><span>{loadError}</span><button type="button" onClick={() => void loadAuditLogs()}>Try again</button></div></td></tr> : null}
+              <table role="table" className="audit-table staff-responsive-table">
+                <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Activity</th><th role="columnheader" scope="col">Actor</th><th role="columnheader" scope="col">Action</th><th role="columnheader" scope="col">Date & time</th><th role="columnheader" scope="col"><span className="sr-only">Details</span></th></tr></thead>
+                <tbody role="rowgroup">
+                  {isLoading ? <tr role="row"><td role="cell" colSpan={5}><div className="audit-empty"><Icon name="clock" size={25} /><strong>Loading audit events…</strong><span>Retrieving the latest activity from the clinic API.</span></div></td></tr> : null}
+                  {!isLoading && loadError ? <tr role="row"><td role="cell" colSpan={5}><div className="audit-empty"><Icon name="close" size={25} /><strong>Unable to load audit events</strong><span>{loadError}</span><button type="button" onClick={() => void loadAuditLogs()}>Try again</button></div></td></tr> : null}
                   {!isLoading && !loadError ? filteredEntries.map((entry) => (
-                    <tr key={entry.id}>
-                      <td><span className={`audit-entry-icon audit-entry-icon--${entry.tone}`}><Icon name={entry.icon} size={17} /></span><span><strong>{entry.resource}</strong><small>{entry.id}</small></span></td>
-                      <td>
+                    <tr role="row" key={entry.id}>
+                      <td role="cell" data-row-title><span className={`audit-entry-icon audit-entry-icon--${entry.tone}`}><Icon name={entry.icon} size={17} /></span><span><strong>{entry.resource}</strong><small>{entry.id}</small></span></td>
+                      <td role="cell" data-label="Actor">
                         <span className="audit-actor">
                           <span aria-hidden="true" className={`audit-actor__avatar audit-actor__avatar--${entry.tone}`}>{entry.initials}</span>
                           <span>
@@ -246,9 +246,9 @@ export function AuditLogsPage() {
                           </span>
                         </span>
                       </td>
-                      <td><span className={`audit-action audit-action--${entry.action.toLowerCase()}`}>{entry.action}</span></td>
-                      <td><span className="audit-time"><strong>{entry.time}</strong><small>{entry.dateGroup}</small></span></td>
-                      <td><button aria-label={`View details for ${entry.resource}`} className="audit-row-action" type="button" onClick={() => setSelectedEntry(entry)}><Icon name="chevronRight" size={17} /></button></td>
+                      <td role="cell" data-label="Action"><span className={`audit-action audit-action--${entry.action.toLowerCase()}`}>{entry.action}</span></td>
+                      <td role="cell" data-label="Date & time"><span className="audit-time"><strong>{entry.time}</strong><small>{entry.dateGroup}</small></span></td>
+                      <td role="cell" data-row-actions><button aria-label={`View details for ${entry.resource}`} className="audit-row-action" type="button" onClick={() => setSelectedEntry(entry)}><Icon name="chevronRight" size={17} /><span className="staff-mobile-only">View details</span></button></td>
                     </tr>
                   )) : null}
                 </tbody>

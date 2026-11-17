@@ -188,22 +188,22 @@ export function PrescriptionsPage() {
               <div className="prescription-feedback" role="status">{search ? `No matching ${filterLabel}.` : `No ${filterLabel} to show.`}</div>
             ) : (
               <div className="prescription-list__table-wrap">
-                <table className="prescription-list__table">
-                  <thead><tr>
-                    <th scope="col">Patient</th>
-                    <th scope="col">Doctor</th>
-                    <th scope="col">Issued</th>
-                    <th scope="col">Status</th>
-                    <th scope="col"><span className="sr-only">Actions</span></th>
+                <table role="table" className="prescription-list__table staff-responsive-table">
+                  <thead role="rowgroup"><tr role="row">
+                    <th role="columnheader" scope="col">Patient</th>
+                    <th role="columnheader" scope="col">Doctor</th>
+                    <th role="columnheader" scope="col">Issued</th>
+                    <th role="columnheader" scope="col">Status</th>
+                    <th role="columnheader" scope="col"><span className="sr-only">Actions</span></th>
                   </tr></thead>
-                  <tbody>
+                  <tbody role="rowgroup">
                     {visibleRows.map((row) => (
-                      <tr key={row.prescriptionId}>
-                        <td><strong>{row.patientName}</strong><small>{row.patientId}</small></td>
-                        <td>{row.doctorName}</td>
-                        <td><time dateTime={row.createdAt}>{clinicDateTime.format(new Date(row.createdAt))}</time></td>
-                        <td><span className="prescription-status" data-status={displayPrescriptionStatus(row.status).toLowerCase()}>{displayPrescriptionStatus(row.status)}</span></td>
-                        <td><button aria-label={`View prescription for ${row.patientName}`} className="staff-button staff-button--secondary" type="button" onClick={() => setSelected(row)}><Icon name="eye" size={15} /> View</button></td>
+                      <tr role="row" key={row.prescriptionId}>
+                        <td role="cell" data-row-title><strong>{row.patientName}</strong><small>{row.patientId}</small></td>
+                        <td role="cell" data-label="Doctor">{row.doctorName}</td>
+                        <td role="cell" data-label="Issued"><time dateTime={row.createdAt}>{clinicDateTime.format(new Date(row.createdAt))}</time></td>
+                        <td role="cell" data-label="Status"><span className="prescription-status" data-status={displayPrescriptionStatus(row.status).toLowerCase()}>{displayPrescriptionStatus(row.status)}</span></td>
+                        <td role="cell" data-row-actions><button aria-label={`View prescription for ${row.patientName}`} className="staff-button staff-button--secondary" type="button" onClick={() => setSelected(row)}><Icon name="eye" size={15} /> View</button></td>
                       </tr>
                     ))}
                   </tbody>

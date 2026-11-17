@@ -358,16 +358,16 @@ export function StaffManagementPage() {
             <div className="staff-management-table-wrap">
               {loading ? <div className="staff-management-empty"><Icon name="activity" size={24} /><strong>Loading staff records</strong><span>Fetching the latest clinic accounts.</span></div> : null}
               {!loading && filteredStaff.length > 0 ? (
-                <table className="staff-management-table">
-                  <thead><tr><th scope="col">Staff member</th><th scope="col">Role</th><th scope="col">Contact</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
-                  <tbody>
+                <table role="table" className="staff-management-table staff-responsive-table">
+                  <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Staff member</th><th role="columnheader" scope="col">Role</th><th role="columnheader" scope="col">Contact</th><th role="columnheader" scope="col">Status</th><th role="columnheader" scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+                  <tbody role="rowgroup">
                     {filteredStaff.map((member) => (
-                      <tr key={member.staffId}>
-                        <td><StaffAvatar member={member} /><span><strong>{member.name || member.username}</strong><small>{member.staffId} · @{member.username}</small></span></td>
-                        <td><span className="staff-management-role">{member.role}</span></td>
-                        <td><span className="staff-management-contact"><strong>{member.email}</strong><small>{member.phone || 'No phone number'}</small></span></td>
-                        <td><span className={`staff-management-status staff-management-status--${member.status.toLowerCase()}`}><i />{member.status}</span></td>
-                        <td><div className="staff-management-actions"><button aria-label={`View ${member.name || member.username}`} className="staff-management-view" type="button" onClick={() => openView(member)}><Icon name="eye" size={15} /> View</button><button aria-label={`Edit ${member.name || member.username}`} className="staff-management-edit" type="button" onClick={() => openEdit(member)}><Icon name="edit" size={15} /> Edit</button></div></td>
+                      <tr role="row" key={member.staffId}>
+                        <td role="cell" data-row-title><StaffAvatar member={member} /><span><strong>{member.name || member.username}</strong><small>{member.staffId} · @{member.username}</small></span></td>
+                        <td role="cell" data-label="Role"><span className="staff-management-role">{member.role}</span></td>
+                        <td role="cell" data-label="Contact"><span className="staff-management-contact"><strong>{member.email}</strong><small>{member.phone || 'No phone number'}</small></span></td>
+                        <td role="cell" data-label="Status"><span className={`staff-management-status staff-management-status--${member.status.toLowerCase()}`}><i />{member.status}</span></td>
+                        <td role="cell" data-row-actions><div className="staff-management-actions"><button aria-label={`View ${member.name || member.username}`} className="staff-management-view" type="button" onClick={() => openView(member)}><Icon name="eye" size={15} /> View</button><button aria-label={`Edit ${member.name || member.username}`} className="staff-management-edit" type="button" onClick={() => openEdit(member)}><Icon name="edit" size={15} /> Edit</button></div></td>
                       </tr>
                     ))}
                   </tbody>

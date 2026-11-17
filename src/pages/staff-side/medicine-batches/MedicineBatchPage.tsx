@@ -291,17 +291,17 @@ export function MedicineBatchPage() {
             <div className="medicine-batch-table-wrap">
               {loading ? <div className="medicine-batch-empty"><Icon name="activity" size={25} /><strong>Loading medicine batches</strong><span>Getting the latest stock lots from the clinic API.</span></div> : null}
               {!loading && !error && filteredBatches.length ? (
-                <table className="medicine-batch-table">
-                  <thead><tr><th scope="col">Batch</th><th scope="col">Medicine</th><th scope="col">Stock</th><th scope="col">Expiry date</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
-                  <tbody>{filteredBatches.map((batch) => {
+                <table role="table" className="medicine-batch-table staff-responsive-table">
+                  <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Batch</th><th role="columnheader" scope="col">Medicine</th><th role="columnheader" scope="col">Stock</th><th role="columnheader" scope="col">Expiry date</th><th role="columnheader" scope="col">Status</th><th role="columnheader" scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+                  <tbody role="rowgroup">{filteredBatches.map((batch) => {
                     const status = getBatchStatus(batch)
-                    return <tr key={batch.batchId}>
-                      <td><span className="medicine-batch-avatar"><Icon name="box" size={16} /></span><span><strong>{batch.batchId}</strong><small>{batch.medicineId}</small></span></td>
-                      <td><strong>{batch.medicineName}</strong></td>
-                      <td><strong className="medicine-batch-stock">{batch.stockQuantity}</strong><small>units</small></td>
-                      <td>{formatDate(batch.expiryDate)}</td>
-                      <td><span className={`medicine-batch-status medicine-batch-status--${statusClass(status)}`}><i />{status}</span></td>
-                      <td><div className="medicine-batch-actions"><button className="medicine-batch-view" type="button" onClick={() => openView(batch)}><Icon name="eye" size={15} /> View</button>{canManage ? <button className="medicine-batch-edit" type="button" onClick={() => openEdit(batch)}><Icon name="edit" size={15} /> Edit</button> : null}</div></td>
+                    return <tr role="row" key={batch.batchId}>
+                      <td role="cell" data-row-title><span className="medicine-batch-avatar"><Icon name="box" size={16} /></span><span><strong>{batch.batchId}</strong><small>{batch.medicineId}</small></span></td>
+                      <td role="cell" data-label="Medicine"><strong>{batch.medicineName}</strong></td>
+                      <td role="cell" data-label="Stock"><strong className="medicine-batch-stock">{batch.stockQuantity}</strong><small>units</small></td>
+                      <td role="cell" data-label="Expiry date">{formatDate(batch.expiryDate)}</td>
+                      <td role="cell" data-label="Status"><span className={`medicine-batch-status medicine-batch-status--${statusClass(status)}`}><i />{status}</span></td>
+                      <td role="cell" data-row-actions><div className="medicine-batch-actions"><button className="medicine-batch-view" type="button" onClick={() => openView(batch)}><Icon name="eye" size={15} /> View</button>{canManage ? <button className="medicine-batch-edit" type="button" onClick={() => openEdit(batch)}><Icon name="edit" size={15} /> Edit</button> : null}</div></td>
                     </tr>
                   })}</tbody>
                 </table>

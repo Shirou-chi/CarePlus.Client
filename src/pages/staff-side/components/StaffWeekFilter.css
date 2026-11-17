@@ -218,9 +218,17 @@
 @media (max-width: 640px) {
   .staff-week-filter {
     width: 100%;
+    min-width: 0;
+  }
+
+  .staff-page .staff-week-filter__trigger {
+    min-height: 44px;
   }
 
   .staff-week-filter__popover {
-    width: min(320px, calc(100vw - 24px));
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+    box-shadow: none;
   }
 }

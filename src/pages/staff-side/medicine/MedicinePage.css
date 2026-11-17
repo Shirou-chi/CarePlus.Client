@@ -606,10 +606,32 @@
     justify-content: center;
   }
 
-  .medicine-summary { gap: 9px; }
+  .medicine-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
   .medicine-summary-card {
-    min-height: 96px;
-    padding: 12px;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 5px;
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .medicine-summary-card > span {
+    grid-row: auto;
+    width: 27px;
+    height: 27px;
+  }
+
+  .medicine-summary-card strong {
+    margin-top: 0;
+    font-size: 1.3rem;
+  }
+
+  .medicine-summary-card em {
+    display: none;
   }
 
   .medicine-toolbar {
@@ -651,7 +673,7 @@
     min-height: 42px;
   }
 
-  .medicine-result-count { width: 100%; margin-left: 0; }
+  .medicine-result-count { margin-left: 0; }
   .medicine-list-card__header { padding: 16px; }
 
   .medicine-table-wrap {

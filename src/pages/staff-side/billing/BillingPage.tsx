@@ -172,20 +172,20 @@ export function BillingPage() {
             <div className="billing-results-bar"><span>Showing <strong>{filteredRecords.length}</strong> of {records.length} invoices</span><span>{loading ? 'Loading billing records…' : error ? 'Sync failed' : 'Live from invoice records'} <i /></span></div>
 
             <div className="billing-table-wrap staff-scrollbar">
-              <table className="billing-table">
-                <thead><tr><th scope="col">Invoice</th><th scope="col">Patient</th><th scope="col">Service</th><th scope="col">Issued</th><th scope="col">Amount</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Details</span></th></tr></thead>
-                <tbody>
-                  {loading ? <tr><td colSpan={7}><div className="billing-empty"><Icon name="clock" size={25} /><strong>Loading billing records…</strong><span>Retrieving invoice activity from the clinic API.</span></div></td></tr> : null}
-                  {!loading && error ? <tr><td colSpan={7}><div className="billing-empty"><Icon name="close" size={25} /><strong>Unable to load billing records</strong><span>{error}</span><button type="button" onClick={() => void loadBilling()}>Try again</button></div></td></tr> : null}
+              <table role="table" className="billing-table staff-responsive-table">
+                <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Invoice</th><th role="columnheader" scope="col">Patient</th><th role="columnheader" scope="col">Service</th><th role="columnheader" scope="col">Issued</th><th role="columnheader" scope="col">Amount</th><th role="columnheader" scope="col">Status</th><th role="columnheader" scope="col"><span className="sr-only">Details</span></th></tr></thead>
+                <tbody role="rowgroup">
+                  {loading ? <tr role="row"><td role="cell" colSpan={7}><div className="billing-empty"><Icon name="clock" size={25} /><strong>Loading billing records…</strong><span>Retrieving invoice activity from the clinic API.</span></div></td></tr> : null}
+                  {!loading && error ? <tr role="row"><td role="cell" colSpan={7}><div className="billing-empty"><Icon name="close" size={25} /><strong>Unable to load billing records</strong><span>{error}</span><button type="button" onClick={() => void loadBilling()}>Try again</button></div></td></tr> : null}
                   {!loading && !error ? filteredRecords.map((record) => (
-                    <tr key={record.invoiceId}>
-                      <td><span className="billing-invoice"><strong>{record.invoiceId}</strong><small>{record.recordId || 'No linked record'}</small></span></td>
-                      <td><span className="billing-patient"><span aria-hidden="true">{getInitials(record.patientName, record.patientUsername)}</span><span><strong>{record.patientName}</strong><small>{record.patientUsername ? `@${record.patientUsername}` : record.patientId}</small></span></span></td>
-                      <td><span className="billing-service"><strong>{record.source}</strong><small>{record.visitType || record.doctorName || 'Clinic billing'}</small></span></td>
-                      <td><span className="billing-date">{formatDate(record.issuedAt)}</span></td>
-                      <td><span className="billing-amount"><strong>{formatCurrency(record.total)}</strong>{record.status === 'Overdue' ? <small>+ {formatCurrency(record.lateFee)} late fee</small> : null}</span></td>
-                      <td><span className={`billing-status billing-status--${statusClass(record.status)}`}>{record.status}</span></td>
-                      <td><button aria-label={`View ${record.invoiceId}`} className="billing-row-action" type="button" onClick={() => setSelectedRecord(record)}><Icon name="chevronRight" size={17} /></button></td>
+                    <tr role="row" key={record.invoiceId}>
+                      <td role="cell" data-row-title><span className="billing-invoice"><strong>{record.invoiceId}</strong><small>{record.recordId || 'No linked record'}</small></span></td>
+                      <td role="cell" data-label="Patient"><span className="billing-patient"><span aria-hidden="true">{getInitials(record.patientName, record.patientUsername)}</span><span><strong>{record.patientName}</strong><small>{record.patientUsername ? `@${record.patientUsername}` : record.patientId}</small></span></span></td>
+                      <td role="cell" data-label="Service"><span className="billing-service"><strong>{record.source}</strong><small>{record.visitType || record.doctorName || 'Clinic billing'}</small></span></td>
+                      <td role="cell" data-label="Issued"><span className="billing-date">{formatDate(record.issuedAt)}</span></td>
+                      <td role="cell" data-label="Amount"><span className="billing-amount"><strong>{formatCurrency(record.total)}</strong>{record.status === 'Overdue' ? <small>+ {formatCurrency(record.lateFee)} late fee</small> : null}</span></td>
+                      <td role="cell" data-label="Status"><span className={`billing-status billing-status--${statusClass(record.status)}`}>{record.status}</span></td>
+                      <td role="cell" data-row-actions><button aria-label={`View ${record.invoiceId}`} className="billing-row-action" type="button" onClick={() => setSelectedRecord(record)}><Icon name="chevronRight" size={17} /><span className="staff-mobile-only">View details</span></button></td>
                     </tr>
                   )) : null}
                 </tbody>

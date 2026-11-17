@@ -182,27 +182,27 @@ export function StaffQueuePage() {
               <div className="staff-queue__empty" role="status">Loading the appointment queue…</div>
             ) : visibleRows.length > 0 ? (
               <div className="staff-queue__table-wrap">
-                <table aria-label="Appointment queue" className="staff-queue__table">
-                  <thead><tr>
-                    <th scope="col">Queue</th>
-                    <th scope="col">Patient</th>
-                    <th scope="col">Doctor</th>
-                    <th scope="col">Checked in</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Actions</th>
+                <table role="table" aria-label="Appointment queue" className="staff-queue__table staff-responsive-table">
+                  <thead role="rowgroup"><tr role="row">
+                    <th role="columnheader" scope="col">Queue</th>
+                    <th role="columnheader" scope="col">Patient</th>
+                    <th role="columnheader" scope="col">Doctor</th>
+                    <th role="columnheader" scope="col">Checked in</th>
+                    <th role="columnheader" scope="col">Status</th>
+                    <th role="columnheader" scope="col">Actions</th>
                   </tr></thead>
-                  <tbody>
+                  <tbody role="rowgroup">
                     {visibleRows.map((row) => {
                       const resumeConsultation = canConsult && row.status === 'InConsultation'
                       const next = nextActions[row.status]
                       return (
-                        <tr key={row.queueId}>
-                          <td><span className="staff-queue__ticket">{row.queueNumber}</span></td>
-                          <td><strong>{row.patientName}</strong><small>{row.visitType}</small></td>
-                          <td><strong>{row.doctorName}</strong><small>{row.roomName ?? '—'}</small></td>
-                          <td><time dateTime={row.checkedInAt}>{clinicTime.format(new Date(row.checkedInAt))}</time></td>
-                          <td><span className="staff-queue__status" data-status={row.status}>{statusLabels[row.status] ?? row.status}</span></td>
-                          <td>
+                        <tr role="row" key={row.queueId}>
+                          <td role="cell" data-row-title><span className="staff-queue__ticket">{row.queueNumber}</span></td>
+                          <td role="cell" data-label="Patient"><strong>{row.patientName}</strong><small>{row.visitType}</small></td>
+                          <td role="cell" data-label="Doctor"><strong>{row.doctorName}</strong><small>{row.roomName ?? '—'}</small></td>
+                          <td role="cell" data-label="Checked in"><time dateTime={row.checkedInAt}>{clinicTime.format(new Date(row.checkedInAt))}</time></td>
+                          <td role="cell" data-label="Status"><span className="staff-queue__status" data-status={row.status}>{statusLabels[row.status] ?? row.status}</span></td>
+                          <td role="cell" data-row-actions>
                             {next ? (
                               <div className="staff-queue__row-actions">
                                 <button

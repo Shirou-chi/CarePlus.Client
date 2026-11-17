@@ -240,15 +240,19 @@
 
 @media (max-width: 640px) {
   .staff-date-filter {
-    flex: 1;
+    width: 100%;
+    min-width: 0;
   }
 
   .staff-date-filter__trigger {
     width: 100%;
+    min-width: 0;
+    min-height: 44px;
   }
 
   .staff-date-filter__popover {
     right: auto;
     left: 0;
+    width: min(288px, 100%);
   }
 }

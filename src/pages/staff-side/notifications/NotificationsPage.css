@@ -183,3 +183,61 @@
   .notifications-side-column { grid-template-columns: 1fr; }
   .notification-access-card { grid-column: auto; }
 }
+
+@media (max-width: 640px) {
+  .staff-page .notifications-table > thead {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .notifications-table > thead > tr {
+    display: block;
+  }
+
+  .notifications-table > thead th:not(:first-child) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .notifications-table th.notifications-table__select {
+    display: flex;
+    width: auto;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .notifications-table .notification-checkbox {
+    width: 44px;
+    height: 44px;
+  }
+
+  .staff-page .notifications-table td[data-row-title] {
+    grid-column: 2 / -1;
+  }
+
+  .staff-page .notifications-table tr.notification-row {
+    grid-template-columns: 44px repeat(2, minmax(0, 1fr));
+  }
+
+  .notifications-table td[data-label='Category'] {
+    grid-column: 2;
+  }
+
+  .notifications-table td[data-label='Status'] {
+    grid-column: 2 / -1;
+  }
+
+  .notifications-table .notification-row__category {
+    max-width: 100%;
+    white-space: normal;
+  }
+}

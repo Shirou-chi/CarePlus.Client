@@ -254,17 +254,17 @@ export function PatientsPage() {
             <div className="patients-table-wrap">
               {loading ? <div className="patients-empty"><Icon name="activity" size={25} /><strong>Loading patient records</strong><span>Getting the latest profiles from the clinic API.</span></div> : null}
               {!loading && !error && filteredPatients.length ? (
-                <table className="patients-table">
-                  <thead><tr><th scope="col">Patient</th><th scope="col">Contact</th><th scope="col">Account</th><th scope="col">Demographics</th><th scope="col">Status</th><th className="patients-table__actions-heading" scope="col">Actions</th></tr></thead>
-                  <tbody>
+                <table role="table" className="patients-table staff-responsive-table">
+                  <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Patient</th><th role="columnheader" scope="col">Contact</th><th role="columnheader" scope="col">Account</th><th role="columnheader" scope="col">Demographics</th><th role="columnheader" scope="col">Status</th><th role="columnheader" className="patients-table__actions-heading" scope="col">Actions</th></tr></thead>
+                  <tbody role="rowgroup">
                     {filteredPatients.map((patient) => (
-                      <tr key={patient.patientId || patient.userId}>
-                        <td><span className={`patients-avatar patients-avatar--${patient.tone}`}>{patient.initials}</span><span><strong>{patient.name}</strong><small>{patient.patientId || `User ${patient.userId}`}</small></span></td>
-                        <td><span className="patients-contact"><strong>{patient.email}</strong><small>{patient.phone}</small></span></td>
-                        <td><span className="patients-care"><strong>@{patient.username}</strong><small>User ID: {patient.userId}</small></span></td>
-                        <td><span className="patients-date"><strong>{patient.gender}</strong><small>{patient.age === null ? 'Age -' : `${patient.age} years`} · DOB {patient.dateOfBirthLabel}</small></span></td>
-                        <td><span className={`patient-status patient-status--${statusClass(patient.status)}`}><i />{patient.status}</span></td>
-                        <td><div className="patients-actions"><button aria-label={`View ${patient.name}'s profile`} className="patients-view" type="button" onClick={() => openView(patient)}><Icon name="eye" size={15} /> View</button><button aria-label={`Edit ${patient.name}'s profile`} className="patients-edit" type="button" onClick={() => openEdit(patient)}><Icon name="edit" size={15} /> Edit</button></div></td>
+                      <tr role="row" key={patient.patientId || patient.userId}>
+                        <td role="cell" data-row-title><span className={`patients-avatar patients-avatar--${patient.tone}`}>{patient.initials}</span><span><strong>{patient.name}</strong><small>{patient.patientId || `User ${patient.userId}`}</small></span></td>
+                        <td role="cell" data-label="Contact"><span className="patients-contact"><strong>{patient.email}</strong><small>{patient.phone}</small></span></td>
+                        <td role="cell" data-label="Account"><span className="patients-care"><strong>@{patient.username}</strong><small>User ID: {patient.userId}</small></span></td>
+                        <td role="cell" data-label="Demographics"><span className="patients-date"><strong>{patient.gender}</strong><small>{patient.age === null ? 'Age -' : `${patient.age} years`} · DOB {patient.dateOfBirthLabel}</small></span></td>
+                        <td role="cell" data-label="Status"><span className={`patient-status patient-status--${statusClass(patient.status)}`}><i />{patient.status}</span></td>
+                        <td role="cell" data-row-actions><div className="patients-actions"><button aria-label={`View ${patient.name}'s profile`} className="patients-view" type="button" onClick={() => openView(patient)}><Icon name="eye" size={15} /> View</button><button aria-label={`Edit ${patient.name}'s profile`} className="patients-edit" type="button" onClick={() => openEdit(patient)}><Icon name="edit" size={15} /> Edit</button></div></td>
                       </tr>
                     ))}
                   </tbody>

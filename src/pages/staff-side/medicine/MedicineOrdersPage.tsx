@@ -181,16 +181,16 @@ export function MedicineOrdersPage() {
             {error ? <div className="medicine-orders-feedback medicine-orders-feedback--error" role="alert"><span>{error}</span><button type="button" onClick={() => void loadOrders()}>Try again</button></div> : null}
             {loading ? <div className="medicine-orders-feedback" role="status">Loading medicine orders…</div> : null}
             {!loading && !error && visibleOrders.length === 0 ? <div className="medicine-orders-feedback" role="status">{orders?.length ? 'No matching medicine orders.' : 'No medicine orders yet.'}</div> : null}
-            {!loading && !error && visibleOrders.length ? <div className="medicine-orders-table-wrap"><table className="medicine-orders-table"><thead><tr><th>Order</th><th>Patient</th><th>Fulfilment</th><th>Items</th><th>Total</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead><tbody>{visibleOrders.map((order) => {
+            {!loading && !error && visibleOrders.length ? <div className="medicine-orders-table-wrap"><table role="table" className="medicine-orders-table staff-responsive-table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Order</th><th role="columnheader">Patient</th><th role="columnheader">Fulfilment</th><th role="columnheader">Items</th><th role="columnheader">Total</th><th role="columnheader">Status</th><th role="columnheader"><span className="sr-only">Actions</span></th></tr></thead><tbody role="rowgroup">{visibleOrders.map((order) => {
               const status = normalizeStatus(order.status)
-              return <tr key={order.id}>
-                <td><strong>{order.id}</strong><small>{formatDate(order.placedAt)}</small></td>
-                <td><strong>{order.patientName || order.patientId}</strong><small>{order.patientId}</small></td>
-                <td><span className="medicine-orders-fulfilment">{order.fulfilment === 'pickup' ? 'Pickup' : 'Delivery'}</span></td>
-                <td><strong>{order.lines.reduce((total, line) => total + line.qty, 0)}</strong><small>{order.lines.length} medicine{order.lines.length === 1 ? '' : 's'}</small></td>
-                <td><strong className="medicine-orders-price">{formatPrice(order.total)}</strong><small>{order.payment || '—'}</small></td>
-                <td><span className={`medicine-orders-status medicine-orders-status--${statusClass(status)}`}><i />{statusLabels[status]}</span></td>
-                <td><button className="staff-button staff-button--secondary" type="button" onClick={() => openOrder(order)}><Icon name="edit" size={15} /> Update</button></td>
+              return <tr role="row" key={order.id}>
+                <td role="cell" data-row-title><strong>{order.id}</strong><small>{formatDate(order.placedAt)}</small></td>
+                <td role="cell" data-label="Patient"><strong>{order.patientName || order.patientId}</strong><small>{order.patientId}</small></td>
+                <td role="cell" data-label="Fulfilment"><span className="medicine-orders-fulfilment">{order.fulfilment === 'pickup' ? 'Pickup' : 'Delivery'}</span></td>
+                <td role="cell" data-label="Items"><strong>{order.lines.reduce((total, line) => total + line.qty, 0)}</strong><small>{order.lines.length} medicine{order.lines.length === 1 ? '' : 's'}</small></td>
+                <td role="cell" data-label="Total"><strong className="medicine-orders-price">{formatPrice(order.total)}</strong><small>{order.payment || '—'}</small></td>
+                <td role="cell" data-label="Status"><span className={`medicine-orders-status medicine-orders-status--${statusClass(status)}`}><i />{statusLabels[status]}</span></td>
+                <td role="cell" data-row-actions><button className="staff-button staff-button--secondary" type="button" onClick={() => openOrder(order)}><Icon name="edit" size={15} /> Update</button></td>
               </tr>
             })}</tbody></table></div> : null}
           </section>

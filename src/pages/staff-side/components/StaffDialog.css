@@ -120,35 +120,55 @@
 
 @media (max-width: 640px) {
   .staff-dialog-backdrop {
+    grid-template-columns: minmax(0, 1fr);
     align-items: end;
-    padding: 0;
+    padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   }
 
-  .staff-dialog {
+  .staff-page .staff-dialog-backdrop > .staff-dialog {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top) - 12px));
-    padding: 18px 18px calc(18px + env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
     border-radius: 18px 18px 0 0;
     border-left: 0;
     border-right: 0;
     border-bottom: 0;
   }
 
+  .staff-dialog__header {
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .staff-dialog__header > div {
+    flex: 1;
+    min-width: 0;
+  }
+
   .staff-dialog__header h2 {
+    overflow-wrap: anywhere;
     font-size: 1.15rem;
   }
 
+  .staff-dialog__header button {
+    width: 44px;
+    height: 44px;
+  }
+
   .staff-detail-grid {
-    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
-  .staff-detail-grid__wide {
-    grid-column: auto;
+  .staff-detail-grid > div {
+    min-width: 0;
+    padding: 9px 10px;
   }
-}
 
-@media (max-width: 520px) {
-  .staff-dialog {
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  .staff-detail-grid dd {
+    font-size: 0.82rem;
   }
 }

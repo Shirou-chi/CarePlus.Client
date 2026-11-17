@@ -67,4 +67,21 @@
 .reports-error svg { color: #d45e68; }
 .reports-error button { margin-left: auto; border: 0; background: transparent; color: var(--staff-brand); font-size: 0.68rem; font-weight: 700; cursor: pointer; }
 @media (max-width: 1050px) { .reports-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 720px) { .reports-content { width: min(calc(100% - 32px), 1360px); padding-top: 26px; } .reports-hero { align-items: flex-start; flex-direction: column; } .reports-summary, .reports-grid, .reports-medicine-sales-charts { grid-template-columns: 1fr; } .reports-panel--wide { grid-column: auto; } .reports-summary-card { min-height: 128px; } .reports-medicine-sales-summary { grid-template-columns: 1fr; } .reports-outcome-layout { grid-template-columns: minmax(170px, 1fr) minmax(110px, 0.75fr); gap: 0; } }
+@media (max-width: 720px) { .reports-content { width: min(calc(100% - 32px), 1360px); padding-top: 26px; } .reports-hero { align-items: flex-start; flex-direction: column; } .reports-grid, .reports-medicine-sales-charts { grid-template-columns: 1fr; } .reports-panel--wide { grid-column: auto; } .reports-summary-card { min-height: 128px; } .reports-medicine-sales-summary { grid-template-columns: 1fr; } .reports-outcome-layout { grid-template-columns: minmax(170px, 1fr) minmax(110px, 0.75fr); gap: 0; } }
+
+@media (max-width: 420px) {
+  .reports-outcome-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .reports-top-table {
+    min-width: 0;
+  }
+
+  .reports-top-table th,
+  .reports-top-table td {
+    padding-inline: 5px;
+    overflow-wrap: anywhere;
+  }
+}

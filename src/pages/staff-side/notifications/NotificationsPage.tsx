@@ -237,10 +237,10 @@ export function NotificationsPage() {
                     <span>Checking your staff updates.</span>
                   </div>
                 ) : (
-                  <table aria-label="Staff notifications" className="notifications-table">
-                    <thead>
-                      <tr>
-                        <th className="notifications-table__select" scope="col">
+                  <table role="table" aria-label="Staff notifications" className="notifications-table staff-responsive-table">
+                    <thead role="rowgroup">
+                      <tr role="row">
+                        <th role="columnheader" className="notifications-table__select" scope="col">
                           <label className="notification-checkbox">
                             <input
                               aria-label="Select all unread notifications"
@@ -251,18 +251,19 @@ export function NotificationsPage() {
                             />
                             <span />
                           </label>
+                          <span className="staff-mobile-only">Select all unread</span>
                         </th>
-                        <th className="notifications-table__notice" scope="col">Notice</th>
-                        <th className="notifications-table__category" scope="col">Category</th>
-                        <th className="notifications-table__time" scope="col">When</th>
-                        <th className="notifications-table__status" scope="col">Status</th>
-                        <th className="notifications-table__actions" scope="col">Action</th>
+                        <th role="columnheader" className="notifications-table__notice" scope="col">Notice</th>
+                        <th role="columnheader" className="notifications-table__category" scope="col">Category</th>
+                        <th role="columnheader" className="notifications-table__time" scope="col">When</th>
+                        <th role="columnheader" className="notifications-table__status" scope="col">Status</th>
+                        <th role="columnheader" className="notifications-table__actions" scope="col">Action</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody role="rowgroup">
                       {filteredNotifications.map((item) => (
-                        <tr className={`notification-row${item.unread ? ' is-unread' : ''}`} key={item.id}>
-                          <td>
+                        <tr role="row" className={`notification-row${item.unread ? ' is-unread' : ''}`} key={item.id}>
+                          <td role="cell" data-row-select>
                             <label className="notification-checkbox">
                               <input
                                 aria-label={`Select ${item.title}`}
@@ -274,7 +275,7 @@ export function NotificationsPage() {
                               <span />
                             </label>
                           </td>
-                          <td>
+                          <td role="cell" data-row-title>
                             <div className="notification-row__notice">
                               <span className="notification-row__avatar">{item.initials || 'CC'}</span>
                               <span>
@@ -283,15 +284,15 @@ export function NotificationsPage() {
                               </span>
                             </div>
                           </td>
-                          <td><span className="notification-row__category">{item.category}</span></td>
-                          <td><span className="notification-row__time">{item.time}</span></td>
-                          <td>
+                          <td role="cell" data-label="Category"><span className="notification-row__category">{item.category}</span></td>
+                          <td role="cell" data-label="When"><span className="notification-row__time">{item.time}</span></td>
+                          <td role="cell" data-label="Status">
                             <span className={`notification-row__status${item.unread ? ' is-unread' : ''}`}>
                               <i />
                               {item.unread ? 'Unread' : 'Read'}
                             </span>
                           </td>
-                          <td className="notifications-table__actions">
+                          <td role="cell" data-row-actions className="notifications-table__actions">
                             <button
                               aria-label={item.unread ? `Mark ${item.title} as read` : `${item.title} is already read`}
                               className="notification-row__action"

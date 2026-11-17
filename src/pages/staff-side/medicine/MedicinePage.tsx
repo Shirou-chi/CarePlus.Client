@@ -347,17 +347,17 @@ export function MedicinePage() {
             <div className="medicine-table-wrap">
               {loading ? <div className="medicine-empty"><Icon name="activity" size={25} /><strong>Loading medicine catalogue</strong><span>Getting the latest medicine records from the clinic API.</span></div> : null}
               {!loading && !error && filteredMedicines.length ? (
-                    <table className="medicine-table">
-                  <thead><tr><th scope="col">Medicine</th><th scope="col">Details</th><th scope="col">Price</th><th scope="col">Purchase access</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
-                  <tbody>{filteredMedicines.map((medicine) => {
+                    <table role="table" className="medicine-table staff-responsive-table">
+                  <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Medicine</th><th role="columnheader" scope="col">Details</th><th role="columnheader" scope="col">Price</th><th role="columnheader" scope="col">Purchase access</th><th role="columnheader" scope="col">Status</th><th role="columnheader" scope="col"><span className="sr-only">Actions</span></th></tr></thead>
+                  <tbody role="rowgroup">{filteredMedicines.map((medicine) => {
                     const status = normalizeStatus(medicine.status)
-                    return <tr key={medicine.medicineId}>
-                      <td><span className="medicine-avatar"><MedicineImage medicineId={medicine.medicineId} imagePath={medicine.imagePath} alt={`${medicine.medicineName} image`} /></span><span><strong>{medicine.medicineName}</strong><small>{medicine.medicineId}</small></span></td>
-                      <td><span className="medicine-details"><strong>{medicine.form || '—'} · {medicine.kind || '—'}</strong><small>{medicine.pack || medicine.method || medicine.description}</small></span></td>
-                      <td><strong className="medicine-price">{formatPrice(medicine.price)}</strong></td>
-                      <td><span className={`medicine-purchase-access${medicine.requiresPrescription ? ' medicine-purchase-access--prescription' : ''}`}>{medicine.requiresPrescription ? 'Prescription required' : 'Direct purchase'}</span></td>
-                      <td><span className={`medicine-status medicine-status--${statusClass(status)}`}><i />{status}</span></td>
-                      <td><div className="medicine-actions"><button aria-label={`View ${medicine.medicineName}`} className="medicine-view" type="button" onClick={() => openView(medicine)}><Icon name="eye" size={15} /> View</button>{canManage ? <button aria-label={`Edit ${medicine.medicineName}`} className="medicine-edit" type="button" onClick={() => openEdit(medicine)}><Icon name="edit" size={15} /> Edit</button> : null}<button aria-label={`View batches for ${medicine.medicineName}`} className="medicine-batches-link" type="button" onClick={() => navigate(`/staff/medicine-batches?medicineId=${encodeURIComponent(medicine.medicineId)}`)}><Icon name="box" size={15} /> Batches</button></div></td>
+                    return <tr role="row" key={medicine.medicineId}>
+                      <td role="cell" data-row-title><span className="medicine-avatar"><MedicineImage medicineId={medicine.medicineId} imagePath={medicine.imagePath} alt={`${medicine.medicineName} image`} /></span><span><strong>{medicine.medicineName}</strong><small>{medicine.medicineId}</small></span></td>
+                      <td role="cell" data-label="Details"><span className="medicine-details"><strong>{medicine.form || '—'} · {medicine.kind || '—'}</strong><small>{medicine.pack || medicine.method || medicine.description}</small></span></td>
+                      <td role="cell" data-label="Price"><strong className="medicine-price">{formatPrice(medicine.price)}</strong></td>
+                      <td role="cell" data-label="Purchase access"><span className={`medicine-purchase-access${medicine.requiresPrescription ? ' medicine-purchase-access--prescription' : ''}`}>{medicine.requiresPrescription ? 'Prescription required' : 'Direct purchase'}</span></td>
+                      <td role="cell" data-label="Status"><span className={`medicine-status medicine-status--${statusClass(status)}`}><i />{status}</span></td>
+                      <td role="cell" data-row-actions><div className="medicine-actions"><button aria-label={`View ${medicine.medicineName}`} className="medicine-view" type="button" onClick={() => openView(medicine)}><Icon name="eye" size={15} /> View</button>{canManage ? <button aria-label={`Edit ${medicine.medicineName}`} className="medicine-edit" type="button" onClick={() => openEdit(medicine)}><Icon name="edit" size={15} /> Edit</button> : null}<button aria-label={`View batches for ${medicine.medicineName}`} className="medicine-batches-link" type="button" onClick={() => navigate(`/staff/medicine-batches?medicineId=${encodeURIComponent(medicine.medicineId)}`)}><Icon name="box" size={15} /> Batches</button></div></td>
                     </tr>
                   })}</tbody>
                 </table>

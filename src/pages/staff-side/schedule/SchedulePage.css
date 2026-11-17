@@ -1225,7 +1225,19 @@
   }
 }
 
+.schedule-scroll-hint {
+  display: none;
+}
+
 @media (max-width: 640px) {
+  .schedule-scroll-hint {
+    display: block;
+    margin: 0;
+    padding: 8px 12px;
+    color: var(--staff-muted);
+    font-size: 0.72rem;
+  }
+
   .schedule-content {
     padding: 20px 12px 24px;
   }
@@ -1315,11 +1327,11 @@
   }
 
   .schedule-staff-grid {
-    min-width: 700px;
+    min-width: 704px;
   }
 
   .schedule-staff-row {
-    grid-template-columns: minmax(150px, 1.25fr) repeat(7, minmax(78px, 1fr));
+    grid-template-columns: 116px repeat(7, minmax(84px, 1fr));
   }
 
   .schedule-staff-name {
@@ -1353,7 +1365,8 @@
     border-left-width: 2px;
   }
 
-  .schedule-staff-slot strong { font-size: 0.54rem; }
+  .schedule-staff-slot { min-height: 44px; }
+  .schedule-staff-slot strong { font-size: 0.66rem; }
 
   .schedule-list-item {
     grid-template-columns: 34px minmax(0, 1fr) auto 17px;
@@ -1378,7 +1391,8 @@
 }
 
 @media (max-width: 420px) {
-  .schedule-summary {
-    grid-template-columns: 1fr;
+  .schedule-summary-card {
+    min-height: 84px;
+    padding: 9px;
   }
 }

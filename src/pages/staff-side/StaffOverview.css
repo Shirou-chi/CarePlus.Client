@@ -224,6 +224,10 @@
 }
 
 @media (max-width: 480px) {
+  .staff-overview .staff-overview__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .staff-overview__row { grid-template-columns: auto minmax(0, 1fr) auto; gap: 7px; padding-inline: 10px; }
   .staff-overview .staff-overview__metric { min-height: 116px; padding: 12px; }
 }
