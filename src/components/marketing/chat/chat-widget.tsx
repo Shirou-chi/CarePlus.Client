@@ -32,8 +32,11 @@ export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?
     const threadScrollRef = useAnimatedChatScroll(`${open}:${latestMessageId ?? "empty"}:${isSending}`, open);
 
     const sendDraft = async () => {
-        if (await send(draft)) {
-            setDraft("");
+        const text = draft;
+        if (!text.trim() || isSending) return;
+        setDraft("");
+        if (!(await send(text))) {
+            setDraft(text);
         }
     };
 
