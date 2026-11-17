@@ -132,13 +132,103 @@
 }
 
 @media (max-width: 640px) {
-  .medicine-batch-content { padding-top: 28px; }
+  .medicine-batch-content { padding: 20px 12px 24px; }
   .medicine-batch-summary { gap: 9px; }
-  .medicine-batch-summary-card { min-height: 128px; padding: 12px; }
-  .medicine-batch-toolbar { align-items: stretch; padding: 12px; }
-  .medicine-batch-select { flex: 1; }
+  .medicine-batch-summary-card { min-height: 96px; padding: 12px; }
+  .medicine-batch-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
+  .medicine-batch-search {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+  }
+  .medicine-batch-select,
+  .medicine-batch-toolbar .staff-list-sort {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+  }
+  .medicine-batch-select select,
+  .medicine-batch-toolbar .staff-list-sort select {
+    height: 40px;
+  }
+  .medicine-batch-toolbar .staff-list-reset {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+  }
+  .medicine-batch-table-wrap {
+    overflow-x: auto;
+    padding-bottom: 7px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .medicine-batch-table {
+    min-width: 850px;
+    table-layout: fixed;
+  }
+  .medicine-batch-table th,
+  .medicine-batch-table td { padding: 12px 10px; }
+  .medicine-batch-table th:nth-child(1),
+  .medicine-batch-table td:nth-child(1) { width: 220px; }
+  .medicine-batch-table th:nth-child(2),
+  .medicine-batch-table td:nth-child(2) { width: 165px; }
+  .medicine-batch-table th:nth-child(3),
+  .medicine-batch-table td:nth-child(3) { width: 86px; }
+  .medicine-batch-table th:nth-child(4),
+  .medicine-batch-table td:nth-child(4) { width: 120px; }
+  .medicine-batch-table th:nth-child(5),
+  .medicine-batch-table td:nth-child(5) { width: 110px; }
+  .medicine-batch-table th:nth-child(6),
+  .medicine-batch-table td:nth-child(6) { width: 150px; }
+  .medicine-batch-table td:first-child > span:last-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .medicine-batch-table td strong {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+  .medicine-batch-actions { flex-wrap: wrap; }
   .medicine-batch-form-grid { grid-template-columns: 1fr; }
   .medicine-batch-list-card__header { padding: 16px; }
   .medicine-batch-dialog-actions { flex-direction: column-reverse; }
-  .medicine-batch-dialog-actions .staff-button { justify-content: center; }
+  .medicine-batch-dialog,
+  .medicine-batch-view-dialog {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 14px;
+  }
+  .medicine-batch-dialog .staff-dialog__header h2 {
+    max-width: calc(100vw - 86px);
+    overflow-wrap: anywhere;
+    font-size: 1.08rem;
+  }
+  .medicine-batch-view-heading {
+    gap: 9px;
+    padding: 10px;
+  }
+  .medicine-batch-view-heading strong {
+    overflow-wrap: anywhere;
+    font-size: 0.73rem;
+  }
+  .medicine-batch-view-dialog .staff-detail-grid {
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .medicine-batch-dialog-actions {
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .medicine-batch-dialog-actions .staff-button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 }

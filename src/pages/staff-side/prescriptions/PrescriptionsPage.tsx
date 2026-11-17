@@ -14,6 +14,20 @@ const clinicDateTime = new Intl.DateTimeFormat('en-MY', {
   timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'medium', timeStyle: 'short',
 })
 
+type PrescriptionRecordFilter = 'all' | 'pending' | 'completed'
+
+function normalizedPrescriptionStatus(status: string) {
+  return status.trim().toLowerCase().replace(/[\s-]+/g, '_')
+}
+
+function isCompletedPrescriptionStatus(status: string) {
+  return ['completed', 'dispensed', 'picked_up'].includes(normalizedPrescriptionStatus(status))
+}
+
+function displayPrescriptionStatus(status: string) {
+  return isCompletedPrescriptionStatus(status) ? 'Completed' : status
+}
+
 function PrescriptionDetails({ prescription, canComplete, onClose, onCompleted }: { prescription: PrescriptionSummary; canComplete: boolean; onClose: () => void; onCompleted: () => void }) {
   const { prescriptionId } = prescription
   const [items, setItems] = useState<PrescriptionItem[]>()
@@ -95,6 +109,7 @@ export function PrescriptionsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [recordFilter, setRecordFilter] = useState<PrescriptionRecordFilter>('pending')
   const [rows, setRows] = useState<PrescriptionSummary[]>()
   const [selected, setSelected] = useState<PrescriptionSummary>()
   const [error, setError] = useState('')
@@ -118,8 +133,11 @@ export function PrescriptionsPage() {
   }, [notice])
 
   const search = query.trim().toLowerCase()
-  const activeRows = rows?.filter((row) => !isClosedPrescriptionStatus(row.status)) ?? []
-  const visibleRows = activeRows.filter((row) => [row.patientName, row.patientId, row.doctorName, row.prescriptionId]
+  const pendingRows = rows?.filter((row) => normalizedPrescriptionStatus(row.status) === 'pending') ?? []
+  const completedRows = rows?.filter((row) => isCompletedPrescriptionStatus(row.status)) ?? []
+  const filterRows = recordFilter === 'all' ? rows ?? [] : recordFilter === 'completed' ? completedRows : pendingRows
+  const filterLabel = recordFilter === 'all' ? 'prescriptions' : recordFilter === 'completed' ? 'completed prescriptions' : 'pending prescriptions'
+  const visibleRows = filterRows.filter((row) => [row.patientName, row.patientId, row.doctorName, row.prescriptionId]
     .some((value) => value.toLowerCase().includes(search))) ?? []
 
   return (
@@ -140,13 +158,22 @@ export function PrescriptionsPage() {
         <div className="staff-content">
           <StaffPageEyebrow label="Prescription management" />
           <h1 className="staff-page-title">Prescriptions</h1>
-          <p className="staff-page-title__copy">Review active prescriptions waiting for pharmacy dispensing.</p>
+          <p className="staff-page-title__copy">Review active prescriptions and previous dispensing records.</p>
           <section aria-label="Prescriptions" className="staff-card prescription-list">
             <div className="prescription-list__toolbar">
               <label className="prescription-list__search">
                 <Icon name="search" size={16} />
                 <span className="sr-only">Search prescriptions</span>
                 <input placeholder="Search patient, doctor or prescription ID" type="search" value={query} onChange={(event) => setQuery(event.target.value)} />
+              </label>
+              <label className="prescription-list__filter">
+                <span className="sr-only">Filter prescription records</span>
+                <select aria-label="Filter prescription records" value={recordFilter} onChange={(event) => setRecordFilter(event.target.value as PrescriptionRecordFilter)}>
+                  <option value="all">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="completed">Completed</option>
+                </select>
+                <Icon name="chevronDown" size={14} />
               </label>
               {rows ? <span>{visibleRows.length} shown</span> : null}
             </div>
@@ -158,7 +185,7 @@ export function PrescriptionsPage() {
             ) : !rows ? (
               <div className="prescription-feedback" role="status">Loading prescriptions…</div>
             ) : visibleRows.length === 0 ? (
-              <div className="prescription-feedback" role="status">{search ? 'No matching active prescriptions.' : 'No active prescriptions to dispense.'}</div>
+              <div className="prescription-feedback" role="status">{search ? `No matching ${filterLabel}.` : `No ${filterLabel} to show.`}</div>
             ) : (
               <div className="prescription-list__table-wrap">
                 <table className="prescription-list__table">
@@ -175,7 +202,7 @@ export function PrescriptionsPage() {
                         <td><strong>{row.patientName}</strong><small>{row.patientId}</small></td>
                         <td>{row.doctorName}</td>
                         <td><time dateTime={row.createdAt}>{clinicDateTime.format(new Date(row.createdAt))}</time></td>
-                        <td><span className="prescription-status" data-status={row.status.toLowerCase()}>{row.status}</span></td>
+                        <td><span className="prescription-status" data-status={displayPrescriptionStatus(row.status).toLowerCase()}>{displayPrescriptionStatus(row.status)}</span></td>
                         <td><button aria-label={`View prescription for ${row.patientName}`} className="staff-button staff-button--secondary" type="button" onClick={() => setSelected(row)}><Icon name="eye" size={15} /> View</button></td>
                       </tr>
                     ))}

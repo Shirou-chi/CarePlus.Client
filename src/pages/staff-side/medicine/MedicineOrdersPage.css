@@ -75,13 +75,81 @@
 }
 
 @media (max-width: 640px) {
-  .medicine-orders-content { padding-top: 28px; }
+  .medicine-orders-content { padding: 20px 12px 24px; }
   .medicine-orders-hero { align-items: flex-start; flex-direction: column; }
   .medicine-orders-summary { gap: 9px; }
-  .medicine-orders-summary article { min-height: 124px; padding: 12px; }
-  .medicine-orders-toolbar { align-items: stretch; padding: 12px; }
-  .medicine-orders-select { flex: 1; }
+  .medicine-orders-summary article { min-height: 96px; padding: 12px; }
+  .medicine-orders-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
+  .medicine-orders-search,
+  .medicine-orders-select {
+    width: 100%;
+    min-width: 0;
+    min-height: 42px;
+  }
+  .medicine-orders-select select { height: 40px; }
+  .medicine-orders-table-wrap {
+    overflow-x: auto;
+    padding-bottom: 7px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .medicine-orders-table {
+    min-width: 980px;
+    table-layout: fixed;
+  }
+  .medicine-orders-table th,
+  .medicine-orders-table td { padding: 12px 10px; }
+  .medicine-orders-table th:nth-child(1),
+  .medicine-orders-table td:nth-child(1) { width: 130px; }
+  .medicine-orders-table th:nth-child(2),
+  .medicine-orders-table td:nth-child(2) { width: 150px; }
+  .medicine-orders-table th:nth-child(3),
+  .medicine-orders-table td:nth-child(3) { width: 125px; }
+  .medicine-orders-table th:nth-child(4),
+  .medicine-orders-table td:nth-child(4) { width: 90px; }
+  .medicine-orders-table th:nth-child(5),
+  .medicine-orders-table td:nth-child(5) { width: 90px; }
+  .medicine-orders-table th:nth-child(6),
+  .medicine-orders-table td:nth-child(6) { width: 145px; }
+  .medicine-orders-table th:nth-child(7),
+  .medicine-orders-table td:nth-child(7) { width: 150px; }
   .medicine-order-dialog__summary { grid-template-columns: 1fr; }
-  .medicine-order-dialog__actions { flex-direction: column-reverse; }
-  .medicine-order-dialog__actions .staff-button { justify-content: center; }
+  .medicine-order-dialog,
+  .medicine-order-dialog.staff-dialog {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 14px;
+  }
+  .medicine-order-dialog .staff-dialog__header h2 {
+    max-width: calc(100vw - 86px);
+    overflow-wrap: anywhere;
+    font-size: 1.08rem;
+  }
+  .medicine-order-dialog__summary { gap: 8px; }
+  .medicine-order-dialog__items { margin-top: 16px; }
+  .medicine-order-dialog__items li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .medicine-order-dialog__items li > span:last-child {
+    width: 100%;
+    text-align: left;
+  }
+  .medicine-order-dialog__address strong { overflow-wrap: anywhere; }
+  .medicine-order-dialog__actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .medicine-order-dialog__actions .staff-button {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 }
