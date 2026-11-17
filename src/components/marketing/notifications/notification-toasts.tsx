@@ -11,6 +11,7 @@ import { readProfileSettings } from "@/utils/profile-settings";
 
 const MAX_TOASTS = 3;
 const TOAST_MS = 5000;
+const IDLE_TOAST_MS = 2500;
 const FADE_MS = 700;
 
 type Toast = { id: string; notice: ClinicNotice } | { id: string; count: number } | { id: string; welcomeName: string };
@@ -100,6 +101,72 @@ export const NotificationToasts = () => {
                     {toasts.map((toast) => (
                         <ToastCard key={toast.id} toast={toast} onDismiss={dismiss} onRead={markRead} />
                     ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const toastShell =
+    "pointer-events-auto flex items-start gap-3 rounded-2xl bg-primary p-4 shadow-lg ring-1 ring-secondary dark:bg-[#171717] dark:ring-white/10";
+
+/** Sign-out notice. Stays put while the tab is in the background, then leaves after it has been on screen. */
+export const SessionIdleToast = ({ message, onDone }: { message: string; onDone: () => void }) => {
+    const { t } = useI18n();
+    const [leaving, setLeaving] = useState(false);
+
+    useEffect(() => {
+        let remaining = IDLE_TOAST_MS;
+        let startedAt = 0;
+        let timer = 0;
+        const arm = () => {
+            window.clearTimeout(timer);
+            if (document.visibilityState !== "visible") return;
+            startedAt = Date.now();
+            timer = window.setTimeout(() => setLeaving(true), remaining);
+        };
+        const onVisibility = () => {
+            if (document.visibilityState === "hidden") {
+                if (startedAt) remaining = Math.max(0, remaining - (Date.now() - startedAt));
+                startedAt = 0;
+                window.clearTimeout(timer);
+                return;
+            }
+            arm();
+        };
+        arm();
+        document.addEventListener("visibilitychange", onVisibility);
+        return () => {
+            document.removeEventListener("visibilitychange", onVisibility);
+            window.clearTimeout(timer);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!leaving) return;
+        const timer = window.setTimeout(onDone, FADE_MS);
+        return () => window.clearTimeout(timer);
+    }, [leaving, onDone]);
+
+    return (
+        <div className="pointer-events-none fixed inset-x-0 top-[4.5rem] z-[60] md:top-22" role="status" aria-live="polite">
+            <div className="mx-auto flex w-full max-w-container justify-center px-4 pt-2 md:justify-end md:px-8 md:pt-3">
+                <div
+                    className={
+                        leaving
+                            ? `${toastShell} pointer-events-none w-[22rem] max-w-full animate-out duration-700 fade-out slide-out-to-top-2 fill-mode-forwards`
+                            : `${toastShell} w-[22rem] max-w-full animate-in duration-300 fade-in slide-in-from-top-2`
+                    }
+                >
+                    <p className="min-w-0 flex-1 text-sm font-semibold text-primary">{message}</p>
+                    <button
+                        type="button"
+                        aria-label={t.notifToastClose}
+                        onClick={() => setLeaving(true)}
+                        className="-m-1 flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-fg-quaternary outline-focus-ring hover:bg-primary_hover focus-visible:outline-2"
+                    >
+                        <XClose className="size-4" />
+                    </button>
                 </div>
             </div>
         </div>

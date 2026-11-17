@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { Maximize01, MessageChatCircle, X } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonUtility } from "@/components/base/buttons/button-utility";
@@ -18,8 +19,13 @@ const FAB_BOTTOM_ABOVE_STICKY =
 
 export const ChatWidget = ({ liftAboveStickyBar = false }: { liftAboveStickyBar?: boolean }) => {
     const { t } = useI18n();
+    const { pathname } = useLocation();
     const { active, isGuest, send, sendError, isSending, clearSendError, startNew } = useChat();
     const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        setOpen(false);
+    }, [pathname]);
     const [draft, setDraft] = useState("");
     const messages = active?.messages ?? [];
     const latestMessageId = messages.at(-1)?.id;
