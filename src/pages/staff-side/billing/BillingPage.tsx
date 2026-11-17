@@ -13,7 +13,7 @@ import './BillingPage.css'
 
 const statusFilters = ['All statuses', 'Paid', 'Pending', 'Overdue'] as const
 type StatusFilter = (typeof statusFilters)[number]
-const sourceFilters = ['All sources', 'Consultation', 'Prescription', 'Medicine order'] as const
+const sourceFilters = ['All sources', 'Consultation', 'Medicine order'] as const
 type SourceFilter = (typeof sourceFilters)[number]
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-MY', { currency: 'MYR', style: 'currency' }).format(value)
