@@ -134,7 +134,7 @@ const useServiceGroups = (): ServiceGroup[] => {
             subtitle: t.announcementsHint,
             Icon: Bell01,
             links: [
-                { title: t.announcements, subtitle: t.announcementsHint, href: href("/announcements") },
+                { title: t.announcements, subtitle: t.announcementsHint, href: overdueSafeHref("/announcements", overdue) },
                 { title: t.notifications, subtitle: profile ? t.notifEmptyHint : t.notifGuestHint, href: notificationsHref },
             ],
         },
