@@ -6,7 +6,7 @@ import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
-import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffListReset, StaffListSort, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './PatientsPage.css'
@@ -192,6 +192,7 @@ export function PatientsPage() {
       }
     })
   }, [patients, searchTerm, sortOption, statusFilter])
+  const patientPagination = useStaffPagination(filteredPatients)
 
   const resetListControls = () => {
     setSearchTerm('')
@@ -257,7 +258,7 @@ export function PatientsPage() {
                 <table role="table" className="patients-table staff-responsive-table">
                   <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Patient</th><th role="columnheader" scope="col">Contact</th><th role="columnheader" scope="col">Account</th><th role="columnheader" scope="col">Demographics</th><th role="columnheader" scope="col">Status</th><th role="columnheader" className="patients-table__actions-heading" scope="col">Actions</th></tr></thead>
                   <tbody role="rowgroup">
-                    {filteredPatients.map((patient) => (
+                    {patientPagination.pageItems.map((patient) => (
                       <tr role="row" key={patient.patientId || patient.userId}>
                         <td role="cell" data-row-title><span className={`patients-avatar patients-avatar--${patient.tone}`}>{patient.initials}</span><span><strong>{patient.name}</strong><small>{patient.patientId || `User ${patient.userId}`}</small></span></td>
                         <td role="cell" data-label="Contact"><span className="patients-contact"><strong>{patient.email}</strong><small>{patient.phone}</small></span></td>
@@ -272,7 +273,7 @@ export function PatientsPage() {
               ) : null}
               {!loading && !error && !filteredPatients.length ? <div className="patients-empty"><Icon name="users" size={25} /><strong>{patients.length ? 'No patients found' : 'No patient records available'}</strong><span>{patients.length ? 'Try another search or status filter.' : 'Patient accounts will appear here after they are registered.'}</span>{patients.length ? <button type="button" onClick={resetListControls}>Clear filters</button> : null}</div> : null}
             </div>
-            {!loading && !error && patients.length ? <div className="patients-pagination"><span>Showing {filteredPatients.length} of {patients.length} patient records</span></div> : null}
+            {!loading && !error && filteredPatients.length ? <StaffPagination currentPage={patientPagination.page} pageSize={patientPagination.pageSize} pageCount={patientPagination.pageCount} totalItems={patientPagination.totalItems} onPageChange={patientPagination.setPage} onPageSizeChange={patientPagination.setPageSize} /> : null}
           </section>
         </div>
       </main>

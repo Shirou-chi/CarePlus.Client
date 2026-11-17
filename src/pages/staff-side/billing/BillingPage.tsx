@@ -6,14 +6,14 @@ import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
-import { StaffListReset } from '../components/StaffListControls'
+import { StaffListReset, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
 import './BillingPage.css'
 
 const statusFilters = ['All statuses', 'Paid', 'Pending', 'Overdue'] as const
 type StatusFilter = (typeof statusFilters)[number]
-const sourceFilters = ['All sources', 'Consultation', 'Medicine order'] as const
+const sourceFilters = ['All sources', 'Consultation', 'Prescription', 'Medicine order'] as const
 type SourceFilter = (typeof sourceFilters)[number]
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-MY', { currency: 'MYR', style: 'currency' }).format(value)
@@ -103,6 +103,7 @@ export function BillingPage() {
 
     return rows.sort((left, right) => right.issuedAt.localeCompare(left.issuedAt))
   }, [records, searchTerm, sourceFilter, statusFilter])
+  const billingPagination = useStaffPagination(filteredRecords)
 
   const totalBilled = records.reduce((sum, record) => sum + record.total, 0)
   const totalCollected = records.reduce((sum, record) => sum + record.paidAmount, 0)
@@ -177,7 +178,7 @@ export function BillingPage() {
                 <tbody role="rowgroup">
                   {loading ? <tr role="row"><td role="cell" colSpan={7}><div className="billing-empty"><Icon name="clock" size={25} /><strong>Loading billing records…</strong><span>Retrieving invoice activity from the clinic API.</span></div></td></tr> : null}
                   {!loading && error ? <tr role="row"><td role="cell" colSpan={7}><div className="billing-empty"><Icon name="close" size={25} /><strong>Unable to load billing records</strong><span>{error}</span><button type="button" onClick={() => void loadBilling()}>Try again</button></div></td></tr> : null}
-                  {!loading && !error ? filteredRecords.map((record) => (
+                  {!loading && !error ? billingPagination.pageItems.map((record) => (
                     <tr role="row" key={record.invoiceId}>
                       <td role="cell" data-row-title><span className="billing-invoice"><strong>{record.invoiceId}</strong><small>{record.recordId || 'No linked record'}</small></span></td>
                       <td role="cell" data-label="Patient"><span className="billing-patient"><span aria-hidden="true">{getInitials(record.patientName, record.patientUsername)}</span><span><strong>{record.patientName}</strong><small>{record.patientUsername ? `@${record.patientUsername}` : record.patientId}</small></span></span></td>
@@ -190,6 +191,7 @@ export function BillingPage() {
                   )) : null}
                 </tbody>
               </table>
+              {!loading && !error && filteredRecords.length ? <StaffPagination currentPage={billingPagination.page} pageSize={billingPagination.pageSize} pageCount={billingPagination.pageCount} totalItems={billingPagination.totalItems} onPageChange={billingPagination.setPage} onPageSizeChange={billingPagination.setPageSize} /> : null}
               {!loading && !error && !filteredRecords.length ? <div className="billing-empty"><Icon name="search" size={25} /><strong>No billing records found</strong><span>Try changing your search or filters.</span><button type="button" onClick={resetFilters}>Clear filters</button></div> : null}
             </div>
           </section>

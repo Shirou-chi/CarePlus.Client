@@ -6,7 +6,7 @@ import { useTheme } from '../../../components/theme/useTheme'
 import { Icon, type IconName } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
-import { StaffListReset, StaffListSort } from '../components/StaffListControls'
+import { StaffListReset, StaffListSort, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffDateFilter, type StaffDateRange } from '../components/StaffDateFilter'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import '../StaffHomePage.css'
@@ -142,6 +142,7 @@ export function AuditLogsPage() {
       }
     })
   }, [actionFilter, auditEntries, dateRange, searchTerm, sortOption])
+  const auditPagination = useStaffPagination(filteredEntries)
 
   const clearFilters = (event?: FormEvent) => {
     event?.preventDefault()
@@ -234,7 +235,7 @@ export function AuditLogsPage() {
                 <tbody role="rowgroup">
                   {isLoading ? <tr role="row"><td role="cell" colSpan={5}><div className="audit-empty"><Icon name="clock" size={25} /><strong>Loading audit events…</strong><span>Retrieving the latest activity from the clinic API.</span></div></td></tr> : null}
                   {!isLoading && loadError ? <tr role="row"><td role="cell" colSpan={5}><div className="audit-empty"><Icon name="close" size={25} /><strong>Unable to load audit events</strong><span>{loadError}</span><button type="button" onClick={() => void loadAuditLogs()}>Try again</button></div></td></tr> : null}
-                  {!isLoading && !loadError ? filteredEntries.map((entry) => (
+                  {!isLoading && !loadError ? auditPagination.pageItems.map((entry) => (
                     <tr role="row" key={entry.id}>
                       <td role="cell" data-row-title><span className={`audit-entry-icon audit-entry-icon--${entry.tone}`}><Icon name={entry.icon} size={17} /></span><span><strong>{entry.resource}</strong><small>{entry.id}</small></span></td>
                       <td role="cell" data-label="Actor">
@@ -255,7 +256,7 @@ export function AuditLogsPage() {
               </table>
               {!filteredEntries.length ? <div className="audit-empty"><Icon name="search" size={25} /><strong>No audit events found</strong><span>Try changing your search or filters.</span><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
             </div>
-            <div className="audit-pagination"><span>{isLoading ? 'Loading audit events…' : `Showing ${filteredEntries.length} of ${auditEntries.length} loaded events`}</span></div>
+            {!isLoading && !loadError && filteredEntries.length ? <StaffPagination currentPage={auditPagination.page} pageSize={auditPagination.pageSize} pageCount={auditPagination.pageCount} totalItems={auditPagination.totalItems} onPageChange={auditPagination.setPage} onPageSizeChange={auditPagination.setPageSize} /> : null}
           </section>
         </div>
       </main>

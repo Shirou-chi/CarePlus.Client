@@ -6,7 +6,7 @@ import { appointmentApi, type StaffAppointmentRecord } from '@/services/appointm
 import { adminBillingApi } from '@/services/adminBillingApi'
 import { leaveApi } from '@/services/leaveApi'
 import { medicineBatchApi } from '@/services/medicineBatchApi'
-import { isClosedPrescriptionStatus, prescriptionApi } from '@/services/prescriptionApi'
+import { displayPrescriptionStatus, isClosedPrescriptionStatus, prescriptionApi } from '@/services/prescriptionApi'
 import { queueApi, type StaffQueueEntry } from '@/services/queueApi'
 import { sortNotices } from '@/utils/notifications'
 import { useTheme } from '../../components/theme/useTheme'
@@ -319,7 +319,7 @@ function PharmacyOverview({ data }: { data?: Extract<OverviewData, { kind: 'phar
       lead: formatDate(shortDate, calendarDate(prescription.createdAt)),
       title: prescription.patientName,
       detail: prescription.prescriptionId + ' · ' + prescription.doctorName,
-      status: prescription.status || 'Pending',
+      status: displayPrescriptionStatus(prescription.status || 'Pending'),
       tone: 'amber' as const,
       to: links.prescriptions,
     }))

@@ -3,6 +3,7 @@ import { useAuth } from '@/providers/auth-provider'
 import { useTheme } from '@/components/theme/useTheme'
 import { medicineOrderApi, type MedicineOrderStatus, type StaffMedicineOrder } from '@/services/medicineOrderApi'
 import { StaffDialog } from '../components/StaffDialog'
+import { StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
@@ -114,6 +115,7 @@ export function MedicineOrdersPage() {
         (statusFilter === 'All statuses' || status === statusFilter)
     })
   }, [orders, query, statusFilter])
+  const orderPagination = useStaffPagination(visibleOrders)
 
   const pendingCount = (orders ?? []).filter((order) => normalizeStatus(order.status) === 'awaiting_payment').length
   const preparingCount = (orders ?? []).filter((order) => normalizeStatus(order.status) === 'preparing').length
@@ -181,7 +183,7 @@ export function MedicineOrdersPage() {
             {error ? <div className="medicine-orders-feedback medicine-orders-feedback--error" role="alert"><span>{error}</span><button type="button" onClick={() => void loadOrders()}>Try again</button></div> : null}
             {loading ? <div className="medicine-orders-feedback" role="status">Loading medicine orders…</div> : null}
             {!loading && !error && visibleOrders.length === 0 ? <div className="medicine-orders-feedback" role="status">{orders?.length ? 'No matching medicine orders.' : 'No medicine orders yet.'}</div> : null}
-            {!loading && !error && visibleOrders.length ? <div className="medicine-orders-table-wrap"><table role="table" className="medicine-orders-table staff-responsive-table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Order</th><th role="columnheader">Patient</th><th role="columnheader">Fulfilment</th><th role="columnheader">Items</th><th role="columnheader">Total</th><th role="columnheader">Status</th><th role="columnheader"><span className="sr-only">Actions</span></th></tr></thead><tbody role="rowgroup">{visibleOrders.map((order) => {
+            {!loading && !error && visibleOrders.length ? <div className="medicine-orders-table-wrap"><table role="table" className="medicine-orders-table staff-responsive-table"><thead role="rowgroup"><tr role="row"><th role="columnheader">Order</th><th role="columnheader">Patient</th><th role="columnheader">Fulfilment</th><th role="columnheader">Items</th><th role="columnheader">Total</th><th role="columnheader">Status</th><th role="columnheader"><span className="sr-only">Actions</span></th></tr></thead><tbody role="rowgroup">{orderPagination.pageItems.map((order) => {
               const status = normalizeStatus(order.status)
               return <tr role="row" key={order.id}>
                 <td role="cell" data-row-title><strong>{order.id}</strong><small>{formatDate(order.placedAt)}</small></td>
@@ -192,7 +194,7 @@ export function MedicineOrdersPage() {
                 <td role="cell" data-label="Status"><span className={`medicine-orders-status medicine-orders-status--${statusClass(status)}`}><i />{statusLabels[status]}</span></td>
                 <td role="cell" data-row-actions><button className="staff-button staff-button--secondary" type="button" onClick={() => openOrder(order)}><Icon name="edit" size={15} /> Update</button></td>
               </tr>
-            })}</tbody></table></div> : null}
+            })}</tbody></table><StaffPagination currentPage={orderPagination.page} pageSize={orderPagination.pageSize} pageCount={orderPagination.pageCount} totalItems={orderPagination.totalItems} onPageChange={orderPagination.setPage} onPageSizeChange={orderPagination.setPageSize} /></div> : null}
           </section>
         </div>
       </main>

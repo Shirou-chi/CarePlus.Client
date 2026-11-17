@@ -8,7 +8,7 @@ import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar, type StaffRole } from '../navbar/StaffSidebar'
 import { StaffDialog } from '../components/StaffDialog'
-import { StaffListReset } from '../components/StaffListControls'
+import { StaffListReset, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { getProfilePhotoFileName, StaffPhotoCropDialog } from '../components/StaffPhotoCropDialog'
 import '../StaffHomePage.css'
@@ -166,6 +166,7 @@ export function StaffManagementPage() {
 
     return rows
   }, [roleFilter, searchTerm, staff, statusFilter])
+  const staffPagination = useStaffPagination(filteredStaff)
 
   const resetListControls = () => {
     setSearchTerm('')
@@ -361,7 +362,7 @@ export function StaffManagementPage() {
                 <table role="table" className="staff-management-table staff-responsive-table">
                   <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Staff member</th><th role="columnheader" scope="col">Role</th><th role="columnheader" scope="col">Contact</th><th role="columnheader" scope="col">Status</th><th role="columnheader" scope="col"><span className="sr-only">Actions</span></th></tr></thead>
                   <tbody role="rowgroup">
-                    {filteredStaff.map((member) => (
+                    {staffPagination.pageItems.map((member) => (
                       <tr role="row" key={member.staffId}>
                         <td role="cell" data-row-title><StaffAvatar member={member} /><span><strong>{member.name || member.username}</strong><small>{member.staffId} · @{member.username}</small></span></td>
                         <td role="cell" data-label="Role"><span className="staff-management-role">{member.role}</span></td>
@@ -375,6 +376,7 @@ export function StaffManagementPage() {
               ) : null}
               {!loading && filteredStaff.length === 0 ? <div className="staff-management-empty"><Icon name="staff" size={24} /><strong>{staff.length ? 'No staff found' : 'No staff records available'}</strong><span>{staff.length ? 'Try another search or filter.' : 'Create the first staff account to get started.'}</span>{staff.length ? <button type="button" onClick={resetListControls}>Clear filters</button> : null}</div> : null}
             </div>
+            {!loading && filteredStaff.length > 0 ? <StaffPagination currentPage={staffPagination.page} pageSize={staffPagination.pageSize} pageCount={staffPagination.pageCount} totalItems={staffPagination.totalItems} onPageChange={staffPagination.setPage} onPageSizeChange={staffPagination.setPageSize} /> : null}
           </section>
         </div>
       </main>

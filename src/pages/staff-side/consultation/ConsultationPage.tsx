@@ -22,6 +22,12 @@ type ConsultationRecordDetail =
   | { type: 'medical'; record: MedicalRecord }
   | { type: 'personal'; record: PersonalRecord }
 
+const healthTagCategories = [
+  { type: 'allergy', title: 'Allergies' },
+  { type: 'condition', title: 'Health conditions' },
+  { type: 'history', title: 'Medical history' },
+] as const
+
 type ConsultationMedicinePickerProps = {
   medicines: MedicineRecord[]
   value: string
@@ -132,6 +138,14 @@ export function ConsultationPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const nextItemId = useRef(0)
+
+  const healthTagGroups = healthTagCategories
+    .map((category) => ({
+      ...category,
+      records: personalRecords.filter((record) => record.type === category.type),
+    }))
+    .filter((group) => group.records.length > 0)
+  const otherPersonalRecords = personalRecords.filter((record) => record.type === 'bp' || record.type === 'medical')
 
   useEffect(() => {
     let cancelled = false
@@ -370,6 +384,43 @@ export function ConsultationPage() {
 
             <div className="consultation-layout">
               <aside className="consultation-context">
+                <section aria-labelledby="consultation-health-tags-title" className="staff-card consultation-context-card">
+                  <div className="consultation-card-heading">
+                    <div>
+                      <p className="staff-card__eyebrow">Patient-provided information</p>
+                      <h2 id="consultation-health-tags-title">Health tags</h2>
+                    </div>
+                    <Icon name="heart" size={18} />
+                  </div>
+                  {personalHistoryError ? (
+                    <p className="consultation-inline-error" role="alert">{personalHistoryError}</p>
+                  ) : healthTagGroups.length === 0 ? (
+                    <p className="consultation-muted-copy">No patient-reported health tags on file.</p>
+                  ) : (
+                    <div className="consultation-health-tags">
+                      {healthTagGroups.map((group) => (
+                        <div className="consultation-health-tags__group" key={group.type}>
+                          <h3>{group.title}</h3>
+                          <ul aria-label={group.title} className="consultation-health-tags__list" role="list">
+                            {group.records.map((record) => (
+                              <li key={record.id}>
+                                <button
+                                  className="consultation-health-tag"
+                                  data-type={group.type}
+                                  type="button"
+                                  onClick={() => setSelectedRecordDetail({ type: 'personal', record })}
+                                >
+                                  {record.label?.trim() || personalRecordLabel(record)}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
                 <section className="staff-card consultation-context-card">
                   <div className="consultation-card-heading"><div><p className="staff-card__eyebrow">Visit context</p><h2>{appointment ? 'Appointment details' : 'Walk-in consultation'}</h2></div><Icon name="calendar" size={18} /></div>
                   {appointment ? <dl className="consultation-detail-list"><div><dt>Date and time</dt><dd>{formatDateTime(appointment.startAt)}</dd></div><div><dt>Visit type</dt><dd>{appointment.visitType}</dd></div><div><dt>Doctor</dt><dd>{appointment.doctorName}</dd></div><div><dt>Status</dt><dd>{appointment.status} · {appointment.checkInStatus}</dd></div>{appointment.notes ? <div><dt>Appointment notes</dt><dd>{appointment.notes}</dd></div> : null}</dl> : <p className="consultation-muted-copy">No appointment details are attached to this visit. Continue with the walk-in consultation.</p>}
@@ -389,19 +440,18 @@ export function ConsultationPage() {
                   </div>
                 </section>
 
-                <section className="staff-card consultation-context-card">
+                {!personalHistoryError ? <section className="staff-card consultation-context-card">
                   <div className="consultation-card-heading"><div><p className="staff-card__eyebrow">Patient-provided information</p><h2>Personal health record</h2></div><Icon name="heart" size={18} /></div>
-                  {personalHistoryError ? <p className="consultation-inline-error">{personalHistoryError}</p> : null}
-                  {!personalHistoryError && !personalRecords.length ? <p className="consultation-muted-copy">No personal health records were provided by this patient.</p> : null}
+                  {!otherPersonalRecords.length ? <p className="consultation-muted-copy">No blood pressure readings or uploaded health documents on file.</p> : null}
                   <div className="consultation-personal-list">
-                    {personalRecords.map((record) => <button className="consultation-personal-item" key={record.id} type="button" onClick={() => setSelectedRecordDetail({ type: 'personal', record })}>
+                    {otherPersonalRecords.map((record) => <button className="consultation-personal-item" key={record.id} type="button" onClick={() => setSelectedRecordDetail({ type: 'personal', record })}>
                       <div><strong>{personalRecordLabel(record)}</strong><span>{formatDateTime(record.recordedAt)}</span></div>
                       <p>{formatPersonalRecord(record)}</p>
                       {record.notes && record.label ? <small>{record.notes}</small> : null}
                       <small>Click to view details</small>
                     </button>)}
                   </div>
-                </section>
+                </section> : null}
               </aside>
 
               <section className="staff-card consultation-form-card">

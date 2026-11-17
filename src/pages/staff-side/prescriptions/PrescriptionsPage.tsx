@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTheme } from '@/components/theme/useTheme'
 import { useAuth } from '@/providers/auth-provider'
-import { isClosedPrescriptionStatus, prescriptionApi, type PrescriptionItem, type PrescriptionSummary } from '@/services/prescriptionApi'
+import { ApiRequestError } from '@/services/api'
+import { displayPrescriptionStatus, isClosedPrescriptionStatus, isCompletedPrescriptionStatus, normalizePrescriptionStatus, prescriptionApi, type PrescriptionItem, type PrescriptionSummary } from '@/services/prescriptionApi'
 import { StaffDialog } from '../components/StaffDialog'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
+import { StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { Icon } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
 import { getStaffRole, StaffSidebar } from '../navbar/StaffSidebar'
@@ -14,55 +16,44 @@ const clinicDateTime = new Intl.DateTimeFormat('en-MY', {
   timeZone: 'Asia/Kuala_Lumpur', dateStyle: 'medium', timeStyle: 'short',
 })
 
-type PrescriptionRecordFilter = 'all' | 'pending' | 'completed'
+type PrescriptionRecordFilter = 'all' | 'active' | 'pending' | 'preparing' | 'ready_for_pickup' | 'completed'
 
-function normalizedPrescriptionStatus(status: string) {
-  return status.trim().toLowerCase().replace(/[\s-]+/g, '_')
+const pickupActions = {
+  pending: { label: 'Start preparing', message: 'Prescription marked as preparing.', update: prescriptionApi.prepare },
+  preparing: { label: 'Mark ready for pickup', message: 'Prescription is ready for pickup. The patient will see a pickup notification.', update: prescriptionApi.readyForPickup },
+  ready_for_pickup: { label: 'Complete pickup', message: 'Pickup completed. The invoice is available in Outstanding invoices.', update: prescriptionApi.complete },
 }
 
-function isCompletedPrescriptionStatus(status: string) {
-  return ['completed', 'dispensed', 'picked_up'].includes(normalizedPrescriptionStatus(status))
-}
-
-function displayPrescriptionStatus(status: string) {
-  const normalized = normalizedPrescriptionStatus(status)
-  if (isCompletedPrescriptionStatus(status)) return 'Completed'
-  if (normalized === 'preparing') return 'Preparing'
-  return status
-}
-
-function isPreparingStatus(status: string) {
-  return normalizedPrescriptionStatus(status) === 'preparing'
-}
-
-function PrescriptionDetails({ prescription, canDispense, onClose, onChanged }: { prescription: PrescriptionSummary; canDispense: boolean; onClose: () => void; onChanged: (message: string) => void }) {
+function PrescriptionDetails({ prescription, canDispense, onClose, onChanged, onRefresh }: {
+  prescription: PrescriptionSummary
+  canDispense: boolean
+  onClose: () => void
+  onChanged: (updated: PrescriptionSummary, message: string) => void
+  onRefresh: () => void
+}) {
   const { prescriptionId } = prescription
+  const status = normalizePrescriptionStatus(prescription.status)
+  const action = status === 'pending' || status === 'preparing' || status === 'ready_for_pickup'
+    ? pickupActions[status]
+    : null
   const [items, setItems] = useState<PrescriptionItem[]>()
   const [error, setError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [statusConflict, setStatusConflict] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [saving, setSaving] = useState(false)
 
-  const markPreparing = async () => {
-    setError('')
+  const updateStatus = async () => {
+    if (!action || saving) return
+    setActionError('')
+    setStatusConflict(false)
     setSaving(true)
     try {
-      await prescriptionApi.prepare(prescriptionId)
-      onChanged('Prescription marked as preparing.')
+      const updated = await action.update(prescriptionId)
+      onChanged(updated, action.message)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to mark this prescription as preparing.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const completeDispensing = async () => {
-    setError('')
-    setSaving(true)
-    try {
-      await prescriptionApi.complete(prescriptionId)
-      onChanged('Prescription dispensing completed.')
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to complete prescription dispensing.')
+      setActionError(reason instanceof Error ? reason.message : 'Unable to update the prescription.')
+      setStatusConflict(reason instanceof ApiRequestError && reason.status === 409)
     } finally {
       setSaving(false)
     }
@@ -79,13 +70,13 @@ function PrescriptionDetails({ prescription, canDispense, onClose, onChanged }: 
   }, [prescriptionId, attempt])
 
   return (
-    <StaffDialog className="prescription-dialog" eyebrow="Prescription" onClose={onClose} title={prescription.patientName} titleId="prescription-detail-title">
+    <StaffDialog className="prescription-dialog" closeDisabled={saving} closeOnBackdropClick={false} eyebrow="Prescription" onClose={onClose} title={prescription.patientName} titleId="prescription-detail-title">
       <dl className="staff-detail-grid">
         <div className="staff-detail-grid__wide"><dt>Prescription ID</dt><dd>{prescriptionId}</dd></div>
         <div><dt>Patient ID</dt><dd>{prescription.patientId}</dd></div>
         <div><dt>Doctor</dt><dd>{prescription.doctorName}</dd></div>
         <div><dt>Issued</dt><dd>{clinicDateTime.format(new Date(prescription.createdAt))}</dd></div>
-        <div><dt>Status</dt><dd>{prescription.status}</dd></div>
+        <div><dt>Status</dt><dd>{displayPrescriptionStatus(prescription.status)}</dd></div>
       </dl>
       <section aria-labelledby="prescription-medicines-title" className="prescription-medicines">
         <h3 id="prescription-medicines-title">Prescribed medicines</h3>
@@ -113,16 +104,20 @@ function PrescriptionDetails({ prescription, canDispense, onClose, onChanged }: 
           </ul>
         )}
       </section>
-      {canDispense && !isClosedPrescriptionStatus(prescription.status) ? (
-        <div className="prescription-dialog__actions">
-          <button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={onClose}>Close</button>
-          {isPreparingStatus(prescription.status) ? (
-            <button className="staff-button staff-button--primary" disabled={saving} type="button" onClick={() => void completeDispensing()}>{saving ? 'Completing…' : 'Complete dispensing'}</button>
-          ) : (
-            <button className="staff-button staff-button--primary" disabled={saving} type="button" onClick={() => void markPreparing()}>{saving ? 'Saving…' : 'Mark preparing'}</button>
-          )}
-        </div>
+      {canDispense && status === 'ready_for_pickup' ? (
+        <p className="prescription-dialog__note">Complete pickup once the patient has collected the medicine. This issues the bill for the visit.</p>
       ) : null}
+      {actionError ? <p className="prescription-dialog__error" role="alert">{actionError}</p> : null}
+      <div className="prescription-dialog__actions">
+        <button className="staff-button staff-button--secondary" disabled={saving} type="button" onClick={onClose}>Close</button>
+        {statusConflict ? (
+          <button className="staff-button staff-button--primary" type="button" onClick={onRefresh}>Refresh prescriptions</button>
+        ) : canDispense && action ? (
+          <button className="staff-button staff-button--primary" disabled={saving || !items?.length} type="button" onClick={() => void updateStatus()}>
+            {saving ? 'Saving…' : action.label}
+          </button>
+        ) : null}
+      </div>
     </StaffDialog>
   )
 }
@@ -133,7 +128,7 @@ export function PrescriptionsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [recordFilter, setRecordFilter] = useState<PrescriptionRecordFilter>('pending')
+  const [recordFilter, setRecordFilter] = useState<PrescriptionRecordFilter>('active')
   const [rows, setRows] = useState<PrescriptionSummary[]>()
   const [selected, setSelected] = useState<PrescriptionSummary>()
   const [error, setError] = useState('')
@@ -157,12 +152,16 @@ export function PrescriptionsPage() {
   }, [notice])
 
   const search = query.trim().toLowerCase()
-  const pendingRows = rows?.filter((row) => !isCompletedPrescriptionStatus(row.status) && normalizedPrescriptionStatus(row.status) !== 'cancelled') ?? []
-  const completedRows = rows?.filter((row) => isCompletedPrescriptionStatus(row.status)) ?? []
-  const filterRows = recordFilter === 'all' ? rows ?? [] : recordFilter === 'completed' ? completedRows : pendingRows
-  const filterLabel = recordFilter === 'all' ? 'prescriptions' : recordFilter === 'completed' ? 'completed prescriptions' : 'pending prescriptions'
-  const visibleRows = filterRows.filter((row) => [row.patientName, row.patientId, row.doctorName, row.prescriptionId]
-    .some((value) => value.toLowerCase().includes(search))) ?? []
+  const visibleRows = (rows ?? []).filter((row) => {
+    const matchesSearch = [row.patientName, row.patientId, row.doctorName, row.prescriptionId]
+      .some((value) => value.toLowerCase().includes(search))
+    if (!matchesSearch) return false
+    if (recordFilter === 'all') return true
+    if (recordFilter === 'active') return !isClosedPrescriptionStatus(row.status)
+    if (recordFilter === 'completed') return isCompletedPrescriptionStatus(row.status)
+    return normalizePrescriptionStatus(row.status) === recordFilter
+  })
+  const prescriptionPagination = useStaffPagination(visibleRows)
 
   return (
     <div className="staff-page prescriptions-page">
@@ -194,7 +193,10 @@ export function PrescriptionsPage() {
                 <span className="sr-only">Filter prescription records</span>
                 <select aria-label="Filter prescription records" value={recordFilter} onChange={(event) => setRecordFilter(event.target.value as PrescriptionRecordFilter)}>
                   <option value="all">All</option>
+                  <option value="active">Active</option>
                   <option value="pending">Pending</option>
+                  <option value="preparing">Preparing</option>
+                  <option value="ready_for_pickup">Ready for pickup</option>
                   <option value="completed">Completed</option>
                 </select>
                 <Icon name="chevronDown" size={14} />
@@ -209,8 +211,9 @@ export function PrescriptionsPage() {
             ) : !rows ? (
               <div className="prescription-feedback" role="status">Loading prescriptions…</div>
             ) : visibleRows.length === 0 ? (
-              <div className="prescription-feedback" role="status">{search ? `No matching ${filterLabel}.` : `No ${filterLabel} to show.`}</div>
+              <div className="prescription-feedback" role="status">No matching prescriptions.</div>
             ) : (
+              <>
               <div className="prescription-list__table-wrap">
                 <table role="table" className="prescription-list__table staff-responsive-table">
                   <thead role="rowgroup"><tr role="row">
@@ -221,23 +224,41 @@ export function PrescriptionsPage() {
                     <th role="columnheader" scope="col"><span className="sr-only">Actions</span></th>
                   </tr></thead>
                   <tbody role="rowgroup">
-                    {visibleRows.map((row) => (
+                    {prescriptionPagination.pageItems.map((row) => (
                       <tr role="row" key={row.prescriptionId}>
                         <td role="cell" data-row-title><strong>{row.patientName}</strong><small>{row.patientId}</small></td>
                         <td role="cell" data-label="Doctor">{row.doctorName}</td>
                         <td role="cell" data-label="Issued"><time dateTime={row.createdAt}>{clinicDateTime.format(new Date(row.createdAt))}</time></td>
-                        <td role="cell" data-label="Status"><span className="prescription-status" data-status={displayPrescriptionStatus(row.status).toLowerCase()}>{displayPrescriptionStatus(row.status)}</span></td>
+                        <td role="cell" data-label="Status"><span className="prescription-status" data-status={normalizePrescriptionStatus(displayPrescriptionStatus(row.status))}>{displayPrescriptionStatus(row.status)}</span></td>
                         <td role="cell" data-row-actions><button aria-label={`View prescription for ${row.patientName}`} className="staff-button staff-button--secondary" type="button" onClick={() => setSelected(row)}><Icon name="eye" size={15} /> View</button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              <StaffPagination currentPage={prescriptionPagination.page} pageSize={prescriptionPagination.pageSize} pageCount={prescriptionPagination.pageCount} totalItems={prescriptionPagination.totalItems} onPageChange={prescriptionPagination.setPage} onPageSizeChange={prescriptionPagination.setPageSize} />
+              </>
             )}
           </section>
         </div>
       </main>
-      {selected ? <PrescriptionDetails key={selected.prescriptionId} canDispense={user?.role === 'Pharmacist' || user?.role === 'Admin'} prescription={selected} onClose={() => setSelected(undefined)} onChanged={(message) => { setSelected(undefined); setNotice(message); setAttempt((value) => value + 1) }} /> : null}
+      {selected ? (
+        <PrescriptionDetails
+          key={selected.prescriptionId}
+          canDispense={user?.role === 'Pharmacist' || user?.role === 'Admin'}
+          prescription={selected}
+          onClose={() => setSelected(undefined)}
+          onChanged={(updated, message) => {
+            setRows((current) => current?.map((row) => row.prescriptionId === updated.prescriptionId ? updated : row))
+            setSelected(undefined)
+            setNotice(message)
+          }}
+          onRefresh={() => {
+            setSelected(undefined)
+            setAttempt((value) => value + 1)
+          }}
+        />
+      ) : null}
       {notice ? <div className="staff-toast" role="status">{notice}</div> : null}
     </div>
   )

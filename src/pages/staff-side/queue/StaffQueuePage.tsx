@@ -4,7 +4,7 @@ import { useTheme } from '@/components/theme/useTheme'
 import { useAuth } from '@/providers/auth-provider'
 import { queueApi, type QueueStatus, type StaffQueueEntry } from '@/services/queueApi'
 import { StaffDialog } from '../components/StaffDialog'
-import { StaffListSort } from '../components/StaffListControls'
+import { StaffListSort, StaffPagination, useStaffPagination } from '../components/StaffListControls'
 import { StaffPageEyebrow } from '../components/StaffPageEyebrow'
 import { Icon, type IconName } from '../navbar/StaffIcon'
 import { StaffNavbar } from '../navbar/StaffNavbar'
@@ -99,6 +99,7 @@ export function StaffQueuePage() {
     return (statusFilter === 'In queue' ? stillInQueue : statusFilter === label)
       && (!query || [row.queueNumber, row.patientName, row.doctorName, row.appointmentId].some((value) => value.toLowerCase().includes(query)))
   })
+  const queuePagination = useStaffPagination(visibleRows)
 
   function applyQueueUpdate(updated: QueueStatus) {
     setCurrent((previous) => previous && {
@@ -193,7 +194,7 @@ export function StaffQueuePage() {
                     <th role="columnheader" scope="col">Actions</th>
                   </tr></thead>
                   <tbody role="rowgroup">
-                    {visibleRows.map((row) => {
+                    {queuePagination.pageItems.map((row) => {
                       const resumeConsultation = canConsult && row.status === 'InConsultation'
                       const next = nextActions[row.status]
                       return (
@@ -223,6 +224,7 @@ export function StaffQueuePage() {
                     })}
                   </tbody>
                 </table>
+                <StaffPagination currentPage={queuePagination.page} pageSize={queuePagination.pageSize} pageCount={queuePagination.pageCount} totalItems={queuePagination.totalItems} onPageChange={queuePagination.setPage} onPageSizeChange={queuePagination.setPageSize} />
               </div>
             ) : !current.error ? (
               <div className="staff-queue__empty" role="status">
